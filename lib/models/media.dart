@@ -9,8 +9,7 @@ class MediaId {
   final String value;
 
   @override
-  bool operator ==(Object other) =>
-      other is MediaId && other.kind == kind && other.value == value;
+  bool operator ==(Object other) => other is MediaId && other.kind == kind && other.value == value;
 
   @override
   int get hashCode => Object.hash(kind, value);
@@ -44,12 +43,7 @@ class CatalogItem {
 
   bool get isSeries => mediaType == MediaType.series;
 
-  CatalogItem copyWith({
-    String? posterUrl,
-    String? backdropUrl,
-    String? logoUrl,
-    double? rating,
-  }) {
+  CatalogItem copyWith({String? posterUrl, String? backdropUrl, String? logoUrl, double? rating}) {
     return CatalogItem(
       id: id,
       title: title,
@@ -92,11 +86,7 @@ class Season {
 }
 
 class AudioTrackOption {
-  const AudioTrackOption({
-    required this.mediaId,
-    required this.language,
-    required this.label,
-  });
+  const AudioTrackOption({required this.mediaId, required this.language, required this.label});
 
   final String mediaId;
   final String language;

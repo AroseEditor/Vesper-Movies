@@ -5,32 +5,33 @@ sealed class SourceError implements Exception {
 
   String userMessage(ProviderKind kind) {
     return switch (this) {
-      NetworkError(:final timedOut) => kind.isBdix
-          ? '${kind.label} needs a BDIX connection.'
-          : timedOut
-              ? '${kind.label} timed out.'
-              : 'Cannot reach ${kind.label}.',
-      RateLimited(:final retryAfterSeconds) => retryAfterSeconds == null
-          ? 'Rate limited. Try again later.'
-          : 'Rate limited. Wait ${retryAfterSeconds}s.',
+      NetworkError(:final timedOut) =>
+        kind.isBdix
+            ? '${kind.label} needs a BDIX connection.'
+            : timedOut
+            ? '${kind.label} timed out.'
+            : 'Cannot reach ${kind.label}.',
+      RateLimited(:final retryAfterSeconds) =>
+        retryAfterSeconds == null
+            ? 'Rate limited. Try again later.'
+            : 'Rate limited. Wait ${retryAfterSeconds}s.',
       NotFound() => 'No results found.',
       ParseError(:final where) => '${kind.label} returned unexpected data ($where).',
-      Unavailable(:final status) => status == null
-          ? '${kind.label} is unavailable.'
-          : '${kind.label} error ($status).',
+      Unavailable(:final status) =>
+        status == null ? '${kind.label} is unavailable.' : '${kind.label} error ($status).',
       Cancelled() => '',
     };
   }
 
   @override
   String toString() => switch (this) {
-        NetworkError(:final code) => 'NetworkError($code)',
-        RateLimited(:final retryAfterSeconds) => 'RateLimited($retryAfterSeconds)',
-        NotFound() => 'NotFound',
-        ParseError(:final where) => 'ParseError($where)',
-        Unavailable(:final status) => 'Unavailable($status)',
-        Cancelled() => 'Cancelled',
-      };
+    NetworkError(:final code) => 'NetworkError($code)',
+    RateLimited(:final retryAfterSeconds) => 'RateLimited($retryAfterSeconds)',
+    NotFound() => 'NotFound',
+    ParseError(:final where) => 'ParseError($where)',
+    Unavailable(:final status) => 'Unavailable($status)',
+    Cancelled() => 'Cancelled',
+  };
 }
 
 final class NetworkError extends SourceError {

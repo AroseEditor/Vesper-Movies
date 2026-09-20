@@ -32,10 +32,7 @@ void main() {
         const NetworkError('x', timedOut: true).userMessage(ProviderKind.moviebox),
         'MovieBox timed out.',
       );
-      expect(
-        const NetworkError('x').userMessage(ProviderKind.fourkhdhub),
-        'Cannot reach 4KHDHub.',
-      );
+      expect(const NetworkError('x').userMessage(ProviderKind.fourkhdhub), 'Cannot reach 4KHDHub.');
       expect(const RateLimited(30).userMessage(ProviderKind.moviebox), 'Rate limited. Wait 30s.');
       expect(const NotFound().userMessage(ProviderKind.moviebox), 'No results found.');
       expect(const Unavailable(502).userMessage(ProviderKind.fourkhdhub), '4KHDHub error (502).');

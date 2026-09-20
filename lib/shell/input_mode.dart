@@ -15,22 +15,22 @@ extension InputModeX on InputMode {
   bool get usesPointer => this == InputMode.desktop;
 
   double get gutter => switch (this) {
-        InputMode.touch => 16,
-        InputMode.desktop => 48,
-        InputMode.tv => 58,
-      };
+    InputMode.touch => 16,
+    InputMode.desktop => 48,
+    InputMode.tv => 58,
+  };
 
   double get rowGap => switch (this) {
-        InputMode.touch => 26,
-        InputMode.desktop => 34,
-        InputMode.tv => 42,
-      };
+    InputMode.touch => 26,
+    InputMode.desktop => 34,
+    InputMode.tv => 42,
+  };
 
   double get posterWidth => switch (this) {
-        InputMode.touch => 124,
-        InputMode.desktop => 168,
-        InputMode.tv => 208,
-      };
+    InputMode.touch => 124,
+    InputMode.desktop => 168,
+    InputMode.tv => 208,
+  };
 
   double get textScale => isTv ? 1.18 : 1.0;
 }
@@ -71,8 +71,7 @@ class InputModeNotifier extends Notifier<InputMode> {
   Future<void> resolve() async => set(await detectInputMode());
 }
 
-final inputModeProvider =
-    NotifierProvider<InputModeNotifier, InputMode>(InputModeNotifier.new);
+final inputModeProvider = NotifierProvider<InputModeNotifier, InputMode>(InputModeNotifier.new);
 
 class InputModeScope extends StatelessWidget {
   const InputModeScope({super.key, required this.mode, required this.child});
