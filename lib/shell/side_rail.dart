@@ -26,6 +26,10 @@ class _SideRailState extends State<SideRail> {
   final FocusScopeNode _scope = FocusScopeNode(debugLabel: 'rail');
   bool _expanded = false;
 
+  double get _collapsedWidth => widget.mode.isTv ? 84.0 : 72.0;
+
+  double get _expandedWidth => widget.mode.isTv ? 268.0 : 232.0;
+
   @override
   void dispose() {
     _scope.dispose();
@@ -33,15 +37,12 @@ class _SideRailState extends State<SideRail> {
   }
 
   void _setExpanded(bool value) {
-    if (_expanded == value) return;
+    if (_expanded == value || !mounted) return;
     setState(() => _expanded = value);
   }
 
   @override
   Widget build(BuildContext context) {
-    final collapsed = widget.mode.isTv ? 84.0 : 72.0;
-    final expanded = widget.mode.isTv ? 268.0 : 232.0;
-
     return FocusScope(
       node: _scope,
       onFocusChange: _setExpanded,
@@ -55,32 +56,40 @@ class _SideRailState extends State<SideRail> {
         child: AnimatedContainer(
           duration: VesperMotion.normal,
           curve: VesperMotion.enter,
-          width: _expanded ? expanded : collapsed,
+          width: _expanded ? _expandedWidth : _collapsedWidth,
           decoration: BoxDecoration(
             color: VesperColors.canvasDeep,
             border: Border(
               right: BorderSide(color: _expanded ? VesperColors.divider : Colors.transparent),
             ),
           ),
-          child: SafeArea(
-            right: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: widget.mode.isTv ? 34 : 22),
-                _RailBrand(expanded: _expanded, collapsedWidth: collapsed),
-                SizedBox(height: widget.mode.isTv ? 38 : 28),
-                for (var i = 0; i < AppDestination.values.length; i++)
-                  _RailItem(
-                    destination: AppDestination.values[i],
-                    selected: i == widget.currentIndex,
-                    expanded: _expanded,
-                    collapsedWidth: collapsed,
-                    tv: widget.mode.isTv,
-                    onSelect: () => widget.onSelect(i),
-                  ),
-                const Spacer(),
-              ],
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              minWidth: _expandedWidth,
+              maxWidth: _expandedWidth,
+              child: SafeArea(
+                right: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: widget.mode.isTv ? 34 : 22),
+                    _RailBrand(expanded: _expanded, iconSlot: _collapsedWidth),
+                    SizedBox(height: widget.mode.isTv ? 38 : 28),
+                    for (var i = 0; i < AppDestination.values.length; i++)
+                      _RailItem(
+                        destination: AppDestination.values[i],
+                        selected: i == widget.currentIndex,
+                        expanded: _expanded,
+                        iconSlot: _collapsedWidth,
+                        railWidth: _expandedWidth,
+                        tv: widget.mode.isTv,
+                        onSelect: () => widget.onSelect(i),
+                      ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -90,10 +99,10 @@ class _SideRailState extends State<SideRail> {
 }
 
 class _RailBrand extends StatelessWidget {
-  const _RailBrand({required this.expanded, required this.collapsedWidth});
+  const _RailBrand({required this.expanded, required this.iconSlot});
 
   final bool expanded;
-  final double collapsedWidth;
+  final double iconSlot;
 
   @override
   Widget build(BuildContext context) {
@@ -102,10 +111,10 @@ class _RailBrand extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: collapsedWidth,
+            width: iconSlot,
             child: Center(
               child: ShaderMask(
-                shaderCallback: (rect) => VesperColors.brandSweep.createShader(rect),
+                shaderCallback: VesperColors.brandSweep.createShader,
                 child: const Text(
                   'V',
                   style: TextStyle(
@@ -118,7 +127,7 @@ class _RailBrand extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
+          Flexible(
             child: AnimatedOpacity(
               opacity: expanded ? 1 : 0,
               duration: VesperMotion.fast,
@@ -131,6 +140,7 @@ class _RailBrand extends StatelessWidget {
                   letterSpacing: 2.4,
                 ),
                 maxLines: 1,
+                softWrap: false,
                 overflow: TextOverflow.clip,
               ),
             ),
@@ -146,7 +156,8 @@ class _RailItem extends StatefulWidget {
     required this.destination,
     required this.selected,
     required this.expanded,
-    required this.collapsedWidth,
+    required this.iconSlot,
+    required this.railWidth,
     required this.tv,
     required this.onSelect,
   });
@@ -154,7 +165,8 @@ class _RailItem extends StatefulWidget {
   final AppDestination destination;
   final bool selected;
   final bool expanded;
-  final double collapsedWidth;
+  final double iconSlot;
+  final double railWidth;
   final bool tv;
   final VoidCallback onSelect;
 
@@ -172,7 +184,9 @@ class _RailItemState extends State<_RailItem> {
     final height = widget.tv ? 56.0 : 48.0;
 
     return FocusableActionDetector(
-      onShowFocusHighlight: (value) => setState(() => _focused = value),
+      onShowFocusHighlight: (value) {
+        if (_focused != value) setState(() => _focused = value);
+      },
       mouseCursor: SystemMouseCursors.click,
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
@@ -193,6 +207,7 @@ class _RailItemState extends State<_RailItem> {
             duration: VesperMotion.fast,
             curve: VesperMotion.enter,
             height: height,
+            width: widget.railWidth,
             margin: const EdgeInsets.symmetric(vertical: 2),
             decoration: BoxDecoration(
               color: _focused ? VesperColors.surfaceRaised : Colors.transparent,
@@ -207,14 +222,14 @@ class _RailItemState extends State<_RailItem> {
             child: Row(
               children: [
                 SizedBox(
-                  width: widget.collapsedWidth - 3,
+                  width: widget.iconSlot - 3,
                   child: Icon(
                     widget.selected ? widget.destination.activeIcon : widget.destination.icon,
                     color: widget.selected ? VesperColors.accent : color,
                     size: widget.tv ? 26 : 22,
                   ),
                 ),
-                Expanded(
+                Flexible(
                   child: AnimatedOpacity(
                     opacity: widget.expanded ? 1 : 0,
                     duration: VesperMotion.fast,
@@ -226,7 +241,8 @@ class _RailItemState extends State<_RailItem> {
                         fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
                       ),
                       maxLines: 1,
-                      overflow: TextOverflow.clip,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
