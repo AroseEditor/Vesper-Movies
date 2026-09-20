@@ -132,8 +132,8 @@ void main() {
     test('rotates to the next host on a retryable status and pins the winner', () async {
       final adapter = _RecordingAdapter((options, index) {
         if (options.path.contains('visitor-login')) return _FakeReply(200, _loginBody());
-        if (options.uri.host == 'api6.aoneroom.com') return _FakeReply(503, '');
-        if (options.uri.host == 'api5.aoneroom.com') return _FakeReply(502, '');
+        if (options.uri.host == 'api6.aoneroom.com') return const _FakeReply(503, '');
+        if (options.uri.host == 'api5.aoneroom.com') return const _FakeReply(502, '');
         return _FakeReply(
           200,
           jsonEncode({
@@ -152,7 +152,7 @@ void main() {
     test('gives up with the last error once every host is exhausted', () async {
       final adapter = _RecordingAdapter((options, index) {
         if (options.path.contains('visitor-login')) return _FakeReply(200, _loginBody());
-        return _FakeReply(503, '');
+        return const _FakeReply(503, '');
       });
 
       await expectLater(
@@ -191,7 +191,7 @@ void main() {
     test('signs every attempt for the host it is actually sent to', () async {
       final adapter = _RecordingAdapter((options, index) {
         if (options.path.contains('visitor-login')) return _FakeReply(200, _loginBody());
-        if (options.uri.host == 'api6.aoneroom.com') return _FakeReply(503, '');
+        if (options.uri.host == 'api6.aoneroom.com') return const _FakeReply(503, '');
         return _FakeReply(
           200,
           jsonEncode({
