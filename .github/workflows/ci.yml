@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  verify:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --line-length 100 --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --reporter expanded
