@@ -32,6 +32,7 @@ class _DetailsPageState extends ConsumerState<DetailsPage> {
   Widget build(BuildContext context) {
     final mode = ref.watch(inputModeProvider);
     final async = ref.watch(titleDetailsProvider(widget.item));
+    final matches = ref.watch(sourceMatchesProvider(widget.item));
 
     return Scaffold(
       backgroundColor: VesperColors.canvas,
@@ -39,7 +40,7 @@ class _DetailsPageState extends ConsumerState<DetailsPage> {
         loading: () => _DetailsSkeleton(item: widget.item, mode: mode),
         error: (error, stack) => _DetailsError(onBack: () => Navigator.of(context).maybePop()),
         data: (data) => _DetailsBody(
-          data: data,
+          data: data.withMatches(matches.value ?? const [], pending: matches.isLoading),
           mode: mode,
           season: _season,
           onSeasonChanged: (value) => setState(() => _season = value),
@@ -104,7 +105,7 @@ class _DetailsBody extends ConsumerWidget {
             details: details,
             mode: mode,
             playable: data.isPlayable,
-            matchLabel: data.isPlayable ? data.sourceLabel : null,
+            matchLabel: data.isPlayable || data.matchesPending ? data.sourceLabel : null,
             onPlay: () => _play(
               context,
               ref,

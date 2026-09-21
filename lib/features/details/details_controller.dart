@@ -23,12 +23,14 @@ class TitleDetails {
     required this.details,
     this.matches = const [],
     this.addonCount = 0,
+    this.matchesPending = false,
   });
 
   final CatalogItem item;
   final MediaDetails details;
   final List<SourceMatch> matches;
   final int addonCount;
+  final bool matchesPending;
 
   bool get hasAddons => addonCount > 0 && item.id.value.startsWith('tt');
 
@@ -36,52 +38,81 @@ class TitleDetails {
 
   SourceMatch? get bestMatch => matches.isEmpty ? null : matches.first;
 
+  TitleDetails withMatches(List<SourceMatch> matches, {required bool pending}) {
+    return TitleDetails(
+      item: item,
+      details: details,
+      matches: matches,
+      addonCount: addonCount,
+      matchesPending: pending,
+    );
+  }
+
   String get sourceLabel {
     final names = <String>[
       for (final match in matches) match.kind.label,
       if (hasAddons) addonCount == 1 ? '1 addon' : '$addonCount addons',
     ];
-    if (names.isEmpty) return 'No source found';
-    if (names.length <= 2) return names.join(' and ');
-    return '${names.first} and ${names.length - 1} more';
+    if (names.isEmpty) return matchesPending ? 'Finding sources' : 'No source found';
+    final label = names.length <= 2
+        ? names.join(' and ')
+        : '${names.first} and ${names.length - 1} more';
+    return matchesPending ? '$label, finding more' : label;
   }
 }
 
-final _detailsCache = MemoCache<String, TitleDetails>(ttl: const Duration(hours: 6));
+final _detailsCache = MemoCache<String, MediaDetails>(ttl: const Duration(hours: 6));
+final _matchesCache = MemoCache<String, List<SourceMatch>>(ttl: const Duration(hours: 1));
 
 final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, CatalogItem>((
   ref,
   item,
 ) async {
-  final cached = _detailsCache.peek(item.id.toString());
+  final addonCount = ref.read(enabledAddonsProvider).length;
+  final key = item.id.toString();
+
+  final cached = _detailsCache.peek(key);
+  if (cached != null) {
+    return TitleDetails(item: item, details: cached, addonCount: addonCount);
+  }
+
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
+
+  final meta = await ref
+      .read(cinemetaProvider)
+      .fullDetails(item, cancel: cancel)
+      .timeout(const Duration(seconds: 15), onTimeout: () => null);
+
+  final details = meta ?? MediaDetails.of(item);
+  if (meta != null) _detailsCache.put(key, details);
+
+  return TitleDetails(item: item, details: details, addonCount: addonCount);
+});
+
+final sourceMatchesProvider = FutureProvider.autoDispose.family<List<SourceMatch>, CatalogItem>((
+  ref,
+  item,
+) async {
+  final key = item.id.toString();
+  final cached = _matchesCache.peek(key);
   if (cached != null) return cached;
 
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
 
-  final cinemeta = ref.read(cinemetaProvider);
-  final registry = ref.read(sourceRegistryProvider);
+  final matches = await SourceMatcher(ref.read(sourceRegistryProvider))
+      .findAll(item, cancel: cancel)
+      .timeout(const Duration(seconds: 20), onTimeout: () => const []);
 
-  final results = await Future.wait([
-    cinemeta.fullDetails(item, cancel: cancel),
-    SourceMatcher(registry).findAll(item, cancel: cancel),
-  ]);
-
-  final meta = results[0] as MediaDetails?;
-  final matches = results[1] as List<SourceMatch>;
-
-  final resolved = TitleDetails(
-    item: item,
-    details: meta ?? MediaDetails.of(item),
-    matches: matches,
-    addonCount: ref.read(enabledAddonsProvider).length,
-  );
-
-  _detailsCache.put(item.id.toString(), resolved);
-  return resolved;
+  _matchesCache.put(key, matches);
+  return matches;
 });
 
-void invalidateDetailsCache() => _detailsCache.clear();
+void invalidateDetailsCache() {
+  _detailsCache.clear();
+  _matchesCache.clear();
+}
 
 class EpisodeRef {
   const EpisodeRef(this.matches, this.item, {this.season = 0, this.episode = 0});
