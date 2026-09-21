@@ -309,6 +309,65 @@ List<SubtitleOption> captionsJsonToOptions(Map<String, dynamic> payload) {
   return options;
 }
 
+bool _matchesEpisode(Object? entry, int season, int episode) {
+  if (season == 0 && episode == 0) return true;
+  final entrySeason = readInt(entry, const ['se', 'season']);
+  final entryEpisode = readInt(entry, const ['ep', 'episode']);
+  if (entrySeason == null && entryEpisode == null) return true;
+  return entrySeason == season && entryEpisode == episode;
+}
+
+List<String> resourceIdsFor(Map<String, dynamic> payload, {int season = 0, int episode = 0}) {
+  final ids = <String>[];
+  for (final entry in readList(payload, const ['list', 'resources', 'items'])) {
+    if (!_matchesEpisode(entry, season, episode)) continue;
+    final id = readString(entry, const ['resourceId', 'id']);
+    if (id != null && id.isNotEmpty && !ids.contains(id)) ids.add(id);
+  }
+  return ids;
+}
+
+List<SubtitleOption> inlineCaptionsFromResources(
+  Map<String, dynamic> payload, {
+  int season = 0,
+  int episode = 0,
+}) {
+  final options = <SubtitleOption>[];
+  for (final entry in readList(payload, const ['list', 'resources', 'items'])) {
+    if (!_matchesEpisode(entry, season, episode)) continue;
+    if (entry is! Map) continue;
+    options.addAll(captionsJsonToOptions({'extCaptions': entry['extCaptions']}));
+  }
+  return options;
+}
+
+String normaliseLanguage(String raw) {
+  final buffer = StringBuffer();
+  for (final rune in raw.toLowerCase().runes) {
+    final isLetter = (rune >= 0x61 && rune <= 0x7a) || rune > 0x7f;
+    if (isLetter) buffer.write(String.fromCharCode(rune));
+  }
+  final cleaned = buffer.toString();
+  return cleaned.isEmpty ? raw.trim().toLowerCase() : cleaned;
+}
+
+List<SubtitleOption> sortCaptions(List<SubtitleOption> options) {
+  final byLanguage = <String, SubtitleOption>{};
+  for (final option in options) {
+    byLanguage.putIfAbsent(normaliseLanguage(option.name), () => option);
+  }
+
+  final sorted = byLanguage.values.toList();
+  sorted.sort((a, b) {
+    final aEnglish = a.name.toLowerCase().contains('english');
+    final bEnglish = b.name.toLowerCase().contains('english');
+    if (aEnglish && !bEnglish) return -1;
+    if (bEnglish && !aEnglish) return 1;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  });
+  return sorted;
+}
+
 List<Release> playInfoJsonToReleases(
   Map<String, dynamic> payload, {
   required int season,

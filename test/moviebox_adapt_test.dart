@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vesper_movies/models/media.dart';
+import 'package:vesper_movies/models/release.dart';
 import 'package:vesper_movies/sources/moviebox/adapt.dart';
 
 const _policy =
@@ -213,6 +214,61 @@ void main() {
       });
 
       expect(options.map((e) => e.name), ['English', 'Hindi']);
+    });
+  });
+
+  group('caption discovery', () {
+    const page = {
+      'list': [
+        {
+          'resourceId': '111',
+          'se': 1,
+          'ep': 1,
+          'extCaptions': [
+            {'lanName': 'English', 'url': 'https://c/en.srt', 'size': 5000},
+          ],
+        },
+        {
+          'resourceId': '222',
+          'se': 1,
+          'ep': 2,
+          'extCaptions': [
+            {'lanName': 'Hindi', 'url': 'https://c/hi.srt', 'size': 5000},
+          ],
+        },
+      ],
+    };
+
+    test('collects resource ids for the requested episode only', () {
+      expect(resourceIdsFor(page, season: 1, episode: 2), ['222']);
+      expect(resourceIdsFor(page, season: 1, episode: 1), ['111']);
+    });
+
+    test('collects every resource id for a film', () {
+      expect(resourceIdsFor(page), ['111', '222']);
+    });
+
+    test('reads captions embedded in the resource entry', () {
+      final options = inlineCaptionsFromResources(page, season: 1, episode: 2);
+      expect(options, hasLength(1));
+      expect(options.single.name, 'Hindi');
+    });
+
+    test('keeps one entry per language and puts english first', () {
+      final sorted = sortCaptions(const [
+        SubtitleOption(name: 'Hindi', url: 'https://c/hi-1.srt'),
+        SubtitleOption(name: 'English', url: 'https://c/en-1.srt'),
+        SubtitleOption(name: 'English', url: 'https://c/en-2.srt'),
+        SubtitleOption(name: 'hindi ', url: 'https://c/hi-2.srt'),
+      ]);
+
+      expect(sorted.map((e) => e.name), ['English', 'Hindi']);
+      expect(sorted.first.url, 'https://c/en-1.srt');
+    });
+
+    test('normalises language labels for comparison', () {
+      expect(normaliseLanguage('English '), normaliseLanguage('english'));
+      expect(normaliseLanguage('Portugues (BR)'), normaliseLanguage('portugues br'));
     });
   });
 

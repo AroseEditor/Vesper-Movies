@@ -149,16 +149,55 @@ class MovieBoxSource extends BaseContentSource {
     int episode = 0,
     CancelToken? cancel,
   }) async {
-    if (resourceId == null || resourceId.isEmpty) return const [];
+    final collected = <SubtitleOption>[];
+    final seenUrls = <String>{};
 
+    void absorb(Iterable<SubtitleOption> options) {
+      for (final option in options) {
+        if (seenUrls.add(option.url)) collected.add(option);
+      }
+    }
+
+    Map<String, dynamic>? resourcePage;
     try {
-      final payload = await _client.get(MovieBoxEndpoints.captions(id, resourceId), cancel: cancel);
-      return captionsJsonToOptions(payload);
+      resourcePage = await _client.get(
+        MovieBoxEndpoints.resource(
+          id,
+          season: season,
+          episode: episode,
+          page: MovieBoxEndpoints.pageForEpisode(episode),
+        ),
+        cancel: cancel,
+      );
     } on Cancelled {
       rethrow;
     } on SourceError catch (_) {
-      return const [];
+      resourcePage = null;
     }
+
+    final resourceIds = <String>{};
+    if (resourceId != null && resourceId.isNotEmpty) resourceIds.add(resourceId);
+
+    if (resourcePage != null) {
+      absorb(inlineCaptionsFromResources(resourcePage, season: season, episode: episode));
+      resourceIds.addAll(resourceIdsFor(resourcePage, season: season, episode: episode));
+    }
+
+    for (final candidate in resourceIds.take(4)) {
+      try {
+        final payload = await _client.get(
+          MovieBoxEndpoints.captions(id, candidate),
+          cancel: cancel,
+        );
+        absorb(captionsJsonToOptions(payload));
+      } on Cancelled {
+        rethrow;
+      } on SourceError catch (_) {
+        continue;
+      }
+    }
+
+    return sortCaptions(collected);
   }
 
   @override

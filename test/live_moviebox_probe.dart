@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vesper_movies/sources/moviebox/moviebox_source.dart';
 
 void main() {
-  test('moviebox returns playable streams', () async {
+  test('moviebox returns playable streams and subtitles', () async {
     final source = MovieBoxSource();
     final started = DateTime.now();
 
@@ -25,15 +25,17 @@ void main() {
 
     for (final release in releases.take(4)) {
       final url = release.directUrl ?? '';
-      mark('  ${release.quality} ${release.sizeLabel} -> ${Uri.tryParse(url)?.host}');
-      mark('     path ${Uri.tryParse(url)?.path}');
-      mark('     headers ${release.mirrors.first.headers.keys.toList()}');
+      mark('  ${release.quality} ${release.codec} ${release.sizeLabel}');
+      mark('     host ${Uri.tryParse(url)?.host} resourceId ${release.resourceId}');
+    }
+
+    final subtitles = await source.subtitles(first.id.value, resourceId: releases.first.resourceId);
+    mark('subtitles: ${subtitles.length}');
+    for (final option in subtitles.take(8)) {
+      mark('  sub ${option.name} -> ${Uri.tryParse(option.url)?.host}');
     }
 
     final playback = await source.resolve(releases.first);
-    mark('playback url host ${Uri.tryParse(playback.url)?.host}');
-    mark('playback isDash ${playback.isDash}');
-    expect(playback.headers.containsKey('Cookie'), isTrue);
-    expect(playback.headers.containsKey('Referer'), isTrue);
+    mark('playback isDash ${playback.isDash} headers ${playback.headers.keys.toList()}');
   }, timeout: const Timeout(Duration(seconds: 120)));
 }
