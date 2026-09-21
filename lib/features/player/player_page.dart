@@ -40,21 +40,42 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _fullscreen = false;
   PlayerPanel _panel = PlayerPanel.none;
 
+  bool _wasMaximized = false;
+
+  static bool get _isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
   Future<void> _toggleFullscreen() async {
     final next = !_fullscreen;
-    setState(() => _fullscreen = next);
+    if (mounted) setState(() => _fullscreen = next);
+    await _applyFullscreen(next);
+  }
 
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+  Future<void> _applyFullscreen(bool on) async {
+    if (_isDesktop) {
       try {
-        await windowManager.setFullScreen(next);
+        if (on) {
+          _wasMaximized = await windowManager.isMaximized();
+          if (_wasMaximized) await windowManager.unmaximize();
+          await windowManager.setFullScreen(true);
+        } else {
+          await windowManager.setFullScreen(false);
+          if (_wasMaximized) await windowManager.maximize();
+          _wasMaximized = false;
+        }
       } on Object catch (_) {
         return;
       }
-    } else {
-      await SystemChrome.setEnabledSystemUIMode(
-        next ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
-      );
+      return;
     }
+
+    await SystemChrome.setEnabledSystemUIMode(
+      on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
+    await SystemChrome.setPreferredOrientations(
+      on
+          ? const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
+          : DeviceOrientation.values,
+    );
   }
 
   Timer? _progressTimer;
@@ -89,6 +110,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _hideTimer?.cancel();
     _rootFocus.dispose();
     _controlsScope.dispose();
+    if (_fullscreen) unawaited(_applyFullscreen(false));
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }

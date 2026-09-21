@@ -95,6 +95,7 @@ final Map<ShortcutActivator, Intent> playerShortcuts = {
   const SingleActivator(LogicalKeyboardKey.keyA): const OpenPanelIntent(PlayerPanel.audio),
 
   const SingleActivator(LogicalKeyboardKey.keyF): const ToggleFullscreenIntent(),
+  const SingleActivator(LogicalKeyboardKey.f11): const ToggleFullscreenIntent(),
 
   const SingleActivator(LogicalKeyboardKey.keyN): const NextEpisodeIntent(),
   const SingleActivator(LogicalKeyboardKey.mediaTrackNext): const NextEpisodeIntent(),
