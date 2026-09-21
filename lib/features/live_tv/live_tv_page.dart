@@ -140,7 +140,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
   String _query = '';
 
   Future<void> _play(Channel channel) async {
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
     final controller = ref.read(playerControllerProvider.notifier);
 

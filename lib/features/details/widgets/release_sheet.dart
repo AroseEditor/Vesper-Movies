@@ -67,13 +67,37 @@ class ReleaseSheet extends ConsumerWidget {
   }
 
   Future<void> _launch(BuildContext context, WidgetRef ref, Release release) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    navigator.pop();
+    final container = ProviderScope.containerOf(context, listen: false);
+    final root = Navigator.of(context, rootNavigator: true);
+    Navigator.of(context).pop();
+
+    final controller = container.read(playerControllerProvider.notifier);
+    controller.beginOpening();
+
+    final route = root.push(
+      MaterialPageRoute<void>(
+        builder: (context) => PlayerPage(
+          onProgress: (position, duration, completed) {
+            unawaited(
+              container
+                  .read(libraryProvider.notifier)
+                  .recordProgress(
+                    item: item,
+                    position: position,
+                    duration: duration,
+                    season: season,
+                    episode: episode,
+                    completed: completed,
+                  ),
+            );
+          },
+        ),
+      ),
+    );
 
     try {
       final target = await resolvePlayback(
-        ref.read(sourceRegistryProvider),
+        container.read(sourceRegistryProvider),
         PlaybackRequest(
           release: release,
           match: _matchFor(release),
@@ -84,14 +108,13 @@ class ReleaseSheet extends ConsumerWidget {
         ),
       );
 
-      final saved = ref
+      final saved = container
           .read(libraryProvider)
           .value
           ?.entryFor(item.id.value, season: season, episode: episode);
       final resumeFrom = saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
 
-      final controller = ref.read(playerControllerProvider.notifier);
-      await controller.applySubtitleStyle(ref.read(subtitleDefaultsProvider));
+      await controller.applySubtitleStyle(container.read(subtitleDefaultsProvider));
       await controller.load(
         PlaybackTarget(
           source: target.source,
@@ -103,43 +126,14 @@ class ReleaseSheet extends ConsumerWidget {
           mediaId: target.mediaId,
         ),
       );
-
-      await navigator.push(
-        MaterialPageRoute<void>(
-          builder: (context) => PlayerPage(
-            onProgress: (position, duration, completed) {
-              unawaited(
-                ref
-                    .read(libraryProvider.notifier)
-                    .recordProgress(
-                      item: item,
-                      position: position,
-                      duration: duration,
-                      season: season,
-                      episode: episode,
-                      completed: completed,
-                    ),
-              );
-            },
-          ),
-        ),
-      );
-      await controller.stop();
     } on SourceError catch (error) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(error.userMessage(release.kind)),
-          backgroundColor: VesperColors.surfaceRaised,
-        ),
-      );
+      controller.fail(error.userMessage(release.kind));
     } on Object catch (_) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('That stream would not start.'),
-          backgroundColor: VesperColors.surfaceRaised,
-        ),
-      );
+      controller.fail('That stream would not start.');
     }
+
+    await route;
+    await controller.stop();
   }
 
   Future<void> _download(BuildContext context, WidgetRef ref, Release release) async {

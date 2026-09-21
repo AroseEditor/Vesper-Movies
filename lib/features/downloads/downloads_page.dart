@@ -22,7 +22,7 @@ class DownloadsPage extends ConsumerWidget {
   const DownloadsPage({super.key});
 
   Future<void> _playLocal(BuildContext context, WidgetRef ref, DownloadTask task) async {
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     final controller = ref.read(playerControllerProvider.notifier);
 
     await controller.load(
