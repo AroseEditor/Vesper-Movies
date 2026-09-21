@@ -140,6 +140,15 @@ class LibraryData {
 
   bool isFavourite(String id) => favourites.any((item) => item.id.value == id);
 
+  WatchEntry? lastEpisodeOf(String id) {
+    WatchEntry? latest;
+    for (final entry in history) {
+      if (entry.id != id || entry.season <= 0) continue;
+      if (latest == null || entry.updatedAt > latest.updatedAt) latest = entry;
+    }
+    return latest;
+  }
+
   WatchEntry? entryFor(String id, {int season = 0, int episode = 0}) {
     final key = season > 0 ? '$id:$season:$episode' : id;
     for (final entry in history) {

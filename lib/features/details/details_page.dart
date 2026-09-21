@@ -26,7 +26,7 @@ class DetailsPage extends ConsumerStatefulWidget {
 }
 
 class _DetailsPageState extends ConsumerState<DetailsPage> {
-  int _season = 1;
+  int? _season;
 
   @override
   Widget build(BuildContext context) {
@@ -60,16 +60,33 @@ class _DetailsBody extends ConsumerWidget {
 
   final TitleDetails data;
   final InputMode mode;
-  final int season;
+  final int? season;
   final ValueChanged<int> onSeasonChanged;
 
-  Season? get _activeSeason {
+  Season? _seasonFor(int number) {
     final seasons = data.details.seasons;
     if (seasons.isEmpty) return null;
     for (final entry in seasons) {
-      if (entry.number == season) return entry;
+      if (entry.number == number) return entry;
     }
     return seasons.first;
+  }
+
+  Episode? _after(int seasonNo, int episodeNo) {
+    final seasons = data.details.seasons;
+    for (var i = 0; i < seasons.length; i++) {
+      if (seasons[i].number != seasonNo) continue;
+      final episodes = seasons[i].episodes;
+      for (var j = 0; j < episodes.length; j++) {
+        if (episodes[j].number != episodeNo) continue;
+        if (j + 1 < episodes.length) return episodes[j + 1];
+        if (i + 1 < seasons.length && seasons[i + 1].episodes.isNotEmpty) {
+          return seasons[i + 1].episodes.first;
+        }
+        return null;
+      }
+    }
+    return null;
   }
 
   Future<void> _play(
@@ -94,8 +111,39 @@ class _DetailsBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final details = data.details;
-    final active = _activeSeason;
     final isSeries = details.isSeries && details.seasons.isNotEmpty;
+    final library = ref.watch(libraryProvider).value;
+    final id = data.item.id.value;
+
+    final last = isSeries ? library?.lastEpisodeOf(id) : null;
+    final active = _seasonFor(season ?? last?.season ?? 1);
+
+    var playSeason = isSeries ? (active?.number ?? 1) : 0;
+    var playEpisode = isSeries ? (active?.episodes.first.number ?? 1) : 0;
+    var playLabel = 'Play';
+    double? heroProgress;
+
+    if (isSeries && last != null) {
+      if (last.isInProgress) {
+        playSeason = last.season;
+        playEpisode = last.episode;
+        playLabel = 'Resume S${last.season}E${last.episode}';
+        heroProgress = last.progress;
+      } else {
+        final next = _after(last.season, last.episode);
+        if (next != null) {
+          playSeason = next.season;
+          playEpisode = next.number;
+          playLabel = 'Play S${next.season}E${next.number}';
+        }
+      }
+    } else if (!isSeries) {
+      final entry = library?.entryFor(id);
+      if (entry != null && entry.isInProgress) {
+        playLabel = 'Resume';
+        heroProgress = entry.progress;
+      }
+    }
 
     return CustomScrollView(
       slivers: [
@@ -106,12 +154,9 @@ class _DetailsBody extends ConsumerWidget {
             mode: mode,
             playable: data.isPlayable,
             matchLabel: data.isPlayable || data.matchesPending ? data.sourceLabel : null,
-            onPlay: () => _play(
-              context,
-              ref,
-              seasonNo: isSeries ? (active?.number ?? 1) : 0,
-              episodeNo: isSeries ? (active?.episodes.first.number ?? 1) : 0,
-            ),
+            playLabel: playLabel,
+            progress: heroProgress,
+            onPlay: () => _play(context, ref, seasonNo: playSeason, episodeNo: playEpisode),
             onBack: () => Navigator.of(context).maybePop(),
           ),
         ),
@@ -133,10 +178,16 @@ class _DetailsBody extends ConsumerWidget {
               itemCount: active?.episodes.length ?? 0,
               itemBuilder: (context, index) {
                 final episode = active!.episodes[index];
+                final watched = library?.entryFor(
+                  id,
+                  season: episode.season,
+                  episode: episode.number,
+                );
                 return EpisodeTile(
                   episode: episode,
                   mode: mode,
                   enabled: data.isPlayable,
+                  progress: watched == null ? null : (watched.completed ? 1.0 : watched.progress),
                   onPlay: () =>
                       _play(context, ref, seasonNo: episode.season, episodeNo: episode.number),
                 );
@@ -162,6 +213,8 @@ class _Backdrop extends StatelessWidget {
     required this.matchLabel,
     required this.onPlay,
     required this.onBack,
+    this.playLabel = 'Play',
+    this.progress,
   });
 
   final CatalogItem item;
@@ -171,6 +224,8 @@ class _Backdrop extends StatelessWidget {
   final String? matchLabel;
   final VoidCallback onPlay;
   final VoidCallback onBack;
+  final String playLabel;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +279,8 @@ class _Backdrop extends StatelessWidget {
               playable: playable,
               matchLabel: matchLabel,
               onPlay: onPlay,
+              playLabel: playLabel,
+              progress: progress,
             ),
           ),
         ],
@@ -240,6 +297,8 @@ class _TitleBlock extends StatelessWidget {
     required this.playable,
     required this.matchLabel,
     required this.onPlay,
+    required this.playLabel,
+    this.progress,
   });
 
   final CatalogItem item;
@@ -248,6 +307,8 @@ class _TitleBlock extends StatelessWidget {
   final bool playable;
   final String? matchLabel;
   final VoidCallback onPlay;
+  final String playLabel;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +340,7 @@ class _TitleBlock extends StatelessWidget {
         const SizedBox(height: 18),
         Row(
           children: [
-            _PlayButton(enabled: playable, onTap: onPlay),
+            _PlayButton(enabled: playable, label: playLabel, onTap: onPlay),
             const SizedBox(width: 12),
             _ListButton(item: item),
             const SizedBox(width: 12),
@@ -289,6 +350,21 @@ class _TitleBlock extends StatelessWidget {
               const _SourceBadge(label: 'No source found', muted: true),
           ],
         ),
+        if (progress != null && progress! > 0) ...[
+          const SizedBox(height: 14),
+          SizedBox(
+            width: 260,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress!.clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor: VesperColors.surfaceHover,
+                valueColor: const AlwaysStoppedAnimation(VesperColors.accent),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -342,9 +418,10 @@ class _MetaRow extends StatelessWidget {
 }
 
 class _PlayButton extends StatelessWidget {
-  const _PlayButton({required this.enabled, required this.onTap});
+  const _PlayButton({required this.enabled, required this.label, required this.onTap});
 
   final bool enabled;
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -354,7 +431,7 @@ class _PlayButton extends StatelessWidget {
       autofocus: enabled,
       borderRadius: 6,
       scaleOnFocus: false,
-      semanticLabel: 'Play',
+      semanticLabel: label,
       child: AnimatedContainer(
         duration: VesperMotion.fast,
         padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
@@ -372,7 +449,7 @@ class _PlayButton extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Play',
+              label,
               style: VesperType.button.copyWith(
                 color: enabled ? VesperColors.canvas : VesperColors.textTertiary,
               ),
