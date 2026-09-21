@@ -4,6 +4,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish, for example v0.1.0'
+        required: true
+        default: 'v0.1.0'
 
 permissions:
   contents: write
@@ -15,9 +20,7 @@ jobs:
   android:
     name: Android and TV
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -33,31 +36,40 @@ jobs:
           cache: true
 
       - name: Restore signing key
-        if: env.HAS_KEYSTORE == 'true'
         env:
-          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "No signing secret configured, the release APK will use debug signing."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
           {
             echo "storeFile=upload-keystore.jks"
-            echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-            echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}"
-            echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
           } > android/key.properties
+          echo "Release signing configured."
 
       - name: Build split APKs
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           flutter pub get
-          flutter build apk --release --split-per-abi \
-            --obfuscate --split-debug-info=build/symbols \
-            --dart-define=TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+          flutter build apk --release --split-per-abi --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Stage artifacts
         run: |
           mkdir -p dist
           for abi in arm64-v8a armeabi-v7a x86_64; do
             src="build/app/outputs/flutter-apk/app-${abi}-release.apk"
-            [ -f "$src" ] && cp "$src" "dist/vesper-movies-${abi}.apk"
+            if [ -f "$src" ]; then
+              cp "$src" "dist/vesper-movies-${abi}.apk"
+            fi
           done
           ls -la dist
 
@@ -67,16 +79,10 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: android-symbols
-          path: build/symbols
-          if-no-files-found: ignore
-
   windows:
     name: Windows
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -87,15 +93,19 @@ jobs:
           cache: true
 
       - name: Build
+        shell: pwsh
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           flutter pub get
-          flutter build windows --release --dart-define=TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+          flutter build windows --release --dart-define=TMDB_API_KEY="$env:TMDB_API_KEY"
 
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/vesper-movies-windows-x64.zip
+          Get-ChildItem dist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -106,7 +116,7 @@ jobs:
   linux:
     name: Linux
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -122,14 +132,17 @@ jobs:
           sudo apt-get install -y ninja-build libgtk-3-dev libmpv-dev mpv
 
       - name: Build
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           flutter pub get
-          flutter build linux --release --dart-define=TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+          flutter build linux --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Package
         run: |
           mkdir -p dist
           tar -czf dist/vesper-movies-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+          ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
@@ -138,24 +151,73 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Release
+    name: Publish release
     needs: [android, windows, linux]
-    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Flatten
+      - name: Collect artifacts
         run: |
           mkdir -p dist
-          find artifacts -type f \( -name '*.apk' -o -name '*.zip' -o -name '*.tar.gz' \) \
-            -exec cp {} dist/ \;
+          find artifacts -type f \( -name '*.apk' -o -name '*.zip' -o -name '*.tar.gz' \) -exec cp {} dist/ \;
           ls -la dist
+
+      - name: Resolve tag
+        id: meta
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write release notes
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          previous=$(git tag --sort=-creatordate | grep -v "^${TAG}$" | head -1)
+
+          {
+            echo "## Install"
+            echo
+            echo "| Device | File |"
+            echo "| --- | --- |"
+            echo "| Android phone or tablet | vesper-movies-arm64-v8a.apk |"
+            echo "| Older 32 bit Android | vesper-movies-armeabi-v7a.apk |"
+            echo "| Android TV, Fire TV, Google TV | vesper-movies-arm64-v8a.apk |"
+            echo "| Windows | vesper-movies-windows-x64.zip |"
+            echo "| Linux | vesper-movies-linux-x64.tar.gz |"
+            echo
+            echo "The same APK serves phones and televisions. On Windows, unzip and run vesper_movies.exe."
+            echo "On Linux, extract and run ./vesper_movies."
+            echo
+            echo "## Changes"
+            echo
+            if [ -n "$previous" ]; then
+              git log --no-merges --pretty=format:'- %s' "${previous}..HEAD" | head -60
+            else
+              git log --no-merges --pretty=format:'- %s' | head -60
+            fi
+            echo
+          } > release-notes.md
+
+          cat release-notes.md
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Vesper Movies ${{ steps.meta.outputs.tag }}
+          body_path: release-notes.md
           files: dist/*
-          generate_release_notes: true
+          draft: false
+          prerelease: false
