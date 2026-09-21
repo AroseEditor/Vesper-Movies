@@ -31,3 +31,5 @@ linux/flutter/ephemeral/
 *.iml
 *.swp
 .DS_Store
+
+.claude/
