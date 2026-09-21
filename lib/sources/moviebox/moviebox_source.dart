@@ -10,7 +10,8 @@ import 'client.dart';
 import 'endpoints.dart';
 
 class MovieBoxSource extends BaseContentSource {
-  MovieBoxSource({MovieBoxClient? client}) : _client = client ?? MovieBoxClient();
+  MovieBoxSource({MovieBoxClient? client})
+    : _client = client ?? MovieBoxClient();
 
   final MovieBoxClient _client;
 
@@ -27,7 +28,11 @@ class MovieBoxSource extends BaseContentSource {
   );
 
   @override
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel}) async {
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 
@@ -44,12 +49,18 @@ class MovieBoxSource extends BaseContentSource {
 
   @override
   Future<MediaDetails> details(String id, {CancelToken? cancel}) async {
-    final payload = await _client.get(MovieBoxEndpoints.details(id), cancel: cancel);
+    final payload = await _client.get(
+      MovieBoxEndpoints.details(id),
+      cancel: cancel,
+    );
 
     final isSeries = readInt(payload, const ['subjectType', 'stype']) == 2;
     if (isSeries) {
       try {
-        final seasons = await _client.get(MovieBoxEndpoints.seasonInfo(id), cancel: cancel);
+        final seasons = await _client.get(
+          MovieBoxEndpoints.seasonInfo(id),
+          cancel: cancel,
+        );
         payload['seasons'] = seasons;
       } on SourceError catch (_) {
         return detailsJsonToMediaDetails(payload, id);
@@ -59,8 +70,15 @@ class MovieBoxSource extends BaseContentSource {
     return detailsJsonToMediaDetails(payload, id);
   }
 
-  Future<List<CatalogItem>> homepage(String tabId, {int page = 1, CancelToken? cancel}) async {
-    final payload = await _client.get(MovieBoxEndpoints.homepage(tabId, page), cancel: cancel);
+  Future<List<CatalogItem>> homepage(
+    String tabId, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
+    final payload = await _client.get(
+      MovieBoxEndpoints.homepage(tabId, page),
+      cancel: cancel,
+    );
     return homepageJsonToCatalog(payload);
   }
 
@@ -176,11 +194,20 @@ class MovieBoxSource extends BaseContentSource {
     }
 
     final resourceIds = <String>{};
-    if (resourceId != null && resourceId.isNotEmpty) resourceIds.add(resourceId);
+    if (resourceId != null && resourceId.isNotEmpty)
+      resourceIds.add(resourceId);
 
     if (resourcePage != null) {
-      absorb(inlineCaptionsFromResources(resourcePage, season: season, episode: episode));
-      resourceIds.addAll(resourceIdsFor(resourcePage, season: season, episode: episode));
+      absorb(
+        inlineCaptionsFromResources(
+          resourcePage,
+          season: season,
+          episode: episode,
+        ),
+      );
+      resourceIds.addAll(
+        resourceIdsFor(resourcePage, season: season, episode: episode),
+      );
     }
 
     for (final candidate in resourceIds.take(4)) {

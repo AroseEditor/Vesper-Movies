@@ -32,7 +32,11 @@ class CircleFtpSource extends BaseContentSource {
       const SourceCapabilities(pagination: false, subtitles: false);
 
   @override
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel}) async {
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 
@@ -64,7 +68,8 @@ class CircleFtpSource extends BaseContentSource {
         final episodes = <Episode>[];
         for (final raw in readList(entry, const ['episodes'])) {
           final number =
-              readInt(raw, const ['episodeNo', 'episode', 'number']) ?? episodes.length + 1;
+              readInt(raw, const ['episodeNo', 'episode', 'number']) ??
+              episodes.length + 1;
           episodes.add(
             Episode(
               season: index + 1,
@@ -73,7 +78,8 @@ class CircleFtpSource extends BaseContentSource {
             ),
           );
         }
-        if (episodes.isNotEmpty) seasons.add(Season(number: index + 1, episodes: episodes));
+        if (episodes.isNotEmpty)
+          seasons.add(Season(number: index + 1, episodes: episodes));
       }
     }
 
@@ -126,7 +132,9 @@ class CircleFtpSource extends BaseContentSource {
         }
       } else {
         for (final entry in content) {
-          final link = entry is String ? entry : readString(entry, const ['link', 'url']);
+          final link = entry is String
+              ? entry
+              : readString(entry, const ['link', 'url']);
           if (link == null || !link.startsWith('http')) continue;
           releases.add(_release(title, link));
         }
@@ -137,7 +145,12 @@ class CircleFtpSource extends BaseContentSource {
     return sortReleases(releases);
   }
 
-  Release _release(String title, String url, {int season = 0, int episode = 0}) {
+  Release _release(
+    String title,
+    String url, {
+    int season = 0,
+    int episode = 0,
+  }) {
     return Release(
       kind: kind,
       filename: title,
@@ -157,7 +170,9 @@ class CircleFtpSource extends BaseContentSource {
     if (id == null || title == null) return null;
 
     final type = readString(source, const ['type', 'contentType']) ?? '';
-    final isSeries = type.toLowerCase().contains('series') || type.toLowerCase().contains('tv');
+    final isSeries =
+        type.toLowerCase().contains('series') ||
+        type.toLowerCase().contains('tv');
 
     return CatalogItem(
       id: MediaId(kind, id),
@@ -180,7 +195,11 @@ class CircleFtpSource extends BaseContentSource {
     Map<String, dynamic>? query,
   }) async {
     try {
-      final response = await _dio.get<dynamic>(url, cancelToken: cancel, queryParameters: query);
+      final response = await _dio.get<dynamic>(
+        url,
+        cancelToken: cancel,
+        queryParameters: query,
+      );
       final data = response.data;
       if (data is Map<String, dynamic>) return data;
       if (data is List) return {'list': data};
@@ -206,8 +225,12 @@ String? qualityFromFilename(String name) {
 
 String? codecFromFilename(String name) {
   final lower = name.toLowerCase();
-  if (lower.contains('x265') || lower.contains('hevc') || lower.contains('h265')) return 'hevc';
-  if (lower.contains('x264') || lower.contains('h264') || lower.contains('avc')) return 'h264';
+  if (lower.contains('x265') ||
+      lower.contains('hevc') ||
+      lower.contains('h265'))
+    return 'hevc';
+  if (lower.contains('x264') || lower.contains('h264') || lower.contains('avc'))
+    return 'h264';
   if (lower.contains('av1')) return 'av1';
   return null;
 }

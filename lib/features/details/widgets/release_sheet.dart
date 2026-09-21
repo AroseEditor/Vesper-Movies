@@ -36,8 +36,13 @@ Future<void> showReleaseSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
     ),
-    builder: (sheetContext) =>
-        ReleaseSheet(matches: matches, item: item, title: title, season: season, episode: episode),
+    builder: (sheetContext) => ReleaseSheet(
+      matches: matches,
+      item: item,
+      title: title,
+      season: season,
+      episode: episode,
+    ),
   );
 }
 
@@ -66,7 +71,11 @@ class ReleaseSheet extends ConsumerWidget {
     return null;
   }
 
-  Future<void> _launch(BuildContext context, WidgetRef ref, Release release) async {
+  Future<void> _launch(
+    BuildContext context,
+    WidgetRef ref,
+    Release release,
+  ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     navigator.pop();
@@ -88,7 +97,9 @@ class ReleaseSheet extends ConsumerWidget {
           .read(libraryProvider)
           .value
           ?.entryFor(item.id.value, season: season, episode: episode);
-      final resumeFrom = saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
+      final resumeFrom = saved != null && saved.isInProgress
+          ? saved.resumeAt
+          : Duration.zero;
 
       final controller = ref.read(playerControllerProvider.notifier);
       await controller.applySubtitleStyle(ref.read(subtitleDefaultsProvider));
@@ -142,7 +153,11 @@ class ReleaseSheet extends ConsumerWidget {
     }
   }
 
-  Future<void> _download(BuildContext context, WidgetRef ref, Release release) async {
+  Future<void> _download(
+    BuildContext context,
+    WidgetRef ref,
+    Release release,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
 
@@ -173,7 +188,9 @@ class ReleaseSheet extends ConsumerWidget {
 
     return SafeArea(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -203,15 +220,21 @@ class ReleaseSheet extends ConsumerWidget {
                     child: SizedBox(
                       width: 32,
                       height: 32,
-                      child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
+                      child: CircularProgressIndicator(
+                        color: VesperColors.accent,
+                        strokeWidth: 3,
+                      ),
                     ),
                   ),
                 ),
-                error: (error, stack) =>
-                    const _SheetMessage(message: 'No streams were returned for this title.'),
+                error: (error, stack) => const _SheetMessage(
+                  message: 'No streams were returned for this title.',
+                ),
                 data: (items) {
                   if (items.isEmpty) {
-                    return const _SheetMessage(message: 'No streams available for this episode.');
+                    return const _SheetMessage(
+                      message: 'No streams available for this episode.',
+                    );
                   }
                   return ListView.builder(
                     shrinkWrap: true,
@@ -301,7 +324,11 @@ class _ReleaseRow extends StatelessWidget {
               semanticLabel: 'Download this stream',
               child: const Padding(
                 padding: EdgeInsets.all(8),
-                child: Icon(VesperIcons.downloads, size: 21, color: VesperColors.textSecondary),
+                child: Icon(
+                  VesperIcons.downloads,
+                  size: 21,
+                  color: VesperColors.textSecondary,
+                ),
               ),
             ),
           ],
@@ -322,7 +349,11 @@ class _SheetMessage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       child: Row(
         children: [
-          const Icon(VesperIcons.warning, size: 20, color: VesperColors.textTertiary),
+          const Icon(
+            VesperIcons.warning,
+            size: 20,
+            color: VesperColors.textTertiary,
+          ),
           const SizedBox(width: 10),
           Expanded(child: Text(message, style: VesperType.body)),
         ],

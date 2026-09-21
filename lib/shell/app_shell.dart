@@ -38,7 +38,8 @@ class _AppShellState extends ConsumerState<AppShell> {
     final mode = ref.watch(inputModeProvider);
 
     if (mode.isTv) {
-      FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
     }
 
     final body = widget.navigationShell;

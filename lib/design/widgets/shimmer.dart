@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import '../colors.dart';
 
 class Shimmer extends StatefulWidget {
-  const Shimmer({super.key, required this.width, required this.height, this.borderRadius = 6});
+  const Shimmer({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadius = 6,
+  });
 
   final double width;
   final double height;
@@ -50,6 +55,42 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
           );
         },
       ),
+    );
+  }
+}
+
+class LoadingNote extends StatelessWidget {
+  const LoadingNote({super.key, required this.label, this.compact = false});
+
+  final String label;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 18.0 : 26.0;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: size,
+          height: size,
+          child: CircularProgressIndicator(
+            strokeWidth: compact ? 2 : 2.6,
+            valueColor: const AlwaysStoppedAnimation(VesperColors.accent),
+          ),
+        ),
+        SizedBox(height: compact ? 8 : 14),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: VesperColors.textSecondary,
+            fontSize: compact ? 12 : 14,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
     );
   }
 }

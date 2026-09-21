@@ -12,7 +12,8 @@ enum ProviderKind {
   final String id;
   final String label;
 
-  bool get isBdix => this == ProviderKind.circleftp || this == ProviderKind.dhakaflix;
+  bool get isBdix =>
+      this == ProviderKind.circleftp || this == ProviderKind.dhakaflix;
 
   bool get isLocalNetwork => isBdix;
 

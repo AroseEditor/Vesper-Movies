@@ -10,6 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import '../models/release.dart';
 import 'subtitle_style.dart';
 
+const Duration preloadWindow = Duration(minutes: 10);
+const Duration preloadDeadline = Duration(seconds: 100);
+
 class PlaybackTarget {
   const PlaybackTarget({
     required this.source,
@@ -30,6 +33,26 @@ class PlaybackTarget {
   final String? mediaId;
 }
 
+class Preload {
+  const Preload({
+    this.active = false,
+    this.buffered = Duration.zero,
+    this.target = Duration.zero,
+  });
+
+  final bool active;
+  final Duration buffered;
+  final Duration target;
+
+  double get ratio {
+    if (target <= Duration.zero) return 0;
+    final value = buffered.inMilliseconds / target.inMilliseconds;
+    return value < 0 ? 0 : (value > 1 ? 1 : value);
+  }
+
+  static const idle = Preload();
+}
+
 class PlayerState {
   const PlayerState({
     this.target,
@@ -38,6 +61,7 @@ class PlayerState {
     this.activeExternal,
     this.isReady = false,
     this.error,
+    this.preload = Preload.idle,
   });
 
   final PlaybackTarget? target;
@@ -46,6 +70,7 @@ class PlayerState {
   final String? activeExternal;
   final bool isReady;
   final String? error;
+  final Preload preload;
 
   PlayerState copyWith({
     PlaybackTarget? target,
@@ -56,14 +81,18 @@ class PlayerState {
     bool? isReady,
     String? error,
     bool clearError = false,
+    Preload? preload,
   }) {
     return PlayerState(
       target: target ?? this.target,
       subtitleStyle: subtitleStyle ?? this.subtitleStyle,
       externalSubtitles: externalSubtitles ?? this.externalSubtitles,
-      activeExternal: clearActiveExternal ? null : (activeExternal ?? this.activeExternal),
+      activeExternal: clearActiveExternal
+          ? null
+          : (activeExternal ?? this.activeExternal),
       isReady: isReady ?? this.isReady,
       error: clearError ? null : (error ?? this.error),
+      preload: preload ?? this.preload,
     );
   }
 }
@@ -72,16 +101,23 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Player? _player;
   VideoController? _videoController;
   StreamSubscription<String>? _errorSubscription;
+  Timer? _preloadDeadline;
+  bool _preloadObserved = false;
 
   Player get player => _player ??= Player(
-    configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 256 * 1024 * 1024),
+    configuration: const PlayerConfiguration(
+      title: 'Vesper Movies',
+      bufferSize: 256 * 1024 * 1024,
+    ),
   );
 
-  VideoController get videoController => _videoController ??= VideoController(player);
+  VideoController get videoController =>
+      _videoController ??= VideoController(player);
 
   @override
   PlayerState build() {
     ref.onDispose(() {
+      _preloadDeadline?.cancel();
       unawaited(_errorSubscription?.cancel());
       unawaited(_player?.dispose());
       _player = null;
@@ -106,19 +142,86 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     await _applyNetworkTuning();
 
     await player.open(
-      Media(target.source.url, httpHeaders: target.source.headers, start: target.startAt),
-      play: true,
+      Media(
+        target.source.url,
+        httpHeaders: target.source.headers,
+        start: target.startAt,
+      ),
+      play: false,
     );
 
     await applySubtitleStyle(state.subtitleStyle);
 
     final external = target.subtitle ?? target.source.subtitle;
     if (external != null && external.isNotEmpty) {
-      await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
+      await selectExternalSubtitle(
+        SubtitleOption(name: 'Default', url: external),
+      );
     }
 
     state = state.copyWith(isReady: true);
+    await _gatePreload();
   }
+
+  Future<void> _gatePreload() async {
+    final native = player.platform;
+    if (native is! NativePlayer) {
+      await player.play();
+      return;
+    }
+
+    state = state.copyWith(
+      preload: const Preload(active: true, target: preloadWindow),
+    );
+
+    _preloadDeadline?.cancel();
+    _preloadDeadline = Timer(
+      preloadDeadline,
+      () => unawaited(_releasePreload()),
+    );
+
+    if (!_preloadObserved) {
+      _preloadObserved = true;
+      await native.observeProperty('demuxer-cache-duration', _onCacheDuration);
+      await native.observeProperty('demuxer-cache-idle', _onCacheIdle);
+    }
+  }
+
+  Future<void> _onCacheDuration(String value) async {
+    if (!state.preload.active) return;
+
+    final seconds = double.tryParse(value);
+    if (seconds == null || seconds.isNaN || seconds.isNegative) return;
+
+    final buffered = Duration(milliseconds: (seconds * 1000).round());
+    final remaining = player.state.duration - player.state.position;
+    final goal = remaining > Duration.zero && remaining < preloadWindow
+        ? remaining
+        : preloadWindow;
+
+    state = state.copyWith(
+      preload: Preload(active: true, buffered: buffered, target: goal),
+    );
+
+    if (buffered >= goal) await _releasePreload();
+  }
+
+  Future<void> _onCacheIdle(String value) async {
+    if (state.preload.active && (value == 'yes' || value == 'true')) {
+      await _releasePreload();
+    }
+  }
+
+  Future<void> _releasePreload() async {
+    _preloadDeadline?.cancel();
+    _preloadDeadline = null;
+    if (!state.preload.active) return;
+
+    state = state.copyWith(preload: Preload.idle);
+    await player.play();
+  }
+
+  Future<void> skipPreload() => _releasePreload();
 
   Future<void> _applyNetworkTuning() async {
     final native = player.platform;
@@ -142,8 +245,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       'demuxer-readahead-secs': '600',
       'demuxer-hysteresis-secs': '60',
       'network-timeout': '30',
-      'stream-lavf-o':
-          'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
+      'stream-lavf-o': 'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
       'keep-open': 'yes',
       'hr-seek': 'yes',
       'force-seekable': 'yes',
@@ -161,7 +263,9 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> selectExternalSubtitle(SubtitleOption option) async {
-    await player.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
+    await player.setSubtitleTrack(
+      SubtitleTrack.uri(option.url, title: option.name),
+    );
     state = state.copyWith(activeExternal: option.url);
   }
 
@@ -187,24 +291,35 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> togglePlay() => player.playOrPause();
+  Future<void> togglePlay() async {
+    if (state.preload.active) {
+      await _releasePreload();
+      return;
+    }
+    await player.playOrPause();
+  }
 
   Future<void> seekBy(Duration delta) async {
     final position = player.state.position + delta;
     final duration = player.state.duration;
     final clamped = position < Duration.zero
         ? Duration.zero
-        : (duration > Duration.zero && position > duration ? duration : position);
+        : (duration > Duration.zero && position > duration
+              ? duration
+              : position);
     await player.seek(clamped);
   }
 
   Future<void> seekTo(Duration position) => player.seek(position);
 
-  Future<void> setVolume(double volume) => player.setVolume(volume.clamp(0, 100));
+  Future<void> setVolume(double volume) =>
+      player.setVolume(volume.clamp(0, 100));
 
-  Future<void> nudgeVolume(double delta) => setVolume(player.state.volume + delta);
+  Future<void> nudgeVolume(double delta) =>
+      setVolume(player.state.volume + delta);
 
-  Future<void> toggleMute() => player.setVolume(player.state.volume > 0 ? 0 : 100);
+  Future<void> toggleMute() =>
+      player.setVolume(player.state.volume > 0 ? 0 : 100);
 
   Future<void> setSpeed(double rate) => player.setRate(rate.clamp(0.25, 3.0));
 
@@ -223,14 +338,17 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       applySubtitleStyle(state.subtitleStyle.nudgeDelay(deltaMs));
 
   Future<void> stop() async {
+    _preloadDeadline?.cancel();
+    _preloadDeadline = null;
     await player.stop();
     state = const PlayerState();
   }
 }
 
-final playerControllerProvider = NotifierProvider<PlayerControllerNotifier, PlayerState>(
-  PlayerControllerNotifier.new,
-);
+final playerControllerProvider =
+    NotifierProvider<PlayerControllerNotifier, PlayerState>(
+      PlayerControllerNotifier.new,
+    );
 
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
   return ref.watch(playerControllerProvider.notifier).player.stream.position;

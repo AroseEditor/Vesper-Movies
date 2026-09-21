@@ -20,12 +20,13 @@ class Logger {
   void warn(String message, {String? url, String? path}) =>
       _emit(LogLevel.warn, message, url: url, path: path);
 
-  void error(String message, {String? url, String? path, Object? cause}) => _emit(
-    LogLevel.error,
-    cause == null ? message : '$message: ${describeCause(cause)}',
-    url: url,
-    path: path,
-  );
+  void error(String message, {String? url, String? path, Object? cause}) =>
+      _emit(
+        LogLevel.error,
+        cause == null ? message : '$message: ${describeCause(cause)}',
+        url: url,
+        path: path,
+      );
 
   void _emit(LogLevel level, String message, {String? url, String? path}) {
     if (level.index < threshold.index) return;

@@ -56,7 +56,10 @@ class SettingsPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: Text('Add', style: VesperType.label.copyWith(color: VesperColors.accent)),
+            child: Text(
+              'Add',
+              style: VesperType.label.copyWith(color: VesperColors.accent),
+            ),
           ),
         ],
       ),
@@ -119,8 +122,10 @@ class SettingsPage extends ConsumerWidget {
               for (final addon in addons)
                 _AddonRow(
                   addon: addon,
-                  onToggle: () => ref.read(addonsProvider.notifier).toggle(addon),
-                  onRemove: () => ref.read(addonsProvider.notifier).remove(addon),
+                  onToggle: () =>
+                      ref.read(addonsProvider.notifier).toggle(addon),
+                  onRemove: () =>
+                      ref.read(addonsProvider.notifier).remove(addon),
                 ),
             const SizedBox(height: 12),
             _ActionButton(
@@ -185,7 +190,11 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _AddonRow extends StatelessWidget {
-  const _AddonRow({required this.addon, required this.onToggle, required this.onRemove});
+  const _AddonRow({
+    required this.addon,
+    required this.onToggle,
+    required this.onRemove,
+  });
 
   final InstalledAddon addon;
   final VoidCallback onToggle;
@@ -207,7 +216,9 @@ class _AddonRow extends StatelessWidget {
               Icon(
                 VesperIcons.source,
                 size: 20,
-                color: addon.enabled ? VesperColors.accent : VesperColors.textTertiary,
+                color: addon.enabled
+                    ? VesperColors.accent
+                    : VesperColors.textTertiary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -237,13 +248,20 @@ class _AddonRow extends StatelessWidget {
                 onActivate: onToggle,
                 borderRadius: 16,
                 scaleOnFocus: false,
-                semanticLabel: addon.enabled ? 'Disable ${addon.name}' : 'Enable ${addon.name}',
+                semanticLabel: addon.enabled
+                    ? 'Disable ${addon.name}'
+                    : 'Enable ${addon.name}',
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   child: Text(
                     addon.enabled ? 'On' : 'Off',
                     style: VesperType.label.copyWith(
-                      color: addon.enabled ? VesperColors.accent : VesperColors.textTertiary,
+                      color: addon.enabled
+                          ? VesperColors.accent
+                          : VesperColors.textTertiary,
                     ),
                   ),
                 ),
@@ -255,7 +273,11 @@ class _AddonRow extends StatelessWidget {
                 semanticLabel: 'Remove ${addon.name}',
                 child: const Padding(
                   padding: EdgeInsets.all(8),
-                  child: Icon(VesperIcons.deleteItem, size: 19, color: VesperColors.textTertiary),
+                  child: Icon(
+                    VesperIcons.deleteItem,
+                    size: 19,
+                    color: VesperColors.textTertiary,
+                  ),
                 ),
               ),
             ],
@@ -325,7 +347,11 @@ class _SettingRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(label, style: VesperType.body)),
-          _Stepper(icon: VesperIcons.chevronLeft, onTap: onPrevious, label: 'Decrease $label'),
+          _Stepper(
+            icon: VesperIcons.chevronLeft,
+            onTap: onPrevious,
+            label: 'Decrease $label',
+          ),
           SizedBox(
             width: 110,
             child: Text(
@@ -336,7 +362,11 @@ class _SettingRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          _Stepper(icon: VesperIcons.chevronRight, onTap: onNext, label: 'Increase $label'),
+          _Stepper(
+            icon: VesperIcons.chevronRight,
+            onTap: onNext,
+            label: 'Increase $label',
+          ),
         ],
       ),
     );
@@ -344,7 +374,11 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper({required this.icon, required this.onTap, required this.label});
+  const _Stepper({
+    required this.icon,
+    required this.onTap,
+    required this.label,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
@@ -360,7 +394,10 @@ class _Stepper extends StatelessWidget {
       child: Container(
         width: 30,
         height: 30,
-        decoration: const BoxDecoration(color: VesperColors.surface, shape: BoxShape.circle),
+        decoration: const BoxDecoration(
+          color: VesperColors.surface,
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, size: 18, color: VesperColors.textSecondary),
       ),
     );
@@ -368,7 +405,11 @@ class _Stepper extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.label, required this.onTap});
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -394,7 +435,12 @@ class _ActionButton extends StatelessWidget {
             children: [
               Icon(icon, size: 19, color: VesperColors.accent),
               const SizedBox(width: 8),
-              Text(label, style: VesperType.label.copyWith(color: VesperColors.textPrimary)),
+              Text(
+                label,
+                style: VesperType.label.copyWith(
+                  color: VesperColors.textPrimary,
+                ),
+              ),
             ],
           ),
         ),

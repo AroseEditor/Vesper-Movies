@@ -9,11 +9,20 @@ abstract interface class ContentSource {
 
   SourceCapabilities get capabilities;
 
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel});
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  });
 
   Future<MediaDetails> details(String id, {CancelToken? cancel});
 
-  Future<List<Release>> releases(String id, {int season = 0, int episode = 0, CancelToken? cancel});
+  Future<List<Release>> releases(
+    String id, {
+    int season = 0,
+    int episode = 0,
+    CancelToken? cancel,
+  });
 
   Future<List<SubtitleOption>> subtitles(
     String id, {

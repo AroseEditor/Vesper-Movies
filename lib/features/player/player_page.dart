@@ -18,7 +18,11 @@ import '../../shell/input_mode.dart';
 import 'widgets/player_scrubber.dart';
 import 'widgets/track_panel.dart';
 
-typedef PlaybackProgress = void Function(Duration position, Duration duration, bool completed);
+typedef PlaybackProgress = void Function(
+  Duration position,
+  Duration duration,
+  bool completed,
+);
 
 class PlayerPage extends ConsumerStatefulWidget {
   const PlayerPage({super.key, this.onExit, this.onProgress});
@@ -32,7 +36,9 @@ class PlayerPage extends ConsumerStatefulWidget {
 
 class _PlayerPageState extends ConsumerState<PlayerPage> {
   final FocusNode _rootFocus = FocusNode(debugLabel: 'player');
-  final FocusScopeNode _controlsScope = FocusScopeNode(debugLabel: 'player-controls');
+  final FocusScopeNode _controlsScope = FocusScopeNode(
+    debugLabel: 'player-controls',
+  );
 
   Timer? _hideTimer;
   bool _controlsVisible = true;
@@ -65,7 +71,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     if (widget.onProgress != null) {
-      _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _reportProgress());
+      _progressTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => _reportProgress(),
+      );
     }
   }
 
@@ -266,7 +275,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             onExit: _exit,
                             onOpenPanel: _openPanel,
                             onInteract: _showControls,
-                            onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+                            onToggleFullscreen: () =>
+                                unawaited(_toggleFullscreen()),
                           ),
                         ),
                       ),
@@ -275,9 +285,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       TrackPanel(
                         panel: _panel,
                         onClose: _closePanel,
-                        onPanelChanged: (panel) => setState(() => _panel = panel),
+                        onPanelChanged: (panel) =>
+                            setState(() => _panel = panel),
                       ),
-                    if (state.error != null) _PlayerError(message: state.error!, onExit: _exit),
+                    if (state.error != null)
+                      _PlayerError(message: state.error!, onExit: _exit),
                   ],
                 ),
               ),
@@ -290,7 +302,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 }
 
 class _GestureLayer extends StatelessWidget {
-  const _GestureLayer({required this.mode, required this.onTap, required this.onSeek});
+  const _GestureLayer({
+    required this.mode,
+    required this.onTap,
+    required this.onSeek,
+  });
 
   final InputMode mode;
   final VoidCallback onTap;
@@ -299,7 +315,10 @@ class _GestureLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!mode.isTouch) {
-      return GestureDetector(behavior: HitTestBehavior.translucent, onTap: onTap);
+      return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: onTap,
+      );
     }
 
     return Row(
@@ -348,6 +367,9 @@ class _Controls extends ConsumerWidget {
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
     final playing = ref.watch(playerPlayingProvider).value ?? false;
     final buffering = ref.watch(playerBufferingProvider).value ?? false;
+    final preload = ref.watch(
+      playerControllerProvider.select((s) => s.preload),
+    );
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -364,7 +386,15 @@ class _Controls extends ConsumerWidget {
             _TopBar(target: target, onExit: onExit),
             Expanded(
               child: Center(
-                child: buffering
+                child: preload.active
+                    ? _PreloadPanel(
+                        preload: preload,
+                        onSkip: () {
+                          unawaited(controller.skipPreload());
+                          onInteract();
+                        },
+                      )
+                    : buffering
                     ? const SizedBox(
                         width: 44,
                         height: 44,
@@ -457,7 +487,11 @@ class _TopBar extends StatelessWidget {
 }
 
 class _CentreControls extends StatelessWidget {
-  const _CentreControls({required this.playing, required this.onToggle, required this.onSeek});
+  const _CentreControls({
+    required this.playing,
+    required this.onToggle,
+    required this.onSeek,
+  });
 
   final bool playing;
   final VoidCallback onToggle;
@@ -517,7 +551,12 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(mode.isTouch ? 8 : 26, 0, mode.isTouch ? 8 : 26, 14),
+      padding: EdgeInsets.fromLTRB(
+        mode.isTouch ? 8 : 26,
+        0,
+        mode.isTouch ? 8 : 26,
+        14,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -551,7 +590,10 @@ class _BottomBar extends StatelessWidget {
                 onTap: () => onOpenPanel(PlayerPanel.speed),
               ),
               const Spacer(),
-              _FullscreenButton(fullscreen: fullscreen, onTap: onToggleFullscreen),
+              _FullscreenButton(
+                fullscreen: fullscreen,
+                onTap: onToggleFullscreen,
+              ),
             ],
           ),
         ],
@@ -588,7 +630,9 @@ class _RoundButton extends StatelessWidget {
         width: size * 1.7,
         height: size * 1.7,
         decoration: BoxDecoration(
-          color: filled ? VesperColors.accent : Colors.black.withValues(alpha: 0.42),
+          color: filled
+              ? VesperColors.accent
+              : Colors.black.withValues(alpha: 0.42),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -602,7 +646,11 @@ class _RoundButton extends StatelessWidget {
 }
 
 class _LabelledButton extends StatelessWidget {
-  const _LabelledButton({required this.icon, required this.label, required this.onTap});
+  const _LabelledButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -624,7 +672,10 @@ class _LabelledButton extends StatelessWidget {
             children: [
               Icon(icon, size: 21, color: VesperColors.textHover),
               const SizedBox(width: 7),
-              Text(label, style: VesperType.label.copyWith(color: VesperColors.textHover)),
+              Text(
+                label,
+                style: VesperType.label.copyWith(color: VesperColors.textHover),
+              ),
             ],
           ),
         ),
@@ -649,9 +700,16 @@ class _PlayerError extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(VesperIcons.warning, size: 44, color: VesperColors.textTertiary),
+              const Icon(
+                VesperIcons.warning,
+                size: 44,
+                color: VesperColors.textTertiary,
+              ),
               const SizedBox(height: 14),
-              const Text('This stream would not play', style: VesperType.sectionTitle),
+              const Text(
+                'This stream would not play',
+                style: VesperType.sectionTitle,
+              ),
               const SizedBox(height: 8),
               Text(
                 message,
@@ -668,7 +726,10 @@ class _PlayerError extends StatelessWidget {
                 scaleOnFocus: false,
                 semanticLabel: 'Go back',
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: VesperColors.accent,
                     borderRadius: BorderRadius.circular(5),
@@ -713,6 +774,66 @@ class _FullscreenButton extends StatelessWidget {
             color: VesperColors.textPrimary,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PreloadPanel extends StatelessWidget {
+  const _PreloadPanel({required this.preload, required this.onSkip});
+
+  final Preload preload;
+  final VoidCallback onSkip;
+
+  static String _clock(Duration value) {
+    final minutes = value.inMinutes;
+    final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Building your buffer',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${_clock(preload.buffered)} of ${_clock(preload.target)} ready',
+            style: const TextStyle(
+              color: VesperColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: preload.ratio == 0 ? null : preload.ratio,
+              minHeight: 5,
+              backgroundColor: const Color(0x33FFFFFF),
+              valueColor: const AlwaysStoppedAnimation(VesperColors.accent),
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextButton(
+            onPressed: onSkip,
+            style: TextButton.styleFrom(
+              foregroundColor: VesperColors.textSecondary,
+            ),
+            child: const Text('Play now'),
+          ),
+        ],
       ),
     );
   }

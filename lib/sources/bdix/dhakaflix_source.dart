@@ -36,8 +36,11 @@ class DhakaFlixSource extends BaseContentSource {
   ProviderKind get kind => ProviderKind.dhakaflix;
 
   @override
-  SourceCapabilities get capabilities =>
-      const SourceCapabilities(pagination: false, subtitles: false, series: false);
+  SourceCapabilities get capabilities => const SourceCapabilities(
+    pagination: false,
+    subtitles: false,
+    series: false,
+  );
 
   bool _isDead(String host) {
     final since = _deadHosts[host];
@@ -50,7 +53,11 @@ class DhakaFlixSource extends BaseContentSource {
   }
 
   @override
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel}) async {
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 

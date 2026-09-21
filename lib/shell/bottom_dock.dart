@@ -6,7 +6,11 @@ import '../design/typography.dart';
 import 'destinations.dart';
 
 class BottomDock extends StatelessWidget {
-  const BottomDock({super.key, required this.currentIndex, required this.onSelect});
+  const BottomDock({
+    super.key,
+    required this.currentIndex,
+    required this.onSelect,
+  });
 
   final int currentIndex;
   final ValueChanged<int> onSelect;
@@ -23,7 +27,11 @@ class BottomDock extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: VesperColors.divider),
           boxShadow: const [
-            BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8)),
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
           ],
         ),
         child: Padding(
@@ -48,7 +56,11 @@ class BottomDock extends StatelessWidget {
 }
 
 class _DockItem extends StatelessWidget {
-  const _DockItem({required this.destination, required this.selected, required this.onTap});
+  const _DockItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
 
   final AppDestination destination;
   final bool selected;

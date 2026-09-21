@@ -40,7 +40,10 @@ class HeroBillboard extends StatelessWidget {
       InputMode.tv => size.height * 0.72,
     };
     final peek = mode.posterWidth * 0.62 + mode.rowGap;
-    return preferred.clamp(size.height * 0.34, (size.height - peek).clamp(220.0, size.height));
+    return preferred.clamp(
+      size.height * 0.34,
+      (size.height - peek).clamp(220.0, size.height),
+    );
   }
 
   @override
@@ -60,13 +63,19 @@ class HeroBillboard extends StatelessWidget {
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
               fadeInDuration: const Duration(milliseconds: 320),
-              placeholder: (context, _) => const ColoredBox(color: VesperColors.surface),
-              errorWidget: (context, _, error) => PosterFallback(item: item, compact: true),
+              placeholder: (context, _) =>
+                  const ColoredBox(color: VesperColors.surface),
+              errorWidget: (context, _, error) =>
+                  PosterFallback(item: item, compact: true),
             )
           else
             PosterFallback(item: item, compact: true),
-          const DecoratedBox(decoration: BoxDecoration(gradient: VesperColors.heroFade)),
-          const DecoratedBox(decoration: BoxDecoration(gradient: VesperColors.heroBottomFade)),
+          const DecoratedBox(
+            decoration: BoxDecoration(gradient: VesperColors.heroFade),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(gradient: VesperColors.heroBottomFade),
+          ),
           Positioned(
             left: mode.gutter,
             right: mode.gutter,
@@ -119,17 +128,24 @@ class _HeroContent extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
-          crossAxisAlignment: mode.isTouch ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          crossAxisAlignment: mode.isTouch
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             if (logo != null && logo.isNotEmpty)
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: mode.isTouch ? 110 : 150),
+                constraints: BoxConstraints(
+                  maxHeight: mode.isTouch ? 110 : 150,
+                ),
                 child: CachedNetworkImage(
                   imageUrl: logo,
                   fit: BoxFit.contain,
-                  alignment: mode.isTouch ? Alignment.center : Alignment.centerLeft,
-                  errorWidget: (context, _, error) => _TitleText(item: item, mode: mode),
+                  alignment: mode.isTouch
+                      ? Alignment.center
+                      : Alignment.centerLeft,
+                  errorWidget: (context, _, error) =>
+                      _TitleText(item: item, mode: mode),
                 ),
               )
             else
@@ -158,7 +174,11 @@ class _HeroContent extends StatelessWidget {
                   onTap: onPlay,
                 ),
                 const SizedBox(width: 12),
-                HeroButton(label: 'More Info', icon: VesperIcons.info, onTap: onInfo),
+                HeroButton(
+                  label: 'More Info',
+                  icon: VesperIcons.info,
+                  onTap: onInfo,
+                ),
                 if (onToggleList != null) ...[
                   const SizedBox(width: 12),
                   HeroButton(
@@ -213,7 +233,9 @@ class _MetaLine extends StatelessWidget {
             const SizedBox(width: 3),
             Text(
               item.rating!.toStringAsFixed(1),
-              style: VesperType.meta.copyWith(color: VesperColors.textSecondary),
+              style: VesperType.meta.copyWith(
+                color: VesperColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -225,7 +247,12 @@ class _MetaLine extends StatelessWidget {
     parts.add(Text(item.isSeries ? 'Series' : 'Film', style: VesperType.meta));
     if (item.seasonCount != null && item.seasonCount! > 0) {
       final count = item.seasonCount!;
-      parts.add(Text('$count ${count == 1 ? 'Season' : 'Seasons'}', style: VesperType.meta));
+      parts.add(
+        Text(
+          '$count ${count == 1 ? 'Season' : 'Seasons'}',
+          style: VesperType.meta,
+        ),
+      );
     }
 
     return Wrap(
@@ -236,7 +263,10 @@ class _MetaLine extends StatelessWidget {
       children: [
         for (var i = 0; i < parts.length; i++) ...[
           if (i > 0)
-            const Text('|', style: TextStyle(color: VesperColors.textTertiary, fontSize: 11)),
+            const Text(
+              '|',
+              style: TextStyle(color: VesperColors.textTertiary, fontSize: 11),
+            ),
           parts[i],
         ],
       ],
@@ -272,13 +302,19 @@ class HeroButton extends StatelessWidget {
         duration: VesperMotion.fast,
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
         decoration: BoxDecoration(
-          color: filled ? VesperColors.accent : VesperColors.surfaceRaised.withValues(alpha: 0.82),
+          color: filled
+              ? VesperColors.accent
+              : VesperColors.surfaceRaised.withValues(alpha: 0.82),
           borderRadius: BorderRadius.circular(5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 22, color: filled ? VesperColors.canvas : VesperColors.textPrimary),
+            Icon(
+              icon,
+              size: 22,
+              color: filled ? VesperColors.canvas : VesperColors.textPrimary,
+            ),
             const SizedBox(width: 8),
             Text(
               label,

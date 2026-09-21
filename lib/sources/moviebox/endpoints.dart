@@ -5,7 +5,8 @@ abstract final class MovieBoxEndpoints {
 
   static const search = '$_base/subject-api/search/v2';
 
-  static String details(String subjectId) => '$_base/subject-api/get?subjectId=$subjectId';
+  static String details(String subjectId) =>
+      '$_base/subject-api/get?subjectId=$subjectId';
 
   static String seasonInfo(String subjectId) =>
       '$_base/subject-api/season-info?subjectId=$subjectId';
@@ -24,7 +25,9 @@ abstract final class MovieBoxEndpoints {
     int perPage = 20,
     int resolution = 0,
   }) {
-    final buffer = StringBuffer('$_base/subject-api/resource?subjectId=$subjectId');
+    final buffer = StringBuffer(
+      '$_base/subject-api/resource?subjectId=$subjectId',
+    );
     if (season != 0 || episode != 0) {
       buffer.write('&se=$season&ep=$episode');
     }
@@ -48,5 +51,6 @@ abstract final class MovieBoxEndpoints {
     'subjectType': 0,
   };
 
-  static int pageForEpisode(int episode) => episode > 0 ? ((episode - 1) ~/ 20) + 1 : 1;
+  static int pageForEpisode(int episode) =>
+      episode > 0 ? ((episode - 1) ~/ 20) + 1 : 1;
 }

@@ -62,7 +62,9 @@ class _SideRailState extends State<SideRail> {
           decoration: BoxDecoration(
             color: VesperColors.canvasDeep,
             border: Border(
-              right: BorderSide(color: _expanded ? VesperColors.divider : Colors.transparent),
+              right: BorderSide(
+                color: _expanded ? VesperColors.divider : Colors.transparent,
+              ),
             ),
           ),
           child: ClipRect(
@@ -95,9 +97,11 @@ class _SideRailState extends State<SideRail> {
                       expanded: _expanded,
                       iconSlot: _collapsedWidth,
                       tv: widget.mode.isTv,
-                      onActivate: () => Navigator.of(
-                        context,
-                      ).push(MaterialPageRoute<void>(builder: (context) => const SettingsPage())),
+                      onActivate: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => const SettingsPage(),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -224,10 +228,14 @@ class _RailItemState extends State<_RailItem> {
             margin: const EdgeInsets.symmetric(vertical: 2),
             decoration: BoxDecoration(
               color: _focused ? VesperColors.surfaceRaised : Colors.transparent,
-              borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(10),
+              ),
               border: Border(
                 left: BorderSide(
-                  color: widget.selected ? VesperColors.accent : Colors.transparent,
+                  color: widget.selected
+                      ? VesperColors.accent
+                      : Colors.transparent,
                   width: 3,
                 ),
               ),
@@ -237,7 +245,9 @@ class _RailItemState extends State<_RailItem> {
                 SizedBox(
                   width: widget.iconSlot - 3,
                   child: Icon(
-                    widget.selected ? widget.destination.activeIcon : widget.destination.icon,
+                    widget.selected
+                        ? widget.destination.activeIcon
+                        : widget.destination.icon,
                     color: widget.selected ? VesperColors.accent : color,
                     size: widget.tv ? 26 : 22,
                   ),
@@ -251,7 +261,9 @@ class _RailItemState extends State<_RailItem> {
                       style: VesperType.bodyStrong.copyWith(
                         color: color,
                         fontSize: widget.tv ? 17 : 15,
-                        fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: widget.selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                       maxLines: 1,
                       softWrap: false,
@@ -294,7 +306,9 @@ class _RailActionState extends State<_RailAction> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _focused ? VesperColors.textPrimary : VesperColors.textTertiary;
+    final color = _focused
+        ? VesperColors.textPrimary
+        : VesperColors.textTertiary;
 
     return FocusableActionDetector(
       onShowFocusHighlight: (value) {
@@ -322,7 +336,11 @@ class _RailActionState extends State<_RailAction> {
               children: [
                 SizedBox(
                   width: widget.iconSlot,
-                  child: Icon(widget.icon, size: widget.tv ? 24 : 21, color: color),
+                  child: Icon(
+                    widget.icon,
+                    size: widget.tv ? 24 : 21,
+                    color: color,
+                  ),
                 ),
                 Flexible(
                   child: AnimatedOpacity(
@@ -330,7 +348,10 @@ class _RailActionState extends State<_RailAction> {
                     duration: VesperMotion.fast,
                     child: Text(
                       widget.label,
-                      style: VesperType.bodyStrong.copyWith(color: color, fontSize: 15),
+                      style: VesperType.bodyStrong.copyWith(
+                        color: color,
+                        fontSize: 15,
+                      ),
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,

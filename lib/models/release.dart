@@ -54,7 +54,8 @@ class Release {
 
   int get sortResolution => isMultiResolution ? -1 : resolution;
 
-  String get sourceLabel => mirrors.isNotEmpty ? mirrors.first.label : kind.label;
+  String get sourceLabel =>
+      mirrors.isNotEmpty ? mirrors.first.label : kind.label;
 
   String? get directUrl => mirrors.isNotEmpty ? mirrors.first.url : null;
 

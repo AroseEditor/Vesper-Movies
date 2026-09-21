@@ -7,10 +7,13 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'core/memo_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  await MemoCache.openDisk();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
@@ -28,6 +31,11 @@ Future<void> main() async {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ),
+  );
+
+  AppLifecycleListener(
+    onInactive: MemoCache.flushAll,
+    onPause: MemoCache.flushAll,
   );
 
   runApp(const ProviderScope(child: VesperApp()));

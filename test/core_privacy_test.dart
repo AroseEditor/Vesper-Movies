@@ -29,26 +29,53 @@ void main() {
         'CircleFTP needs a BDIX connection.',
       );
       expect(
-        const NetworkError('x', timedOut: true).userMessage(ProviderKind.moviebox),
+        const NetworkError(
+          'x',
+          timedOut: true,
+        ).userMessage(ProviderKind.moviebox),
         'MovieBox timed out.',
       );
-      expect(const NetworkError('x').userMessage(ProviderKind.fourkhdhub), 'Cannot reach 4KHDHub.');
-      expect(const RateLimited(30).userMessage(ProviderKind.moviebox), 'Rate limited. Wait 30s.');
-      expect(const NotFound().userMessage(ProviderKind.moviebox), 'No results found.');
-      expect(const Unavailable(502).userMessage(ProviderKind.fourkhdhub), '4KHDHub error (502).');
+      expect(
+        const NetworkError('x').userMessage(ProviderKind.fourkhdhub),
+        'Cannot reach 4KHDHub.',
+      );
+      expect(
+        const RateLimited(30).userMessage(ProviderKind.moviebox),
+        'Rate limited. Wait 30s.',
+      );
+      expect(
+        const NotFound().userMessage(ProviderKind.moviebox),
+        'No results found.',
+      );
+      expect(
+        const Unavailable(502).userMessage(ProviderKind.fourkhdhub),
+        '4KHDHub error (502).',
+      );
     });
   });
 
   group('redaction', () {
     test('urls keep only scheme and host', () {
-      expect(redactUrl('https://api.example.com/search?q=secret+title'), 'https://api.example.com');
-      expect(redactUrl('http://1.2.3.4:5000/api/posts?searchTerm=dune'), 'http://1.2.3.4');
+      expect(
+        redactUrl('https://api.example.com/search?q=secret+title'),
+        'https://api.example.com',
+      );
+      expect(
+        redactUrl('http://1.2.3.4:5000/api/posts?searchTerm=dune'),
+        'http://1.2.3.4',
+      );
       expect(redactUrl('not a url'), '[redacted]');
     });
 
     test('paths lose the user directory', () {
-      expect(redactPath(r'C:\Users\someone\AppData\vesper'), '~/AppData/vesper');
-      expect(redactPath('/home/someone/.local/share/vesper'), '~/.local/share/vesper');
+      expect(
+        redactPath(r'C:\Users\someone\AppData\vesper'),
+        '~/AppData/vesper',
+      );
+      expect(
+        redactPath('/home/someone/.local/share/vesper'),
+        '~/.local/share/vesper',
+      );
       expect(redactPath('/opt/vesper'), '/opt/vesper');
     });
 

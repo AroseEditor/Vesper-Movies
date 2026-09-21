@@ -32,7 +32,10 @@ int _score(
 void main() {
   group('title normalisation', () {
     test('strips punctuation and case', () {
-      expect(normaliseTitle('Star Wars: The Mandalorian'), 'star wars the mandalorian');
+      expect(
+        normaliseTitle('Star Wars: The Mandalorian'),
+        'star wars the mandalorian',
+      );
       expect(normaliseTitle("Don't Look Back"), 'don t look back');
       expect(normaliseTitle('  Spaced   Out  '), 'spaced out');
     });
@@ -44,24 +47,50 @@ void main() {
 
   group('scoring', () {
     test('rewards an exact title match', () {
-      expect(_score('Mayday', 'Mayday'), greaterThan(SourceMatcher.minimumScore));
+      expect(
+        _score('Mayday', 'Mayday'),
+        greaterThan(SourceMatcher.minimumScore),
+      );
     });
 
     test('ignores punctuation differences', () {
-      expect(_score('Spider-Man: No Way Home', 'Spider Man No Way Home'), greaterThan(100));
+      expect(
+        _score('Spider-Man: No Way Home', 'Spider Man No Way Home'),
+        greaterThan(100),
+      );
     });
 
     test('rewards a matching year and punishes a distant one', () {
-      final exact = _score('Dune', 'Dune', wantedYear: '2021', foundYear: '2021');
-      final near = _score('Dune', 'Dune', wantedYear: '2021', foundYear: '2022');
-      final distant = _score('Dune', 'Dune', wantedYear: '2021', foundYear: '1984');
+      final exact = _score(
+        'Dune',
+        'Dune',
+        wantedYear: '2021',
+        foundYear: '2021',
+      );
+      final near = _score(
+        'Dune',
+        'Dune',
+        wantedYear: '2021',
+        foundYear: '2022',
+      );
+      final distant = _score(
+        'Dune',
+        'Dune',
+        wantedYear: '2021',
+        foundYear: '1984',
+      );
 
       expect(exact, greaterThan(near));
       expect(near, greaterThan(distant));
     });
 
     test('punishes a film matched against a series', () {
-      final aligned = _score('Fargo', 'Fargo', wantedSeries: true, foundSeries: true);
+      final aligned = _score(
+        'Fargo',
+        'Fargo',
+        wantedSeries: true,
+        foundSeries: true,
+      );
       final crossed = _score('Fargo', 'Fargo', wantedSeries: true);
 
       expect(aligned, greaterThan(crossed));
@@ -74,7 +103,10 @@ void main() {
     });
 
     test('rejects a partial overlap that is mostly noise', () {
-      expect(_score('The Whisper Man', 'The Invite'), lessThan(SourceMatcher.minimumScore));
+      expect(
+        _score('The Whisper Man', 'The Invite'),
+        lessThan(SourceMatcher.minimumScore),
+      );
     });
 
     test('accepts a prefixed release name', () {
@@ -94,8 +126,18 @@ void main() {
       final seasons = seasonsFromVideos({
         'videos': [
           {'season': 2, 'episode': 1, 'name': 'Second Season Opener'},
-          {'season': 1, 'episode': 2, 'name': 'Two', 'overview': 'Second episode'},
-          {'season': 1, 'episode': 1, 'name': 'One', 'thumbnail': 'https://e/1.jpg'},
+          {
+            'season': 1,
+            'episode': 2,
+            'name': 'Two',
+            'overview': 'Second episode',
+          },
+          {
+            'season': 1,
+            'episode': 1,
+            'name': 'One',
+            'thumbnail': 'https://e/1.jpg',
+          },
         ],
       });
 

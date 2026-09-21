@@ -6,7 +6,12 @@ import '../models/provider_kind.dart';
 import 'content_source.dart';
 
 class SourceMatch {
-  const SourceMatch({required this.kind, required this.id, required this.title, this.score = 0});
+  const SourceMatch({
+    required this.kind,
+    required this.id,
+    required this.title,
+    this.score = 0,
+  });
 
   final ProviderKind kind;
   final String id;
@@ -22,7 +27,9 @@ String normaliseTitle(String raw) {
   for (final rune in lower.runes) {
     final char = String.fromCharCode(rune);
     final isAlphaNumeric =
-        (rune >= 0x30 && rune <= 0x39) || (rune >= 0x61 && rune <= 0x7a) || rune > 0x7f;
+        (rune >= 0x30 && rune <= 0x39) ||
+        (rune >= 0x61 && rune <= 0x7a) ||
+        rune > 0x7f;
 
     if (isAlphaNumeric) {
       buffer.write(char);
@@ -82,7 +89,10 @@ int scoreCandidate({
 
   final year = wantedYear;
   final candidateYear = candidate.year;
-  if (year != null && year.isNotEmpty && candidateYear != null && candidateYear.isNotEmpty) {
+  if (year != null &&
+      year.isNotEmpty &&
+      candidateYear != null &&
+      candidateYear.isNotEmpty) {
     final a = int.tryParse(year);
     final b = int.tryParse(candidateYear);
     if (a != null && b != null) {
@@ -107,9 +117,14 @@ class SourceMatcher {
 
   static const minimumScore = 55;
 
-  Future<List<SourceMatch>> findAll(CatalogItem item, {CancelToken? cancel}) async {
+  Future<List<SourceMatch>> findAll(
+    CatalogItem item, {
+    CancelToken? cancel,
+  }) async {
     final results = await Future.wait(
-      sources.entries.map((entry) => _match(entry.key, entry.value, item, cancel)),
+      sources.entries.map(
+        (entry) => _match(entry.key, entry.value, item, cancel),
+      ),
     );
 
     final matches = results.whereType<SourceMatch>().toList()

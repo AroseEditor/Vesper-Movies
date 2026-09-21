@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vesper_movies/sources/moviebox/crypto.dart';
 
 const _ts = 1700000000000;
-const _getUrl = 'https://api6.aoneroom.com/wefeed-mobile-bff/subject-api/get?subjectId=12345';
-const _postUrl = 'https://api6.aoneroom.com/wefeed-mobile-bff/subject-api/search/v2';
+const _getUrl =
+    'https://api6.aoneroom.com/wefeed-mobile-bff/subject-api/get?subjectId=12345';
+const _postUrl =
+    'https://api6.aoneroom.com/wefeed-mobile-bff/subject-api/search/v2';
 const _body = '{"keyword":"dune","page":1}';
 
 void main() {
@@ -18,7 +20,10 @@ void main() {
 
   group('client token', () {
     test('is the timestamp plus the md5 of its reversed text', () {
-      expect(generateClientToken(_ts), '1700000000000,e41bb805cc23fdc5541917da93d608d5');
+      expect(
+        generateClientToken(_ts),
+        '1700000000000,e41bb805cc23fdc5541917da93d608d5',
+      );
     });
 
     test('splits into exactly two parts with a 32 character digest', () {
@@ -31,11 +36,17 @@ void main() {
 
   group('canonical query', () {
     test('sorts keys and preserves the order of repeated values', () {
-      expect(sortedQueryString('https://api.example.com/e?b=2&a=1&c=3&a=0'), 'a=1&a=0&b=2&c=3');
+      expect(
+        sortedQueryString('https://api.example.com/e?b=2&a=1&c=3&a=0'),
+        'a=1&a=0&b=2&c=3',
+      );
     });
 
     test('decodes percent escapes before signing', () {
-      expect(sortedQueryString('https://api.example.com/e?q=a%20b&z=1'), 'q=a b&z=1');
+      expect(
+        sortedQueryString('https://api.example.com/e?q=a%20b&z=1'),
+        'q=a b&z=1',
+      );
     });
 
     test('is empty when there is no query', () {
@@ -119,7 +130,10 @@ void main() {
 
       expect(headers['x-client-token']!.split(',').first, '1700000000000');
       expect(headers['x-tr-signature']!.split('|').first, '1700000000000');
-      expect(headers['x-tr-signature'], '1700000000000|2|UiEtOwIuVN55aHV4IZMKdg==');
+      expect(
+        headers['x-tr-signature'],
+        '1700000000000|2|UiEtOwIuVN55aHV4IZMKdg==',
+      );
     });
 
     test('omit authorization until a session exists', () {
@@ -161,7 +175,9 @@ void main() {
     });
 
     test('derives nothing from the host machine', () {
-      final info = jsonDecode(DeviceIdentity.generate().clientInfo) as Map<String, dynamic>;
+      final info = jsonDecode(
+        DeviceIdentity.generate().clientInfo,
+      ) as Map<String, dynamic>;
       expect(info['brand'], 'Redmi');
       expect(info['os'], 'Android');
       expect(info.containsKey('hostname'), isFalse);

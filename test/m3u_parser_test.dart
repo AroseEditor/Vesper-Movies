@@ -55,7 +55,9 @@ void main() {
 
   group('attributes', () {
     test('parse quoted values containing spaces and commas', () {
-      final attributes = parseAttributes('#EXTINF:-1 tvg-name="Big, Bold" group-title="A B"');
+      final attributes = parseAttributes(
+        '#EXTINF:-1 tvg-name="Big, Bold" group-title="A B"',
+      );
       expect(attributes['tvg-name'], 'Big, Bold');
       expect(attributes['group-title'], 'A B');
     });

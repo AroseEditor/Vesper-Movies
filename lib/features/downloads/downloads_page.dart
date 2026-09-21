@@ -21,7 +21,11 @@ import '../settings/settings_page.dart';
 class DownloadsPage extends ConsumerWidget {
   const DownloadsPage({super.key});
 
-  Future<void> _playLocal(BuildContext context, WidgetRef ref, DownloadTask task) async {
+  Future<void> _playLocal(
+    BuildContext context,
+    WidgetRef ref,
+    DownloadTask task,
+  ) async {
     final navigator = Navigator.of(context);
     final controller = ref.read(playerControllerProvider.notifier);
 
@@ -36,14 +40,17 @@ class DownloadsPage extends ConsumerWidget {
         subtitle: task.subtitle,
       ),
     );
-    await navigator.push(MaterialPageRoute<void>(builder: (context) => const PlayerPage()));
+    await navigator.push(
+      MaterialPageRoute<void>(builder: (context) => const PlayerPage()),
+    );
     await controller.stop();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(inputModeProvider);
-    final tasks = ref.watch(downloadQueueProvider).value ?? const <DownloadTask>[];
+    final tasks =
+        ref.watch(downloadQueueProvider).value ?? const <DownloadTask>[];
 
     return SafeArea(
       child: Column(
@@ -56,8 +63,11 @@ class DownloadsPage extends ConsumerWidget {
                 const Text('Downloads', style: VesperType.sectionTitle),
                 const Spacer(),
                 FocusableItem(
-                  onActivate: () => Navigator.of(context)
-                      .push(MaterialPageRoute<void>(builder: (context) => const SettingsPage())),
+                  onActivate: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const SettingsPage(),
+                    ),
+                  ),
                   borderRadius: 18,
                   scaleOnFocus: false,
                   semanticLabel: 'Settings',
@@ -86,9 +96,15 @@ class DownloadsPage extends ConsumerWidget {
                         task: task,
                         autofocus: mode.isTv && index == 0,
                         onPlay: () => _playLocal(context, ref, task),
-                        onPause: () => ref.read(downloadQueueProvider.notifier).pause(task.id),
-                        onResume: () => ref.read(downloadQueueProvider.notifier).start(task.id),
-                        onRemove: () => ref.read(downloadQueueProvider.notifier).remove(task.id),
+                        onPause: () => ref
+                            .read(downloadQueueProvider.notifier)
+                            .pause(task.id),
+                        onResume: () => ref
+                            .read(downloadQueueProvider.notifier)
+                            .start(task.id),
+                        onRemove: () => ref
+                            .read(downloadQueueProvider.notifier)
+                            .remove(task.id),
                       );
                     },
                   ),
@@ -134,7 +150,9 @@ class _DownloadRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: FocusableItem(
-        onActivate: done && _exists ? onPlay : (task.isActive ? onPause : onResume),
+        onActivate: done && _exists
+            ? onPlay
+            : (task.isActive ? onPause : onResume),
         autofocus: autofocus,
         borderRadius: 8,
         scaleOnFocus: false,
@@ -209,12 +227,28 @@ class _DownloadRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (done)
-                    _RowAction(icon: VesperIcons.play, label: 'Play', onTap: onPlay)
+                    _RowAction(
+                      icon: VesperIcons.play,
+                      label: 'Play',
+                      onTap: onPlay,
+                    )
                   else if (task.isActive)
-                    _RowAction(icon: VesperIcons.pauseCircle, label: 'Pause', onTap: onPause)
+                    _RowAction(
+                      icon: VesperIcons.pauseCircle,
+                      label: 'Pause',
+                      onTap: onPause,
+                    )
                   else
-                    _RowAction(icon: VesperIcons.play, label: 'Resume', onTap: onResume),
-                  _RowAction(icon: VesperIcons.deleteItem, label: 'Remove', onTap: onRemove),
+                    _RowAction(
+                      icon: VesperIcons.play,
+                      label: 'Resume',
+                      onTap: onResume,
+                    ),
+                  _RowAction(
+                    icon: VesperIcons.deleteItem,
+                    label: 'Remove',
+                    onTap: onRemove,
+                  ),
                 ],
               ),
             ],
@@ -226,7 +260,11 @@ class _DownloadRow extends StatelessWidget {
 }
 
 class _RowAction extends StatelessWidget {
-  const _RowAction({required this.icon, required this.label, required this.onTap});
+  const _RowAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -258,7 +296,11 @@ class _DownloadsEmpty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(VesperIcons.downloads, size: 42, color: VesperColors.textTertiary),
+            Icon(
+              VesperIcons.downloads,
+              size: 42,
+              color: VesperColors.textTertiary,
+            ),
             SizedBox(height: 14),
             Text('Nothing downloaded yet', style: VesperType.sectionTitle),
             SizedBox(height: 7),

@@ -48,7 +48,10 @@ class WatchEntry {
   }
 
   bool get isInProgress =>
-      !completed && durationMs > 0 && progress > 0.01 && progress < completionRatio;
+      !completed &&
+      durationMs > 0 &&
+      progress > 0.01 &&
+      progress < completionRatio;
 
   Duration get resumeAt => Duration(milliseconds: positionMs);
 
@@ -64,7 +67,12 @@ class WatchEntry {
     );
   }
 
-  WatchEntry copyWith({int? positionMs, int? durationMs, int? updatedAt, bool? completed}) {
+  WatchEntry copyWith({
+    int? positionMs,
+    int? durationMs,
+    int? updatedAt,
+    bool? completed,
+  }) {
     return WatchEntry(
       id: id,
       title: title,
@@ -107,7 +115,9 @@ class WatchEntry {
     return WatchEntry(
       id: id,
       title: title,
-      mediaType: source['mediaType'] == 'series' ? MediaType.series : MediaType.movie,
+      mediaType: source['mediaType'] == 'series'
+          ? MediaType.series
+          : MediaType.movie,
       year: source['year'] as String?,
       posterUrl: source['posterUrl'] as String?,
       backdropUrl: source['backdropUrl'] as String?,
@@ -121,7 +131,8 @@ class WatchEntry {
     );
   }
 
-  static int _int(Object? value) => value is int ? value : (value is num ? value.toInt() : 0);
+  static int _int(Object? value) =>
+      value is int ? value : (value is num ? value.toInt() : 0);
 
   String get key => season > 0 ? '$id:$season:$episode' : id;
 }
@@ -190,7 +201,7 @@ class LibraryStore {
       final rawFavourites = decoded['favourites'];
       if (rawFavourites is List) {
         for (final entry in rawFavourites) {
-          final parsed = _catalogFromJson(entry);
+          final parsed = catalogFromJson(entry);
           if (parsed != null) favourites.add(parsed);
         }
       }
@@ -206,8 +217,11 @@ class LibraryStore {
     try {
       final file = await _resolveFile();
       final payload = jsonEncode({
-        'history': data.history.take(maxHistory).map((e) => e.toJson()).toList(),
-        'favourites': data.favourites.map(_catalogToJson).toList(),
+        'history': data.history
+            .take(maxHistory)
+            .map((e) => e.toJson())
+            .toList(),
+        'favourites': data.favourites.map(catalogToJson).toList(),
       });
 
       final temp = File('${file.path}.tmp');
@@ -217,34 +231,4 @@ class LibraryStore {
       log.warn('library save failed: ${describeCause(error)}');
     }
   }
-}
-
-Map<String, dynamic> _catalogToJson(CatalogItem item) => {
-  'id': item.id.value,
-  'kind': item.id.kind.id,
-  'title': item.title,
-  'mediaType': item.mediaType.name,
-  'year': item.year,
-  'posterUrl': item.posterUrl,
-  'backdropUrl': item.backdropUrl,
-  'logoUrl': item.logoUrl,
-  'rating': item.rating,
-};
-
-CatalogItem? _catalogFromJson(Object? source) {
-  if (source is! Map) return null;
-  final id = source['id'];
-  final title = source['title'];
-  if (id is! String || id.isEmpty || title is! String) return null;
-
-  return CatalogItem(
-    id: MediaId(ProviderKind.byId('${source['kind']}') ?? ProviderKind.addons, id),
-    title: title,
-    mediaType: source['mediaType'] == 'series' ? MediaType.series : MediaType.movie,
-    year: source['year'] as String?,
-    posterUrl: source['posterUrl'] as String?,
-    backdropUrl: source['backdropUrl'] as String?,
-    logoUrl: source['logoUrl'] as String?,
-    rating: source['rating'] is num ? (source['rating'] as num).toDouble() : null,
-  );
 }

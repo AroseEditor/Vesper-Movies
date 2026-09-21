@@ -24,8 +24,10 @@ class HomePage extends ConsumerWidget {
 
     return feed.when(
       loading: () => _HomeSkeleton(mode: mode),
-      error: (error, stack) =>
-          _HomeError(mode: mode, onRetry: () => ref.read(homeFeedProvider.notifier).refresh()),
+      error: (error, stack) => _HomeError(
+        mode: mode,
+        onRetry: () => ref.read(homeFeedProvider.notifier).refresh(),
+      ),
       data: (data) => _HomeContent(mode: mode, feed: data),
     );
   }
@@ -38,8 +40,9 @@ class _HomeContent extends ConsumerWidget {
   final HomeFeed feed;
 
   void _open(BuildContext context, CatalogItem item) {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (context) => DetailsPage(item: item)));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (context) => DetailsPage(item: item)),
+    );
   }
 
   @override
@@ -112,10 +115,19 @@ class _HomeSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Shimmer(
-            width: double.infinity,
+          SizedBox(
             height: height * (mode.isTouch ? 0.62 : 0.68),
-            borderRadius: 0,
+            child: const Stack(
+              fit: StackFit.expand,
+              children: [
+                Shimmer(
+                  width: double.infinity,
+                  height: double.infinity,
+                  borderRadius: 0,
+                ),
+                Center(child: LoadingNote(label: 'Loading your feed')),
+              ],
+            ),
           ),
           SizedBox(height: mode.rowGap),
           for (var i = 0; i < 2; i++)
@@ -140,7 +152,11 @@ class _HomeError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(VesperIcons.warning, size: 42, color: VesperColors.textTertiary),
+            const Icon(
+              VesperIcons.warning,
+              size: 42,
+              color: VesperColors.textTertiary,
+            ),
             const SizedBox(height: 14),
             const Text('Nothing loaded', style: VesperType.sectionTitle),
             const SizedBox(height: 6),
@@ -150,7 +166,12 @@ class _HomeError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            HeroButton(label: 'Retry', icon: VesperIcons.refresh, onTap: onRetry, filled: true),
+            HeroButton(
+              label: 'Retry',
+              icon: VesperIcons.refresh,
+              onTap: onRetry,
+              filled: true,
+            ),
           ],
         ),
       ),

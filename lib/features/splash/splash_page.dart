@@ -6,7 +6,11 @@ import '../../design/motion.dart';
 import 'v_ribbon_painter.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({super.key, required this.onComplete, this.abbreviated = false});
+  const SplashPage({
+    super.key,
+    required this.onComplete,
+    this.abbreviated = false,
+  });
 
   final VoidCallback onComplete;
   final bool abbreviated;
@@ -15,7 +19,8 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _assemble;
   late final Animation<double> _solidify;

@@ -49,37 +49,35 @@ class BrowseQuery {
   int get hashCode => Object.hash(type, genre);
 }
 
-final browseProvider = FutureProvider.autoDispose.family<List<CatalogItem>, BrowseQuery>((
-  ref,
-  query,
-) async {
-  final cancel = CancelToken();
-  ref.onDispose(cancel.cancel);
+final browseProvider = FutureProvider.autoDispose
+    .family<List<CatalogItem>, BrowseQuery>((ref, query) async {
+      final cancel = CancelToken();
+      ref.onDispose(cancel.cancel);
 
-  final dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 20),
-      followRedirects: true,
-      maxRedirects: 5,
-      validateStatus: (status) => status != null && status < 500,
-    ),
-  );
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 20),
+          followRedirects: true,
+          maxRedirects: 5,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
 
-  final encoded = Uri.encodeComponent(query.genre);
-  final url = '$cinemetaBase/catalog/${query.type}/top/genre=$encoded.json';
+      final encoded = Uri.encodeComponent(query.genre);
+      final url = '$cinemetaBase/catalog/${query.type}/top/genre=$encoded.json';
 
-  final response = await dio.get<dynamic>(url, cancelToken: cancel);
-  final data = response.data;
-  if (data is! Map<String, dynamic>) return const [];
+      final response = await dio.get<dynamic>(url, cancelToken: cancel);
+      final data = response.data;
+      if (data is! Map<String, dynamic>) return const [];
 
-  final items = <CatalogItem>[];
-  for (final entry in readList(data, const ['metas'])) {
-    final item = metaToCatalogItem(entry, query.type);
-    if (item != null) items.add(item);
-  }
-  return items;
-});
+      final items = <CatalogItem>[];
+      for (final entry in readList(data, const ['metas'])) {
+        final item = metaToCatalogItem(entry, query.type);
+        if (item != null) items.add(item);
+      }
+      return items;
+    });
 
 class CategoriesPage extends ConsumerStatefulWidget {
   const CategoriesPage({super.key});
@@ -95,7 +93,9 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(inputModeProvider);
-    final results = ref.watch(browseProvider(BrowseQuery(type: _type, genre: _genre)));
+    final results = ref.watch(
+      browseProvider(BrowseQuery(type: _type, genre: _genre)),
+    );
 
     return SafeArea(
       child: Column(
@@ -107,7 +107,10 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               children: [
                 const Text('Categories', style: VesperType.sectionTitle),
                 const Spacer(),
-                _TypeToggle(type: _type, onChanged: (value) => setState(() => _type = value)),
+                _TypeToggle(
+                  type: _type,
+                  onChanged: (value) => setState(() => _type = value),
+                ),
               ],
             ),
           ),
@@ -129,15 +132,22 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                   semanticLabel: genre,
                   child: AnimatedContainer(
                     duration: VesperMotion.fast,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
-                      color: selected ? VesperColors.accent : VesperColors.surface,
+                      color: selected
+                          ? VesperColors.accent
+                          : VesperColors.surface,
                       borderRadius: BorderRadius.circular(17),
                     ),
                     child: Text(
                       genre,
                       style: VesperType.label.copyWith(
-                        color: selected ? VesperColors.canvas : VesperColors.textSecondary,
+                        color: selected
+                            ? VesperColors.canvas
+                            : VesperColors.textSecondary,
                       ),
                     ),
                   ),
@@ -154,7 +164,9 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               ),
               data: (items) {
                 if (items.isEmpty) {
-                  return const _BrowseEmpty(message: 'Nothing in this category right now.');
+                  return const _BrowseEmpty(
+                    message: 'Nothing in this category right now.',
+                  );
                 }
 
                 return GridView.builder(
@@ -212,18 +224,27 @@ class _TypeToggle extends StatelessWidget {
               semanticLabel: option.$2,
               child: AnimatedContainer(
                 duration: VesperMotion.fast,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: type == option.$1 ? VesperColors.surfaceRaised : Colors.transparent,
+                  color: type == option.$1
+                      ? VesperColors.surfaceRaised
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: type == option.$1 ? VesperColors.accent : VesperColors.divider,
+                    color: type == option.$1
+                        ? VesperColors.accent
+                        : VesperColors.divider,
                   ),
                 ),
                 child: Text(
                   option.$2,
                   style: VesperType.label.copyWith(
-                    color: type == option.$1 ? VesperColors.textPrimary : VesperColors.textTertiary,
+                    color: type == option.$1
+                        ? VesperColors.textPrimary
+                        : VesperColors.textTertiary,
                   ),
                 ),
               ),
@@ -276,7 +297,11 @@ class _BrowseEmpty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(VesperIcons.empty, size: 40, color: VesperColors.textTertiary),
+            const Icon(
+              VesperIcons.empty,
+              size: 40,
+              color: VesperColors.textTertiary,
+            ),
             const SizedBox(height: 12),
             Text(message, style: VesperType.body, textAlign: TextAlign.center),
           ],

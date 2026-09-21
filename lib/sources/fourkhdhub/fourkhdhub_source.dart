@@ -53,11 +53,18 @@ class FourKHdHubSource extends BaseContentSource {
       const SourceCapabilities(pagination: false, subtitles: false);
 
   @override
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel}) async {
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 
-    final document = await _fetch('$_base/?s=${Uri.encodeQueryComponent(trimmed)}', cancel);
+    final document = await _fetch(
+      '$_base/?s=${Uri.encodeQueryComponent(trimmed)}',
+      cancel,
+    );
     return parseSearch(document, kind);
   }
 
@@ -75,7 +82,12 @@ class FourKHdHubSource extends BaseContentSource {
     CancelToken? cancel,
   }) async {
     final document = await _fetch(_absolute(id), cancel);
-    final releases = parseReleases(document, kind, season: season, episode: episode);
+    final releases = parseReleases(
+      document,
+      kind,
+      season: season,
+      episode: episode,
+    );
 
     if (releases.isEmpty) throw const Unavailable();
     return sortReleases(releases);
@@ -128,7 +140,9 @@ List<CatalogItem> parseSearch(Document document, ProviderKind kind) {
         .toList();
     final year = extractYear(metadata.join(' '));
     final isSeries = metadata.any(
-      (e) => e.toLowerCase().contains('season') || e.toLowerCase().contains('series'),
+      (e) =>
+          e.toLowerCase().contains('season') ||
+          e.toLowerCase().contains('series'),
     );
 
     final poster = card.querySelector('img')?.attributes['src'];
@@ -183,7 +197,10 @@ MediaDetails parseDetails(Document document, String id, ProviderKind kind) {
     title: title,
     mediaType: ordered.isEmpty ? MediaType.movie : MediaType.series,
     year: year.isEmpty ? null : year,
-    description: document.querySelector('.description, .synopsis, .plot')?.text.trim(),
+    description: document
+        .querySelector('.description, .synopsis, .plot')
+        ?.text
+        .trim(),
     seasons: ordered,
   );
 }
@@ -231,9 +248,14 @@ List<Release> parseReleases(
           episode: episode == 0 ? null : episode,
           mirrors: [
             SourceMirror(
-              label: isDirectMirror(href) ? mirrorLabel(href) : '${mirrorLabel(href)} (redirect)',
+              label: isDirectMirror(href)
+                  ? mirrorLabel(href)
+                  : '${mirrorLabel(href)} (redirect)',
               url: href,
-              headers: const {'Referer': fourKHdHubBase, 'User-Agent': browserUserAgent},
+              headers: const {
+                'Referer': fourKHdHubBase,
+                'User-Agent': browserUserAgent,
+              },
               directFile: isDirectMirror(href),
             ),
           ],
@@ -268,10 +290,14 @@ bool isPlayableMirror(String url) {
   final uri = Uri.tryParse(url);
   if (uri == null || !uri.isScheme('https')) return false;
   if (blockedMirrorHosts.contains(uri.host)) return false;
-  if (uri.host.startsWith('192.168.') || uri.host.startsWith('10.')) return false;
+  if (uri.host.startsWith('192.168.') || uri.host.startsWith('10.'))
+    return false;
 
   final path = uri.path.toLowerCase();
-  if (path.endsWith('.zip') || path.endsWith('.rar') || path.contains('login.php')) return false;
+  if (path.endsWith('.zip') ||
+      path.endsWith('.rar') ||
+      path.contains('login.php'))
+    return false;
 
   return true;
 }
@@ -286,7 +312,9 @@ const Set<String> directMirrorHosts = {
 
 bool isDirectMirror(String url) {
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-  return directMirrorHosts.any((known) => host == known || host.endsWith('.$known'));
+  return directMirrorHosts.any(
+    (known) => host == known || host.endsWith('.$known'),
+  );
 }
 
 String mirrorLabel(String url) {
@@ -300,7 +328,10 @@ String mirrorLabel(String url) {
 int? parseSizeLabel(String? label) {
   if (label == null || label.isEmpty) return null;
 
-  final match = RegExp(r'([\d.]+)\s*(B|KB|MB|GB|TB)', caseSensitive: false).firstMatch(label);
+  final match = RegExp(
+    r'([\d.]+)\s*(B|KB|MB|GB|TB)',
+    caseSensitive: false,
+  ).firstMatch(label);
   if (match == null) return null;
 
   final value = double.tryParse(match.group(1) ?? '');

@@ -22,7 +22,9 @@ Map<String, String> parseSignCookie(String raw) {
     if (trimmed.isEmpty) continue;
     final index = trimmed.indexOf('=');
     if (index <= 0) continue;
-    result[trimmed.substring(0, index).trim()] = trimmed.substring(index + 1).trim();
+    result[trimmed.substring(0, index).trim()] = trimmed
+        .substring(index + 1)
+        .trim();
   }
   return result;
 }
@@ -34,8 +36,14 @@ String normalizeSignCookie(String raw) {
 }
 
 String? decodeCloudFrontPolicy(String policyValue) {
-  final normalized = policyValue.replaceAll('-', '+').replaceAll('_', '=').replaceAll('~', '/');
-  final padded = normalized.padRight(normalized.length + ((4 - normalized.length % 4) % 4), '=');
+  final normalized = policyValue
+      .replaceAll('-', '+')
+      .replaceAll('_', '=')
+      .replaceAll('~', '/');
+  final padded = normalized.padRight(
+    normalized.length + ((4 - normalized.length % 4) % 4),
+    '=',
+  );
   try {
     return utf8.decode(base64.decode(padded));
   } on Object catch (_) {
@@ -93,7 +101,10 @@ String? resolveEdgeCacheManifest(String signCookie) {
     final encoded = trimmed.substring('urlprefix='.length);
     if (encoded.isEmpty) return null;
 
-    final padded = encoded.padRight(encoded.length + ((4 - encoded.length % 4) % 4), '=');
+    final padded = encoded.padRight(
+      encoded.length + ((4 - encoded.length % 4) % 4),
+      '=',
+    );
     String decoded;
     try {
       decoded = utf8.decode(base64Url.decode(padded));
@@ -106,7 +117,8 @@ String? resolveEdgeCacheManifest(String signCookie) {
       base = base.substring(0, base.length - 1);
     }
     if (base.isEmpty) return null;
-    if (!base.startsWith('http://') && !base.startsWith('https://')) return null;
+    if (!base.startsWith('http://') && !base.startsWith('https://'))
+      return null;
 
     return '$base/index.mpd';
   }
@@ -115,10 +127,14 @@ String? resolveEdgeCacheManifest(String signCookie) {
 }
 
 String? resolveSignedManifest(String signCookie) {
-  return resolveDashManifestFromPolicy(signCookie) ?? resolveEdgeCacheManifest(signCookie);
+  return resolveDashManifestFromPolicy(signCookie) ??
+      resolveEdgeCacheManifest(signCookie);
 }
 
-String? resolveStreamUrl({required String? signCookie, required String? fallbackUrl}) {
+String? resolveStreamUrl({
+  required String? signCookie,
+  required String? fallbackUrl,
+}) {
   if (signCookie != null && signCookie.isNotEmpty) {
     final manifest = resolveSignedManifest(signCookie);
     if (manifest != null) return manifest;

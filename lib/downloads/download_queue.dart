@@ -45,7 +45,8 @@ class DownloadTask {
 
   double get fraction => total <= 0 ? 0 : (received / total).clamp(0.0, 1.0);
 
-  bool get isActive => status == DownloadStatus.running || status == DownloadStatus.queued;
+  bool get isActive =>
+      status == DownloadStatus.running || status == DownloadStatus.queued;
 
   DownloadTask copyWith({
     DownloadStatus? status,
@@ -133,7 +134,8 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
   }
 
   Future<Directory> _downloadsDirectory() async {
-    final base = await getDownloadsDirectory() ?? await getApplicationSupportDirectory();
+    final base =
+        await getDownloadsDirectory() ?? await getApplicationSupportDirectory();
     final dir = Directory(p.join(base.path, 'Vesper Movies'));
     if (!dir.existsSync()) dir.createSync(recursive: true);
     return dir;
@@ -167,7 +169,10 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
   Future<void> _persist(List<DownloadTask> tasks) async {
     try {
       final file = await _stateFile();
-      await file.writeAsString(jsonEncode(tasks.map((e) => e.toJson()).toList()), flush: true);
+      await file.writeAsString(
+        jsonEncode(tasks.map((e) => e.toJson()).toList()),
+        flush: true,
+      );
     } on Object catch (_) {
       return;
     }
@@ -200,7 +205,8 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
     final title = '${item.title}$suffix';
     final id = '${item.id.value}:$season:$episode';
 
-    if (_current.any((e) => e.id == id)) return 'That is already in your downloads.';
+    if (_current.any((e) => e.id == id))
+      return 'That is already in your downloads.';
 
     final dir = await _downloadsDirectory();
     final name = '${safeFileName(title)}.${extensionForUrl(url)}';
@@ -228,7 +234,10 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
 
     final token = CancelToken();
     _tokens[id] = token;
-    _update(task.copyWith(status: DownloadStatus.running, clearError: true), persist: false);
+    _update(
+      task.copyWith(status: DownloadStatus.running, clearError: true),
+      persist: false,
+    );
 
     try {
       await _engine.download(
@@ -302,6 +311,7 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
   }
 }
 
-final downloadQueueProvider = AsyncNotifierProvider<DownloadQueueNotifier, List<DownloadTask>>(
-  DownloadQueueNotifier.new,
-);
+final downloadQueueProvider =
+    AsyncNotifierProvider<DownloadQueueNotifier, List<DownloadTask>>(
+      DownloadQueueNotifier.new,
+    );

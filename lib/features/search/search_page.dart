@@ -21,7 +21,9 @@ class SearchTextNotifier extends Notifier<String> {
   }
 }
 
-final searchTextProvider = NotifierProvider<SearchTextNotifier, String>(SearchTextNotifier.new);
+final searchTextProvider = NotifierProvider<SearchTextNotifier, String>(
+  SearchTextNotifier.new,
+);
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
@@ -107,7 +109,11 @@ class _SearchField extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
-            const Icon(VesperIcons.search, size: 22, color: VesperColors.textTertiary),
+            const Icon(
+              VesperIcons.search,
+              size: 22,
+              color: VesperColors.textTertiary,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
@@ -123,7 +129,9 @@ class _SearchField extends StatelessWidget {
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 15),
                   hintText: 'Search films and series',
-                  hintStyle: VesperType.body.copyWith(color: VesperColors.textTertiary),
+                  hintStyle: VesperType.body.copyWith(
+                    color: VesperColors.textTertiary,
+                  ),
                 ),
               ),
             ),
@@ -204,7 +212,12 @@ class _SearchResults extends ConsumerWidget {
                 ),
               ),
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(mode.gutter, 4, mode.gutter, mode.isTouch ? 108 : 32),
+              padding: EdgeInsets.fromLTRB(
+                mode.gutter,
+                4,
+                mode.gutter,
+                mode.isTouch ? 108 : 32,
+              ),
               sliver: SliverGrid.builder(
                 gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: mode.posterWidth + 24,
@@ -218,7 +231,9 @@ class _SearchResults extends ConsumerWidget {
                   width: mode.posterWidth,
                   autofocus: mode.isTv && index == 0,
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (context) => DetailsPage(item: items[index])),
+                    MaterialPageRoute<void>(
+                      builder: (context) => DetailsPage(item: items[index]),
+                    ),
                   ),
                 ),
               ),
@@ -251,11 +266,17 @@ class _SourceChips extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(VesperIcons.source, size: 13, color: VesperColors.textTertiary),
+                const Icon(
+                  VesperIcons.source,
+                  size: 13,
+                  color: VesperColors.textTertiary,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   outcome.kind.label,
-                  style: VesperType.label.copyWith(color: VesperColors.textTertiary),
+                  style: VesperType.label.copyWith(
+                    color: VesperColors.textTertiary,
+                  ),
                 ),
               ],
             ),
@@ -288,7 +309,11 @@ class _ResultsSkeleton extends StatelessWidget {
 }
 
 class _ResultsEmpty extends StatelessWidget {
-  const _ResultsEmpty({required this.title, required this.message, this.chips = const []});
+  const _ResultsEmpty({
+    required this.title,
+    required this.message,
+    this.chips = const [],
+  });
 
   final String title;
   final String message;
@@ -302,12 +327,19 @@ class _ResultsEmpty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(VesperIcons.empty, size: 40, color: VesperColors.textTertiary),
+            const Icon(
+              VesperIcons.empty,
+              size: 40,
+              color: VesperColors.textTertiary,
+            ),
             const SizedBox(height: 14),
             Text(title, style: VesperType.sectionTitle),
             const SizedBox(height: 6),
             Text(message, style: VesperType.body, textAlign: TextAlign.center),
-            if (chips.isNotEmpty) ...[const SizedBox(height: 18), _SourceChips(outcomes: chips)],
+            if (chips.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              _SourceChips(outcomes: chips),
+            ],
           ],
         ),
       ),

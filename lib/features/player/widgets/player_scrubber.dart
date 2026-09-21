@@ -64,7 +64,9 @@ class _PlayerScrubberState extends State<PlayerScrubber> {
               secondaryActiveTrackColor: VesperColors.surfaceHover,
               thumbColor: VesperColors.accent,
               overlayColor: VesperColors.accent.withValues(alpha: 0.18),
-              thumbShape: RoundSliderThumbShape(enabledThumbRadius: _focused ? 10 : 7),
+              thumbShape: RoundSliderThumbShape(
+                enabledThumbRadius: _focused ? 10 : 7,
+              ),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
               trackShape: const RoundedRectSliderTrackShape(),
             ),
@@ -92,8 +94,12 @@ class _PlayerScrubberState extends State<PlayerScrubber> {
                 child: Text(formatDuration(widget.position)),
               ),
               Text(
-                widget.duration > Duration.zero ? '-${formatDuration(remaining)}' : '',
-                style: VesperType.meta.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                widget.duration > Duration.zero
+                    ? '-${formatDuration(remaining)}'
+                    : '',
+                style: VesperType.meta.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),

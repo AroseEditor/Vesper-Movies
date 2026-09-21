@@ -10,7 +10,8 @@ void main() {
     });
 
     test('leave ass styling alone when the override is off', () {
-      final properties = const SubtitleStyle(forceStyle: false).toMpvProperties();
+      final properties = const SubtitleStyle(forceStyle: false)
+          .toMpvProperties();
       expect(properties['sub-ass-override'], 'no');
     });
 
@@ -34,22 +35,35 @@ void main() {
       expect(shadow['sub-border-size'], '4');
       expect(shadow['sub-back-color'], '#00000000');
 
-      final box = const SubtitleStyle(background: SubtitleBackground.box).toMpvProperties();
+      final box = const SubtitleStyle(background: SubtitleBackground.box)
+          .toMpvProperties();
       expect(box['sub-border-size'], '0');
       expect(box['sub-back-color'], '#B3000000');
     });
 
     test('express delay in seconds', () {
-      expect(const SubtitleStyle(delayMs: 500).toMpvProperties()['sub-delay'], '0.5');
-      expect(const SubtitleStyle(delayMs: -1500).toMpvProperties()['sub-delay'], '-1.5');
+      expect(
+        const SubtitleStyle(delayMs: 500).toMpvProperties()['sub-delay'],
+        '0.5',
+      );
+      expect(
+        const SubtitleStyle(delayMs: -1500).toMpvProperties()['sub-delay'],
+        '-1.5',
+      );
       expect(SubtitleStyle.defaults.toMpvProperties()['sub-delay'], '0.0');
     });
   });
 
   group('bounds', () {
     test('clamp position into the readable range', () {
-      expect(SubtitleStyle.defaults.copyWith(position: 10).position, SubtitleStyle.minPosition);
-      expect(SubtitleStyle.defaults.copyWith(position: 400).position, SubtitleStyle.maxPosition);
+      expect(
+        SubtitleStyle.defaults.copyWith(position: 10).position,
+        SubtitleStyle.minPosition,
+      );
+      expect(
+        SubtitleStyle.defaults.copyWith(position: 400).position,
+        SubtitleStyle.maxPosition,
+      );
     });
 
     test('clamp border size', () {
@@ -58,8 +72,14 @@ void main() {
     });
 
     test('clamp delay to twenty seconds either way', () {
-      expect(SubtitleStyle.defaults.copyWith(delayMs: 999999).delayMs, SubtitleStyle.maxDelayMs);
-      expect(SubtitleStyle.defaults.copyWith(delayMs: -999999).delayMs, -SubtitleStyle.maxDelayMs);
+      expect(
+        SubtitleStyle.defaults.copyWith(delayMs: 999999).delayMs,
+        SubtitleStyle.maxDelayMs,
+      );
+      expect(
+        SubtitleStyle.defaults.copyWith(delayMs: -999999).delayMs,
+        -SubtitleStyle.maxDelayMs,
+      );
     });
 
     test('nudge delay in steps', () {
@@ -91,7 +111,9 @@ void main() {
     });
 
     test('does not persist the per-session delay', () {
-      final restored = SubtitleStyle.decode(const SubtitleStyle(delayMs: 4000).encode());
+      final restored = SubtitleStyle.decode(
+        const SubtitleStyle(delayMs: 4000).encode(),
+      );
       expect(restored.delayMs, 0);
     });
 
@@ -99,7 +121,10 @@ void main() {
       expect(SubtitleStyle.decode(null).size, SubtitleSize.medium);
       expect(SubtitleStyle.decode('').size, SubtitleSize.medium);
       expect(SubtitleStyle.decode('not json').size, SubtitleSize.medium);
-      expect(SubtitleStyle.decode('{"size":"gigantic"}').size, SubtitleSize.medium);
+      expect(
+        SubtitleStyle.decode('{"size":"gigantic"}').size,
+        SubtitleSize.medium,
+      );
     });
   });
 
@@ -107,13 +132,22 @@ void main() {
     test('bind both keyboard and remote keys to the same intents', () {
       final intents = playerShortcuts.values;
 
-      expect(intents.whereType<TogglePlayIntent>().length, greaterThanOrEqualTo(5));
+      expect(
+        intents.whereType<TogglePlayIntent>().length,
+        greaterThanOrEqualTo(5),
+      );
       expect(intents.whereType<SeekIntent>().length, greaterThanOrEqualTo(8));
-      expect(intents.whereType<ExitPlayerIntent>().length, greaterThanOrEqualTo(3));
+      expect(
+        intents.whereType<ExitPlayerIntent>().length,
+        greaterThanOrEqualTo(3),
+      );
     });
 
     test('seek both directions by ten and sixty seconds', () {
-      final deltas = playerShortcuts.values.whereType<SeekIntent>().map((e) => e.delta).toSet();
+      final deltas = playerShortcuts.values
+          .whereType<SeekIntent>()
+          .map((e) => e.delta)
+          .toSet();
 
       expect(deltas, contains(const Duration(seconds: 10)));
       expect(deltas, contains(const Duration(seconds: -10)));

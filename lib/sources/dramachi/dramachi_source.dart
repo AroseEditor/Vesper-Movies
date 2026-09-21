@@ -34,7 +34,11 @@ class DramachiSource extends BaseContentSource {
       const SourceCapabilities(pagination: true, subtitles: false);
 
   @override
-  Future<List<CatalogItem>> search(String query, {int page = 1, CancelToken? cancel}) async {
+  Future<List<CatalogItem>> search(
+    String query, {
+    int page = 1,
+    CancelToken? cancel,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
 
@@ -57,7 +61,10 @@ class DramachiSource extends BaseContentSource {
   Future<MediaDetails> details(String id, {CancelToken? cancel}) async {
     final titleId = id.split('::').first;
 
-    final payload = await _get({'interface': 'title_v2', 'id': titleId}, cancel);
+    final payload = await _get({
+      'interface': 'title_v2',
+      'id': titleId,
+    }, cancel);
     if (payload == null) throw const NotFound();
 
     final seasons = <Season>[];
@@ -65,9 +72,15 @@ class DramachiSource extends BaseContentSource {
     if (episodes != null) {
       final list = <Episode>[];
       for (final entry in readList(episodes, const ['list', 'data'])) {
-        final number = readInt(entry, const ['ep', 'episode', 'number']) ?? list.length + 1;
+        final number =
+            readInt(entry, const ['ep', 'episode', 'number']) ??
+            list.length + 1;
         list.add(
-          Episode(season: 1, number: number, title: readString(entry, const ['title', 'name'])),
+          Episode(
+            season: 1,
+            number: number,
+            title: readString(entry, const ['title', 'name']),
+          ),
         );
       }
       if (list.isNotEmpty) seasons.add(Season(number: 1, episodes: list));
@@ -79,7 +92,9 @@ class DramachiSource extends BaseContentSource {
       mediaType: seasons.isEmpty ? MediaType.movie : MediaType.series,
       year: extractYear(readString(payload, const ['year', 'releaseDate'])),
       description: readString(payload, const ['description', 'summary']),
-      posterUrl: _poster(readString(payload, const ['cover', 'thumbnail', 'poster'])),
+      posterUrl: _poster(
+        readString(payload, const ['cover', 'thumbnail', 'poster']),
+      ),
       seasons: seasons,
     );
   }
@@ -121,7 +136,8 @@ class DramachiSource extends BaseContentSource {
     final path = readString(files.first, const ['url', 'path']);
     if (path == null) throw const Unavailable();
 
-    final url = 'https://$host/cdn/${path.startsWith('/') ? path.substring(1) : path}';
+    final url =
+        'https://$host/cdn/${path.startsWith('/') ? path.substring(1) : path}';
 
     return [
       Release(
@@ -148,7 +164,9 @@ class DramachiSource extends BaseContentSource {
       title: title,
       mediaType: MediaType.series,
       year: extractYear(readString(source, const ['year', 'releaseDate'])),
-      posterUrl: _poster(readString(source, const ['cover', 'thumbnail', 'poster'])),
+      posterUrl: _poster(
+        readString(source, const ['cover', 'thumbnail', 'poster']),
+      ),
     );
   }
 
@@ -158,7 +176,10 @@ class DramachiSource extends BaseContentSource {
     return '$dramachiThumbnails${path.startsWith('/') ? path.substring(1) : path}';
   }
 
-  Future<Map<String, dynamic>?> _get(Map<String, dynamic> query, CancelToken? cancel) async {
+  Future<Map<String, dynamic>?> _get(
+    Map<String, dynamic> query,
+    CancelToken? cancel,
+  ) async {
     try {
       final response = await _dio.get<dynamic>(
         dramachiApi,

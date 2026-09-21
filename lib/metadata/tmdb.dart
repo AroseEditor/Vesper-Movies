@@ -46,7 +46,10 @@ class TmdbSource implements MetadataSource {
   String get name => 'TMDB';
 
   @override
-  Future<List<CatalogItem>> shelf(CatalogShelf shelf, {CancelToken? cancel}) async {
+  Future<List<CatalogItem>> shelf(
+    CatalogShelf shelf, {
+    CancelToken? cancel,
+  }) async {
     if (!isConfigured) return const [];
 
     final path = switch (shelf) {
@@ -72,35 +75,62 @@ class TmdbSource implements MetadataSource {
   Future<CatalogItem?> enrich(CatalogItem item, {CancelToken? cancel}) async {
     if (!isConfigured) return null;
 
-    final match = await _findByTitle(item.title, item.year, item.isSeries, cancel);
+    final match = await _findByTitle(
+      item.title,
+      item.year,
+      item.isSeries,
+      cancel,
+    );
     if (match == null) return null;
 
-    final logo = await _logo(readInt(match, const ['id']), item.isSeries, cancel);
+    final logo = await _logo(
+      readInt(match, const ['id']),
+      item.isSeries,
+      cancel,
+    );
 
     return item.copyWith(
-      posterUrl: item.posterUrl ?? TmdbImage.poster(readString(match, const ['poster_path'])),
+      posterUrl:
+          item.posterUrl ??
+          TmdbImage.poster(readString(match, const ['poster_path'])),
       backdropUrl:
-          item.backdropUrl ?? TmdbImage.backdrop(readString(match, const ['backdrop_path'])),
+          item.backdropUrl ??
+          TmdbImage.backdrop(readString(match, const ['backdrop_path'])),
       logoUrl: item.logoUrl ?? logo,
       rating: item.rating ?? readDouble(match, const ['vote_average']),
     );
   }
 
   @override
-  Future<MediaDetails?> describe(MediaDetails details, {CancelToken? cancel}) async {
+  Future<MediaDetails?> describe(
+    MediaDetails details, {
+    CancelToken? cancel,
+  }) async {
     if (!isConfigured) return null;
 
-    final match = await _findByTitle(details.title, details.year, details.isSeries, cancel);
+    final match = await _findByTitle(
+      details.title,
+      details.year,
+      details.isSeries,
+      cancel,
+    );
     if (match == null) return null;
 
-    final logo = await _logo(readInt(match, const ['id']), details.isSeries, cancel);
+    final logo = await _logo(
+      readInt(match, const ['id']),
+      details.isSeries,
+      cancel,
+    );
 
     return details.copyWith(
       description: details.description ?? readString(match, const ['overview']),
       backdropUrl:
-          details.backdropUrl ?? TmdbImage.backdrop(readString(match, const ['backdrop_path'])),
+          details.backdropUrl ??
+          TmdbImage.backdrop(readString(match, const ['backdrop_path'])),
       logoUrl: details.logoUrl ?? logo,
-      rating: details.rating ?? readDouble(match, const ['vote_average'])?.toStringAsFixed(1),
+      rating:
+          details.rating ??
+          readDouble(match, const ['vote_average'])?.toStringAsFixed(1),
     );
   }
 
@@ -128,7 +158,11 @@ class TmdbSource implements MetadataSource {
     if (tmdbId == null) return null;
 
     final path = '${isSeries ? '/tv' : '/movie'}/$tmdbId/images';
-    final payload = await _fetch(path, cancel, query: {'include_image_language': 'en,null'});
+    final payload = await _fetch(
+      path,
+      cancel,
+      query: {'include_image_language': 'en,null'},
+    );
     final logos = readList(payload, const ['logos']);
     if (logos.isEmpty) return null;
 
@@ -146,9 +180,13 @@ class TmdbSource implements MetadataSource {
       id: MediaId(ProviderKind.moviebox, '$id'),
       title: title,
       mediaType: isSeries ? MediaType.series : MediaType.movie,
-      year: extractYear(readString(source, const ['release_date', 'first_air_date'])),
+      year: extractYear(
+        readString(source, const ['release_date', 'first_air_date']),
+      ),
       posterUrl: TmdbImage.poster(readString(source, const ['poster_path'])),
-      backdropUrl: TmdbImage.backdrop(readString(source, const ['backdrop_path'])),
+      backdropUrl: TmdbImage.backdrop(
+        readString(source, const ['backdrop_path']),
+      ),
       rating: readDouble(source, const ['vote_average']),
     );
   }
