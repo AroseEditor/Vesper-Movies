@@ -32,6 +32,24 @@ One codebase. The same APK serves both phone and TV.
 - Live TV from any M3U playlist
 - Full D-pad support on TV
 
+## Current state
+
+Working today:
+
+- Discover, Categories and Search, all backed by live catalogue data
+- Details pages with cast, genres, runtime and per-episode titles and thumbnails
+- MovieBox playback, including its Edge-Cache signed DASH manifests
+- Subtitle tracks pulled from the source, deduplicated by language
+- Continue Watching and My List, saved between sessions
+- Live TV from any M3U playlist
+
+Not finished yet:
+
+- Only MovieBox resolves streams. 4KHDHub, Dramachi, CircleFTP, DhakaFlix and Stremio addons are
+  designed for but not yet implemented
+- Downloads is still a placeholder screen
+- The DASH header probe has only been run on Windows, not Linux or Android
+
 ## Controls
 
 | Action | Keyboard | Mouse | Touch | Remote |
