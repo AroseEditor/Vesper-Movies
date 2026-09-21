@@ -15,8 +15,10 @@ class CinemetaSource implements MetadataSource {
           Dio(
             BaseOptions(
               connectTimeout: const Duration(seconds: 8),
-              receiveTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 20),
               responseType: ResponseType.json,
+              followRedirects: true,
+              maxRedirects: 5,
               validateStatus: (status) => status != null && status < 500,
             ),
           );
@@ -42,7 +44,7 @@ class CinemetaSource implements MetadataSource {
 
   @override
   Future<CatalogItem?> enrich(CatalogItem item, {CancelToken? cancel}) async {
-    final meta = await _meta(item.id.value, item.isSeries ? 'series' : 'movie', cancel);
+    final meta = await rawMeta(item.id.value, item.isSeries ? 'series' : 'movie', cancel);
     if (meta == null) return null;
 
     return item.copyWith(
@@ -55,28 +57,62 @@ class CinemetaSource implements MetadataSource {
 
   @override
   Future<MediaDetails?> describe(MediaDetails details, {CancelToken? cancel}) async {
-    final meta = await _meta(details.id.value, details.isSeries ? 'series' : 'movie', cancel);
+    final meta = await rawMeta(details.id.value, details.isSeries ? 'series' : 'movie', cancel);
     if (meta == null) return null;
-
-    final genres = <String>[];
-    for (final genre in readList(meta, const ['genres', 'genre'])) {
-      if (genre is String && genre.trim().isNotEmpty) genres.add(genre.trim());
-    }
 
     return details.copyWith(
       description: details.description ?? readString(meta, const ['description']),
       backdropUrl: details.backdropUrl ?? readString(meta, const ['background']),
       logoUrl: details.logoUrl ?? readString(meta, const ['logo']),
       rating: details.rating ?? readString(meta, const ['imdbRating']),
-      genres: details.genres.isEmpty ? genres : details.genres,
+      genres: details.genres.isEmpty ? _genres(meta) : details.genres,
     );
   }
 
-  Future<Map<String, dynamic>?> _meta(String id, String type, CancelToken? cancel) async {
+  Future<MediaDetails?> fullDetails(CatalogItem item, {CancelToken? cancel}) async {
+    final type = item.isSeries ? 'series' : 'movie';
+    final meta = await rawMeta(item.id.value, type, cancel);
+    if (meta == null) return null;
+
+    return MediaDetails(
+      id: item.id,
+      title: readString(meta, const ['name', 'title']) ?? item.title,
+      mediaType: item.mediaType,
+      year: extractYear(readString(meta, const ['year', 'releaseInfo'])),
+      description: readString(meta, const ['description']),
+      rating: readString(meta, const ['imdbRating']),
+      director: _joinList(meta, const ['director']),
+      cast: _joinList(meta, const ['cast']),
+      posterUrl: readString(meta, const ['poster']) ?? item.posterUrl,
+      backdropUrl: readString(meta, const ['background']) ?? item.backdropUrl,
+      logoUrl: readString(meta, const ['logo']) ?? item.logoUrl,
+      duration: readString(meta, const ['runtime']),
+      genres: _genres(meta),
+      seasons: item.isSeries ? seasonsFromVideos(meta) : const [],
+    );
+  }
+
+  Future<Map<String, dynamic>?> rawMeta(String id, String type, CancelToken? cancel) async {
     if (!id.startsWith('tt')) return null;
     final payload = await _fetch('$cinemetaBase/meta/$type/$id.json', cancel);
     final meta = payload?['meta'];
     return meta is Map<String, dynamic> ? meta : null;
+  }
+
+  List<String> _genres(Map<String, dynamic> meta) {
+    final genres = <String>[];
+    for (final genre in readList(meta, const ['genres', 'genre'])) {
+      if (genre is String && genre.trim().isNotEmpty) genres.add(genre.trim());
+    }
+    return genres;
+  }
+
+  String? _joinList(Map<String, dynamic> meta, List<String> keys) {
+    final values = <String>[];
+    for (final entry in readList(meta, keys)) {
+      if (entry is String && entry.trim().isNotEmpty) values.add(entry.trim());
+    }
+    return values.isEmpty ? null : values.take(4).join(', ');
   }
 
   Future<Map<String, dynamic>?> _fetch(String url, CancelToken? cancel) async {
@@ -89,6 +125,37 @@ class CinemetaSource implements MetadataSource {
       return null;
     }
   }
+}
+
+List<Season> seasonsFromVideos(Map<String, dynamic> meta) {
+  final grouped = <int, List<Episode>>{};
+
+  for (final entry in readList(meta, const ['videos'])) {
+    if (entry is! Map) continue;
+
+    final season = readInt(entry, const ['season']);
+    final number = readInt(entry, const ['episode', 'number']);
+    if (season == null || number == null || season <= 0 || number <= 0) continue;
+
+    grouped
+        .putIfAbsent(season, () => <Episode>[])
+        .add(
+          Episode(
+            season: season,
+            number: number,
+            title: readString(entry, const ['name', 'title']),
+            overview: readString(entry, const ['overview', 'description']),
+            stillUrl: readString(entry, const ['thumbnail']),
+          ),
+        );
+  }
+
+  final seasons = grouped.entries.map((entry) {
+    final episodes = [...entry.value]..sort((a, b) => a.number.compareTo(b.number));
+    return Season(number: entry.key, episodes: episodes);
+  }).toList()..sort((a, b) => a.number.compareTo(b.number));
+
+  return seasons;
 }
 
 CatalogItem? metaToCatalogItem(Object? source, String fallbackType) {

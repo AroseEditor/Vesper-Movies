@@ -10,6 +10,7 @@ import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../shell/input_mode.dart';
 import '../../sources/registry.dart';
+import '../details/details_page.dart';
 
 class SearchTextNotifier extends Notifier<String> {
   @override
@@ -216,7 +217,9 @@ class _SearchResults extends ConsumerWidget {
                   item: items[index],
                   width: mode.posterWidth,
                   autofocus: mode.isTv && index == 0,
-                  onTap: () {},
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (context) => DetailsPage(item: items[index])),
+                  ),
                 ),
               ),
             ),

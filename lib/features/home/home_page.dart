@@ -9,6 +9,7 @@ import '../../design/widgets/media_row.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
+import '../details/details_page.dart';
 import 'home_controller.dart';
 
 class HomePage extends ConsumerWidget {
@@ -35,13 +36,8 @@ class _HomeContent extends StatelessWidget {
   final HomeFeed feed;
 
   void _open(BuildContext context, CatalogItem item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(item.title),
-        backgroundColor: VesperColors.surfaceRaised,
-        duration: const Duration(milliseconds: 900),
-      ),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (context) => DetailsPage(item: item)));
   }
 
   @override
