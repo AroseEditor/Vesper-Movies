@@ -166,7 +166,9 @@ class MemoCache<K, V> {
           put(key, value);
           return value;
         })
-        .whenComplete(() => _inFlight.remove(key));
+        .whenComplete(() {
+          _inFlight.remove(key);
+        });
 
     _inFlight[key] = future;
     return future;
