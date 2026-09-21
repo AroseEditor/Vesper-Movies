@@ -87,6 +87,21 @@ MediaType readMediaType(Object? source) {
   return MediaType.movie;
 }
 
+int? highestResolution(Object? source) {
+  final direct = readInt(source, const ['resolution', 'height']);
+  if (direct != null && direct > 0) return direct;
+
+  final list = readString(source, const ['resolutions', 'displayResolutions']);
+  if (list == null || list.isEmpty) return null;
+
+  var best = 0;
+  for (final part in list.split(',')) {
+    final value = int.tryParse(part.trim().replaceAll(RegExp(r'[pP]$'), ''));
+    if (value != null && value > best) best = value;
+  }
+  return best > 0 ? best : null;
+}
+
 CatalogItem? subjectToCatalogItem(Object? source) {
   if (source is! Map) return null;
 
@@ -319,14 +334,14 @@ List<Release> playInfoJsonToReleases(
       headers['Cookie'] = normalizeSignCookie(signCookie);
     }
 
-    final resolution = readInt(entry, const ['resolution', 'quality', 'height']);
+    final resolution = highestResolution(entry);
 
     releases.add(
       Release(
         kind: ProviderKind.moviebox,
-        filename: readString(entry, const ['filename', 'name', 'title']) ?? 'MovieBox stream',
+        filename: readString(entry, const ['title', 'filename', 'name']) ?? 'MovieBox stream',
         quality: resolution == null ? null : '${resolution}p',
-        codec: readString(entry, const ['codec', 'videoCodec']),
+        codec: readString(entry, const ['codecName', 'codec', 'videoCodec']),
         language: readString(entry, const ['lanName', 'language']),
         sizeBytes: readInt(entry, const ['size', 'fileSize']),
         season: season == 0 ? null : season,
@@ -374,14 +389,14 @@ List<Release> resourceJsonToReleases(
         (entrySeason == null && entryEpisode == null);
     if (!matches) continue;
 
-    final resolution = readInt(entry, const ['resolution', 'quality', 'height']);
+    final resolution = highestResolution(entry);
 
     releases.add(
       Release(
         kind: ProviderKind.moviebox,
-        filename: readString(entry, const ['filename', 'name', 'title']) ?? 'MovieBox file',
+        filename: readString(entry, const ['title', 'filename', 'name']) ?? 'MovieBox file',
         quality: resolution == null ? null : '${resolution}p',
-        codec: readString(entry, const ['codec', 'videoCodec']),
+        codec: readString(entry, const ['codecName', 'codec', 'videoCodec']),
         language: readString(entry, const ['lanName', 'language']),
         sizeBytes: readInt(entry, const ['size', 'fileSize']),
         season: entrySeason ?? (season == 0 ? null : season),

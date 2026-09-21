@@ -56,6 +56,47 @@ void main() {
     });
   });
 
+  group('edge cache cookies', () {
+    const edgeCookie =
+        'Edge-Cache-Cookie=urlprefix=aHR0cHM6Ly9zYmNkbjMuaGFrdW5heW1hdGF0YS5jb20vZGFzaC8xMTExNzc0'
+        'NTc1OTg3MjQ1MTUyXzBfMF8xMDgwX2gyNjVfMzE3Lw:sign=8e620659c940c3e249f94f5bec72844c:'
+        't=1789949208';
+
+    test('rebuild the manifest from the url prefix', () {
+      expect(
+        resolveEdgeCacheManifest(edgeCookie),
+        'https://sbcdn3.hakunaymatata.com/dash/1111774575987245152_0_0_1080_h265_317/index.mpd',
+      );
+    });
+
+    test('are resolved by the combined signed manifest helper', () {
+      expect(resolveSignedManifest(edgeCookie), endsWith('/index.mpd'));
+      expect(resolveSignedManifest(_cookie), endsWith('/index.mpd'));
+    });
+
+    test('win over a deprecation notice url', () {
+      expect(
+        resolveStreamUrl(
+          signCookie: edgeCookie,
+          fallbackUrl:
+              'https://macdn.aoneroom.com/other/2026/09/04/b164fbfb4347792950bdfbfb563d39d9.mp4',
+        ),
+        startsWith('https://sbcdn3.hakunaymatata.com/dash/'),
+      );
+    });
+
+    test('survive a malformed prefix', () {
+      expect(resolveEdgeCacheManifest('Edge-Cache-Cookie=urlprefix=!!!:sign=x'), isNull);
+      expect(resolveEdgeCacheManifest('Edge-Cache-Cookie=sign=x:t=1'), isNull);
+      expect(resolveEdgeCacheManifest('Other-Cookie=urlprefix=abc'), isNull);
+    });
+
+    test('are passed through to the player as a single header value', () {
+      expect(normalizeSignCookie(edgeCookie), startsWith('Edge-Cache-Cookie=urlprefix='));
+      expect(normalizeSignCookie(edgeCookie), contains(':sign='));
+    });
+  });
+
   group('deprecation notices', () {
     test('rejects the known notice files', () {
       expect(

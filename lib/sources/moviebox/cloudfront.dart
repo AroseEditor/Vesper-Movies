@@ -81,9 +81,46 @@ String? resolveDashManifestFromPolicy(String signCookie) {
   return '$base/index.mpd';
 }
 
+String? resolveEdgeCacheManifest(String signCookie) {
+  final cookie = parseSignCookie(signCookie);
+  final value = cookie['Edge-Cache-Cookie'];
+  if (value == null || value.isEmpty) return null;
+
+  for (final part in value.split(':')) {
+    final trimmed = part.trim();
+    if (!trimmed.startsWith('urlprefix=')) continue;
+
+    final encoded = trimmed.substring('urlprefix='.length);
+    if (encoded.isEmpty) return null;
+
+    final padded = encoded.padRight(encoded.length + ((4 - encoded.length % 4) % 4), '=');
+    String decoded;
+    try {
+      decoded = utf8.decode(base64Url.decode(padded));
+    } on Object catch (_) {
+      return null;
+    }
+
+    var base = decoded.trim();
+    while (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    if (base.isEmpty) return null;
+    if (!base.startsWith('http://') && !base.startsWith('https://')) return null;
+
+    return '$base/index.mpd';
+  }
+
+  return null;
+}
+
+String? resolveSignedManifest(String signCookie) {
+  return resolveDashManifestFromPolicy(signCookie) ?? resolveEdgeCacheManifest(signCookie);
+}
+
 String? resolveStreamUrl({required String? signCookie, required String? fallbackUrl}) {
   if (signCookie != null && signCookie.isNotEmpty) {
-    final manifest = resolveDashManifestFromPolicy(signCookie);
+    final manifest = resolveSignedManifest(signCookie);
     if (manifest != null) return manifest;
   }
   if (fallbackUrl == null || fallbackUrl.isEmpty) return null;
