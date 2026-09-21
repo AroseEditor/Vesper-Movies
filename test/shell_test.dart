@@ -111,7 +111,7 @@ void main() {
       rating: 7.4,
     );
 
-    await tester.pumpWidget(_host(PosterCard(item: item, width: 140)));
+    await tester.pumpWidget(_host(const PosterCard(item: item, width: 140)));
     await tester.pump();
 
     expect(find.text('Harbour Lights'), findsOneWidget);
@@ -129,7 +129,7 @@ void main() {
       mediaType: MediaType.series,
     );
 
-    await tester.pumpWidget(_host(PosterCard(item: item, width: 140, showLabel: false)));
+    await tester.pumpWidget(_host(const PosterCard(item: item, width: 140, showLabel: false)));
     await tester.pump();
 
     expect(find.text('Quiet Frequency'), findsOneWidget);
