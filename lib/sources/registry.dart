@@ -4,13 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/errors.dart';
 import '../models/media.dart';
 import '../models/provider_kind.dart';
+import 'bdix/circleftp_source.dart';
+import 'bdix/dhakaflix_source.dart';
 import 'content_source.dart';
+import 'dramachi/dramachi_source.dart';
 import 'moviebox/moviebox_source.dart';
 
 typedef SourceOutcome = ({ProviderKind kind, List<CatalogItem> items, SourceError? error});
 
 final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((ref) {
-  return {ProviderKind.moviebox: MovieBoxSource()};
+  return {
+    ProviderKind.moviebox: MovieBoxSource(),
+    ProviderKind.dramachi: DramachiSource(),
+    ProviderKind.circleftp: CircleFtpSource(),
+    ProviderKind.dhakaflix: DhakaFlixSource(),
+  };
 });
 
 final enabledSourcesProvider = Provider<List<ProviderKind>>((ref) {
