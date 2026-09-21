@@ -63,8 +63,21 @@ class _DetailsBody extends ConsumerWidget {
   final int? season;
   final ValueChanged<int> onSeasonChanged;
 
-  Season? _seasonFor(int number) {
-    final seasons = data.details.seasons;
+  List<Season> _seasons(WidgetRef ref) {
+    if (data.details.seasons.isNotEmpty) return data.details.seasons;
+    final match = data.bestMatch;
+    if (!data.details.isSeries || match == null) return const [];
+    return ref.watch(matchSeasonsProvider(match)).value ?? const [];
+  }
+
+  bool _seasonsLoading(WidgetRef ref) {
+    if (data.details.seasons.isNotEmpty || !data.details.isSeries) return false;
+    final match = data.bestMatch;
+    if (match == null) return data.matchesPending;
+    return ref.watch(matchSeasonsProvider(match)).isLoading;
+  }
+
+  Season? _seasonFor(List<Season> seasons, int number) {
     if (seasons.isEmpty) return null;
     for (final entry in seasons) {
       if (entry.number == number) return entry;
@@ -72,8 +85,7 @@ class _DetailsBody extends ConsumerWidget {
     return seasons.first;
   }
 
-  Episode? _after(int seasonNo, int episodeNo) {
-    final seasons = data.details.seasons;
+  Episode? _after(List<Season> seasons, int seasonNo, int episodeNo) {
     for (var i = 0; i < seasons.length; i++) {
       if (seasons[i].number != seasonNo) continue;
       final episodes = seasons[i].episodes;
@@ -111,12 +123,14 @@ class _DetailsBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final details = data.details;
-    final isSeries = details.isSeries && details.seasons.isNotEmpty;
+    final seasons = _seasons(ref);
+    final loadingEpisodes = _seasonsLoading(ref);
+    final isSeries = details.isSeries && seasons.isNotEmpty;
     final library = ref.watch(libraryProvider).value;
     final id = data.item.id.value;
 
     final last = isSeries ? library?.lastEpisodeOf(id) : null;
-    final active = _seasonFor(season ?? last?.season ?? 1);
+    final active = _seasonFor(seasons, season ?? last?.season ?? 1);
 
     var playSeason = isSeries ? (active?.number ?? 1) : 0;
     var playEpisode = isSeries ? (active?.episodes.first.number ?? 1) : 0;
@@ -130,7 +144,7 @@ class _DetailsBody extends ConsumerWidget {
         playLabel = 'Resume S${last.season}E${last.episode}';
         heroProgress = last.progress;
       } else {
-        final next = _after(last.season, last.episode);
+        final next = _after(seasons, last.season, last.episode);
         if (next != null) {
           playSeason = next.season;
           playEpisode = next.number;
@@ -166,7 +180,7 @@ class _DetailsBody extends ConsumerWidget {
         if (isSeries) ...[
           SliverToBoxAdapter(
             child: _SeasonPicker(
-              seasons: details.seasons,
+              seasons: seasons,
               active: active?.number ?? 1,
               mode: mode,
               onChanged: onSeasonChanged,
@@ -194,7 +208,18 @@ class _DetailsBody extends ConsumerWidget {
               },
             ),
           ),
-        ] else
+        ] else if (details.isSeries)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(mode.gutter, 24, mode.gutter, mode.isTouch ? 110 : 40),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: loadingEpisodes
+                    ? const LoadingNote(label: 'Loading episodes', compact: true)
+                    : const Text('No episode list found for this series', style: VesperType.meta),
+              ),
+            ),
+          )
+        else
           SliverPadding(
             padding: EdgeInsets.only(bottom: mode.isTouch ? 110 : 40),
             sliver: const SliverToBoxAdapter(child: SizedBox.shrink()),
