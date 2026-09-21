@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
+import '../../design/widgets/action_menu.dart';
 import '../../design/widgets/hero_billboard.dart';
 import '../../design/widgets/media_row.dart';
 import '../../design/widgets/shimmer.dart';
@@ -11,6 +12,7 @@ import '../../models/media.dart';
 import '../../shell/input_mode.dart';
 import '../../storage/library_controller.dart';
 import '../../storage/library_store.dart';
+import '../categories/categories_page.dart';
 import '../details/details_page.dart';
 import 'home_controller.dart';
 
@@ -75,6 +77,28 @@ class _HomeContent extends ConsumerWidget {
                   mode: mode,
                   onSelect: (item) => _open(context, item),
                   progressOf: (item) => _progressFor(resume, item),
+                  menuOf: (item) => [
+                    for (final entry in resume)
+                      if (entry.id == item.id.value) ...[
+                        MenuAction(
+                          icon: VesperIcons.close,
+                          label: 'Remove from Continue Watching',
+                          onSelected: () => ref.read(libraryProvider.notifier).forget(entry),
+                        ),
+                        MenuAction(
+                          icon: VesperIcons.watched,
+                          label: 'Mark as watched',
+                          onSelected: () => ref
+                              .read(libraryProvider.notifier)
+                              .setWatched(
+                                item,
+                                watched: true,
+                                season: entry.season,
+                                episode: entry.episode,
+                              ),
+                        ),
+                      ],
+                  ],
                 ),
               if (favourites.isNotEmpty)
                 MediaRow(
@@ -87,6 +111,13 @@ class _HomeContent extends ConsumerWidget {
                 MediaRow(
                   title: shelf.title,
                   items: shelf.items,
+                  mode: mode,
+                  onSelect: (item) => _open(context, item),
+                ),
+              for (final row in homeGenreRows)
+                _GenreRow(
+                  title: row.$1,
+                  query: BrowseQuery(type: row.$2, genre: row.$3),
                   mode: mode,
                   onSelect: (item) => _open(context, item),
                 ),
@@ -168,4 +199,43 @@ double? _progressFor(List<WatchEntry> entries, CatalogItem item) {
     if (entry.id == item.id.value) return entry.progress;
   }
   return null;
+}
+
+const homeGenreRows = <(String, String, String)>[
+  ('Action Movies', 'movie', 'Action'),
+  ('Comedy Movies', 'movie', 'Comedy'),
+  ('Crime Series', 'series', 'Crime'),
+  ('Thrillers', 'movie', 'Thriller'),
+  ('Sci-Fi and Fantasy', 'movie', 'Sci-Fi'),
+  ('Drama Series', 'series', 'Drama'),
+  ('Horror', 'movie', 'Horror'),
+  ('Romance', 'movie', 'Romance'),
+  ('Animation', 'movie', 'Animation'),
+  ('Documentaries', 'movie', 'Documentary'),
+];
+
+class _GenreRow extends ConsumerWidget {
+  const _GenreRow({
+    required this.title,
+    required this.query,
+    required this.mode,
+    required this.onSelect,
+  });
+
+  final String title;
+  final BrowseQuery query;
+  final InputMode mode;
+  final void Function(CatalogItem item) onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(browseProvider(query));
+    return items.when(
+      loading: () => MediaRow(title: title, items: const [], mode: mode, loading: true),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (list) => list.isEmpty
+          ? const SizedBox.shrink()
+          : MediaRow(title: title, items: list, mode: mode, onSelect: onSelect),
+    );
+  }
 }

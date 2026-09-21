@@ -5,6 +5,7 @@ import '../../models/media.dart';
 import '../colors.dart';
 import '../motion.dart';
 import '../typography.dart';
+import 'action_menu.dart';
 import 'focusable_item.dart';
 
 String upgradePosterUrl(String url) {
@@ -23,6 +24,7 @@ class PosterCard extends StatefulWidget {
     this.progress,
     this.aspectRatio = 2 / 3,
     this.showLabel = true,
+    this.menuActions = const [],
   });
 
   final CatalogItem item;
@@ -33,6 +35,7 @@ class PosterCard extends StatefulWidget {
   final double? progress;
   final double aspectRatio;
   final bool showLabel;
+  final List<MenuAction> menuActions;
 
   static double labelHeight(bool showLabel) => showLabel ? 44 : 0;
 
@@ -82,31 +85,44 @@ class _PosterCardState extends State<PosterCard> {
             const SizedBox(height: 8),
             SizedBox(
               height: PosterCard.labelHeight(true) - 8,
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  AnimatedDefaultTextStyle(
-                    duration: VesperMotion.fast,
-                    style: VesperType.cardTitle.copyWith(
-                      fontSize: 13.5,
-                      color: _focused ? VesperColors.accent : VesperColors.textHover,
-                    ),
-                    child: Text(
-                      widget.item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedDefaultTextStyle(
+                          duration: VesperMotion.fast,
+                          style: VesperType.cardTitle.copyWith(
+                            fontSize: 13.5,
+                            color: _focused ? VesperColors.accent : VesperColors.textHover,
+                          ),
+                          child: Text(
+                            widget.item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _metaLine(widget.item),
+                          style: VesperType.meta.copyWith(fontSize: 11.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _metaLine(widget.item),
-                    style: VesperType.meta.copyWith(fontSize: 11.5),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: false,
-                  ),
+                  if (widget.menuActions.isNotEmpty)
+                    ActionMenu(
+                      actions: widget.menuActions,
+                      iconSize: 18,
+                      semanticLabel: '${widget.item.title} options',
+                    ),
                 ],
               ),
             ),

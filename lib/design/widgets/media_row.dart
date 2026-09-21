@@ -6,6 +6,7 @@ import '../colors.dart';
 import '../icons.dart';
 import '../motion.dart';
 import '../typography.dart';
+import 'action_menu.dart';
 import 'poster_card.dart';
 import 'shimmer.dart';
 
@@ -19,6 +20,7 @@ class MediaRow extends StatefulWidget {
     this.progressOf,
     this.loading = false,
     this.autofocusFirst = false,
+    this.menuOf,
   });
 
   final String title;
@@ -28,6 +30,7 @@ class MediaRow extends StatefulWidget {
   final double? Function(CatalogItem item)? progressOf;
   final bool loading;
   final bool autofocusFirst;
+  final List<MenuAction> Function(CatalogItem item)? menuOf;
 
   @override
   State<MediaRow> createState() => _MediaRowState();
@@ -138,6 +141,7 @@ class _MediaRowState extends State<MediaRow> {
             autofocus: widget.autofocusFirst && index == 0,
             progress: widget.progressOf?.call(item),
             onTap: () => widget.onSelect?.call(item),
+            menuActions: widget.menuOf?.call(item) ?? const [],
           ),
         );
       },
