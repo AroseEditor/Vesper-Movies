@@ -8,11 +8,13 @@ import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/action_menu.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../design/widgets/media_row.dart';
 import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
 import '../../storage/library_controller.dart';
+import '../categories/categories_page.dart';
 import 'details_controller.dart';
 import 'launch_playback.dart';
 import 'widgets/episode_tile.dart';
@@ -293,6 +295,12 @@ class _DetailsBody extends ConsumerWidget {
             padding: EdgeInsets.only(bottom: mode.isTouch ? 110 : 40),
             sliver: const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: mode.isTouch ? 110 : 40),
+          sliver: SliverToBoxAdapter(
+            child: _MoreLikeThis(item: data.item, details: details, mode: mode),
+          ),
+        ),
       ],
     );
   }
@@ -886,6 +894,60 @@ class _ListButton extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MoreLikeThis extends ConsumerWidget {
+  const _MoreLikeThis({required this.item, required this.details, required this.mode});
+
+  final CatalogItem item;
+  final MediaDetails details;
+  final InputMode mode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final type = details.isSeries ? 'series' : 'movie';
+    final genres = [
+      for (final genre in details.genres)
+        if (browseGenres.contains(genre)) genre,
+    ].take(2).toList();
+    if (genres.isEmpty) return const SizedBox.shrink();
+
+    final lists = [
+      for (final genre in genres) ref.watch(browseProvider(BrowseQuery(type: type, genre: genre))),
+    ];
+    if (lists.every((list) => list.isLoading)) {
+      return MediaRow(title: 'More like this', items: const [], mode: mode, loading: true);
+    }
+
+    final counts = <String, int>{};
+    final byId = <String, CatalogItem>{};
+    final order = <String>[];
+    for (final list in lists) {
+      for (final candidate in list.value ?? const <CatalogItem>[]) {
+        final id = candidate.id.value;
+        if (id == item.id.value) continue;
+        if (!byId.containsKey(id)) order.add(id);
+        byId[id] = candidate;
+        counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+    if (order.isEmpty) return const SizedBox.shrink();
+
+    final ranked = [...order]
+      ..sort((a, b) {
+        final byOverlap = counts[b]!.compareTo(counts[a]!);
+        return byOverlap != 0 ? byOverlap : order.indexOf(a).compareTo(order.indexOf(b));
+      });
+
+    return MediaRow(
+      title: 'More like this',
+      items: [for (final id in ranked.take(24)) byId[id]!],
+      mode: mode,
+      onSelect: (next) =>
+          Navigator.of(context)
+              .push(MaterialPageRoute<void>(builder: (context) => DetailsPage(item: next))),
     );
   }
 }
