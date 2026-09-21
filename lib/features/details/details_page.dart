@@ -83,6 +83,7 @@ class _DetailsBody extends ConsumerWidget {
       context,
       ref: ref,
       match: match,
+      item: data.item,
       title: data.details.title,
       season: seasonNo,
       episode: episodeNo,

@@ -16,10 +16,13 @@ import '../../shell/input_mode.dart';
 import 'widgets/player_scrubber.dart';
 import 'widgets/track_panel.dart';
 
+typedef PlaybackProgress = void Function(Duration position, Duration duration, bool completed);
+
 class PlayerPage extends ConsumerStatefulWidget {
-  const PlayerPage({super.key, this.onExit});
+  const PlayerPage({super.key, this.onExit, this.onProgress});
 
   final VoidCallback? onExit;
+  final PlaybackProgress? onProgress;
 
   @override
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
@@ -33,15 +36,35 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   bool _controlsVisible = true;
   PlayerPanel _panel = PlayerPanel.none;
 
+  Timer? _progressTimer;
+
   @override
   void initState() {
     super.initState();
     _restartHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    if (widget.onProgress != null) {
+      _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _reportProgress());
+    }
+  }
+
+  void _reportProgress({bool completed = false}) {
+    final report = widget.onProgress;
+    if (report == null) return;
+
+    final player = ref.read(playerControllerProvider.notifier).player;
+    final position = player.state.position;
+    final duration = player.state.duration;
+    if (duration <= Duration.zero) return;
+
+    report(position, duration, completed || player.state.completed);
   }
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
+    _reportProgress();
     _hideTimer?.cancel();
     _rootFocus.dispose();
     _controlsScope.dispose();

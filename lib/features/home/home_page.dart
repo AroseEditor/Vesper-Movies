@@ -9,6 +9,8 @@ import '../../design/widgets/media_row.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
+import '../../storage/library_controller.dart';
+import '../../storage/library_store.dart';
 import '../details/details_page.dart';
 import 'home_controller.dart';
 
@@ -29,7 +31,7 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends ConsumerWidget {
   const _HomeContent({required this.mode, required this.feed});
 
   final InputMode mode;
@@ -41,9 +43,12 @@ class _HomeContent extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spotlight = feed.spotlight;
     final bottomPad = mode.isTouch ? 108.0 : 40.0;
+
+    final resume = ref.watch(continueWatchingProvider);
+    final favourites = ref.watch(favouritesProvider);
 
     return CustomScrollView(
       slivers: [
@@ -61,17 +66,31 @@ class _HomeContent extends StatelessWidget {
           ),
         SliverPadding(
           padding: EdgeInsets.only(top: mode.rowGap, bottom: bottomPad),
-          sliver: SliverList.builder(
-            itemCount: feed.shelves.length,
-            itemBuilder: (context, index) {
-              final shelf = feed.shelves[index];
-              return MediaRow(
-                title: shelf.title,
-                items: shelf.items,
-                mode: mode,
-                onSelect: (item) => _open(context, item),
-              );
-            },
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              if (resume.isNotEmpty)
+                MediaRow(
+                  title: 'Continue Watching',
+                  items: [for (final entry in resume) entry.toCatalogItem()],
+                  mode: mode,
+                  onSelect: (item) => _open(context, item),
+                  progressOf: (item) => _progressFor(resume, item),
+                ),
+              if (favourites.isNotEmpty)
+                MediaRow(
+                  title: 'My List',
+                  items: favourites,
+                  mode: mode,
+                  onSelect: (item) => _open(context, item),
+                ),
+              for (final shelf in feed.shelves)
+                MediaRow(
+                  title: shelf.title,
+                  items: shelf.items,
+                  mode: mode,
+                  onSelect: (item) => _open(context, item),
+                ),
+            ]),
           ),
         ),
       ],
@@ -137,4 +156,11 @@ class _HomeError extends StatelessWidget {
       ),
     );
   }
+}
+
+double? _progressFor(List<WatchEntry> entries, CatalogItem item) {
+  for (final entry in entries) {
+    if (entry.id == item.id.value) return entry.progress;
+  }
+  return null;
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,10 +8,12 @@ import '../../../design/colors.dart';
 import '../../../design/icons.dart';
 import '../../../design/typography.dart';
 import '../../../design/widgets/focusable_item.dart';
+import '../../../models/media.dart';
 import '../../../models/release.dart';
 import '../../../player/player_controller.dart';
 import '../../../sources/registry.dart';
 import '../../../sources/source_matcher.dart';
+import '../../../storage/library_controller.dart';
 import '../../player/player_page.dart';
 import '../details_controller.dart';
 
@@ -17,6 +21,7 @@ Future<void> showReleaseSheet(
   BuildContext context, {
   required WidgetRef ref,
   required SourceMatch match,
+  required CatalogItem item,
   required String title,
   int season = 0,
   int episode = 0,
@@ -30,7 +35,7 @@ Future<void> showReleaseSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
     ),
     builder: (sheetContext) =>
-        ReleaseSheet(match: match, title: title, season: season, episode: episode),
+        ReleaseSheet(match: match, item: item, title: title, season: season, episode: episode),
   );
 }
 
@@ -38,12 +43,14 @@ class ReleaseSheet extends ConsumerWidget {
   const ReleaseSheet({
     super.key,
     required this.match,
+    required this.item,
     required this.title,
     this.season = 0,
     this.episode = 0,
   });
 
   final SourceMatch match;
+  final CatalogItem item;
   final String title;
   final int season;
   final int episode;
@@ -68,10 +75,46 @@ class ReleaseSheet extends ConsumerWidget {
         ),
       );
 
-      await ref.read(playerControllerProvider.notifier).load(target);
+      final saved = ref
+          .read(libraryProvider)
+          .value
+          ?.entryFor(item.id.value, season: season, episode: episode);
+      final resumeFrom = saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
 
-      await navigator.push(MaterialPageRoute<void>(builder: (context) => const PlayerPage()));
-      await ref.read(playerControllerProvider.notifier).stop();
+      final controller = ref.read(playerControllerProvider.notifier);
+      await controller.load(
+        PlaybackTarget(
+          source: target.source,
+          title: target.title,
+          subtitle: target.subtitle,
+          startAt: resumeFrom,
+          season: target.season,
+          episode: target.episode,
+          mediaId: target.mediaId,
+        ),
+      );
+
+      await navigator.push(
+        MaterialPageRoute<void>(
+          builder: (context) => PlayerPage(
+            onProgress: (position, duration, completed) {
+              unawaited(
+                ref
+                    .read(libraryProvider.notifier)
+                    .recordProgress(
+                      item: item,
+                      position: position,
+                      duration: duration,
+                      season: season,
+                      episode: episode,
+                      completed: completed,
+                    ),
+              );
+            },
+          ),
+        ),
+      );
+      await controller.stop();
     } on SourceError catch (error) {
       messenger.showSnackBar(
         SnackBar(
