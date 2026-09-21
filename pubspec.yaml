@@ -1,7 +1,7 @@
 name: vesper_movies
 description: Find, stream and download movies, series and live TV on desktop, phone and TV.
 publish_to: 'none'
-version: 0.5.1+5
+version: 0.5.2+6
 
 authors:
   - ayush.ue5
