@@ -18,7 +18,7 @@ class ProbeServer {
 
   int get port => _server.port;
 
-  String get manifestUrl => 'http://127.0.0.1:$port/manifest.mpd';
+  String get manifestUrl => 'http://127.0.0.1:$port/playlist.m3u8';
 
   static Future<ProbeServer> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -28,25 +28,29 @@ class ProbeServer {
   }
 
   Future<void> _listen() async {
+    try {
+      await _serve();
+    } on Object catch (_) {
+      return;
+    }
+  }
+
+  Future<void> _serve() async {
     await for (final request in _server) {
       final path = request.uri.path;
-      final carried = request.headers.value(_probeHeader) == _probeValue;
+      final tagged = request.headers.value(_probeHeader) == _probeValue;
       final cookie = request.headers.value('cookie') ?? '';
-      final sawCookie = cookie.contains(_probeValue);
-      final ok = carried || sawCookie;
+      final carried = tagged || cookie.contains(_probeValue);
 
-      if (path.endsWith('.mpd')) {
-        (ok ? manifestHits : manifestMisses).add(path);
+      if (path.endsWith('.m3u8')) {
+        (carried ? manifestHits : manifestMisses).add(path);
         request.response
           ..statusCode = 200
-          ..headers.contentType = ContentType('application', 'dash+xml')
-          ..write(_manifest());
+          ..headers.contentType = ContentType('application', 'vnd.apple.mpegurl')
+          ..write(_playlist());
       } else if (path.startsWith('/seg/')) {
-        (ok ? segmentHits : segmentMisses).add(path);
-        request.response
-          ..statusCode = 200
-          ..headers.contentType = ContentType('video', 'iso.segment')
-          ..add(const []);
+        (carried ? segmentHits : segmentMisses).add(path);
+        request.response.statusCode = 404;
       } else {
         request.response.statusCode = 404;
       }
@@ -55,21 +59,19 @@ class ProbeServer {
     }
   }
 
-  String _manifest() {
-    return '''
-<?xml version="1.0" encoding="utf-8"?>
-<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011"
-     type="static" mediaPresentationDuration="PT10S" minBufferTime="PT2S">
-  <Period id="0">
-    <AdaptationSet mimeType="video/mp4" segmentAlignment="true">
-      <Representation id="v0" codecs="avc1.64001f" bandwidth="500000" width="640" height="360">
-        <SegmentTemplate media="/seg/chunk-\$Number\$.m4s" initialization="/seg/init.mp4"
-                         startNumber="1" duration="2" timescale="1"/>
-      </Representation>
-    </AdaptationSet>
-  </Period>
-</MPD>
-''';
+  String _playlist() {
+    final lines = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      '#EXT-X-TARGETDURATION:2',
+      '#EXT-X-MEDIA-SEQUENCE:0',
+      '#EXTINF:2.0,',
+      '/seg/chunk-0.ts',
+      '#EXTINF:2.0,',
+      '/seg/chunk-1.ts',
+      '#EXT-X-ENDLIST',
+    ];
+    return lines.join('\n');
   }
 
   Future<void> stop() => _server.close(force: true);
@@ -92,15 +94,15 @@ class SpikeResult {
 
   String get verdict {
     if (segmentTotal == 0) {
-      return 'INCONCLUSIVE — the player never requested a segment.';
+      return 'INCONCLUSIVE - the player never requested a segment';
     }
     if (proxyCanBeDeleted) {
-      return 'PASS — headers reach segment requests. The loopback proxy is not needed on $platform.';
+      return 'PASS - headers reach segment requests, no loopback proxy needed on $platform';
     }
     if (manifestCarried) {
-      return 'FAIL — headers reach the manifest but not segments. Port the loopback proxy.';
+      return 'FAIL - headers reach the manifest but not segments, port the loopback proxy';
     }
-    return 'FAIL — headers do not reach the manifest at all.';
+    return 'FAIL - headers do not reach the manifest at all';
   }
 }
 
@@ -117,7 +119,7 @@ Future<SpikeResult> runSpike() async {
       play: true,
     );
 
-    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
     while (DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 250));
       if (server.segmentHits.isNotEmpty || server.segmentMisses.isNotEmpty) {
@@ -135,6 +137,26 @@ Future<SpikeResult> runSpike() async {
   } finally {
     await player.dispose();
     await server.stop();
+  }
+}
+
+void writeReport(String verdict, SpikeResult? result) {
+  final buffer = StringBuffer()
+    ..writeln('platform: ${Platform.operatingSystem}')
+    ..writeln('verdict: $verdict');
+
+  if (result != null) {
+    buffer
+      ..writeln('manifestCarried: ${result.manifestCarried}')
+      ..writeln('segmentCarried: ${result.segmentCarried}')
+      ..writeln('segmentTotal: ${result.segmentTotal}')
+      ..writeln('proxyCanBeDeleted: ${result.proxyCanBeDeleted}');
+  }
+
+  try {
+    File('spike_result.txt').writeAsStringSync(buffer.toString());
+  } on Object catch (_) {
+    return;
   }
 }
 
@@ -164,13 +186,11 @@ class _SpikeAppState extends State<SpikeApp> {
   Future<void> _run() async {
     try {
       final result = await runSpike();
+      writeReport(result.verdict, result);
       debugPrint('SPIKE ${result.verdict}');
-      debugPrint(
-        'SPIKE manifest=${result.manifestCarried} '
-        'segments=${result.segmentCarried} count=${result.segmentTotal}',
-      );
       if (mounted) setState(() => _result = result);
     } on Object catch (error) {
+      writeReport('ERROR $error', null);
       debugPrint('SPIKE ERROR $error');
       if (mounted) setState(() => _error = error);
     }
@@ -181,6 +201,15 @@ class _SpikeAppState extends State<SpikeApp> {
     final result = _result;
     final error = _error;
 
+    final message = error != null
+        ? 'Spike failed: $error'
+        : result == null
+        ? 'Probing segment headers...'
+        : '${result.verdict}\n\n'
+              'manifest carried: ${result.manifestCarried}\n'
+              'segments carried: ${result.segmentCarried}\n'
+              'segment requests: ${result.segmentTotal}';
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
@@ -190,14 +219,7 @@ class _SpikeAppState extends State<SpikeApp> {
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-              error != null
-                  ? 'Spike failed: $error'
-                  : result == null
-                  ? 'Probing DASH segment headers...'
-                  : '${result.verdict}\n\n'
-                        'manifest carried: ${result.manifestCarried}\n'
-                        'segments carried: ${result.segmentCarried}\n'
-                        'segment requests: ${result.segmentTotal}',
+              message,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 17, height: 1.5),
             ),

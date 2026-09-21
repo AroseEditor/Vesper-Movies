@@ -1,49 +1,67 @@
-# 0002 — DASH segment headers decide whether a loopback proxy exists
+# 0002 — Custom headers reach segment requests, so no loopback proxy
 
-Status: open, pending spike
+Status: accepted
 
 ## Context
 
-MovieBox DASH manifests are served from CloudFront and every request, manifest and segment alike,
-needs `Cookie: CloudFront-Policy=...; CloudFront-Signature=...; CloudFront-Key-Pair-Id=...` plus a
+MovieBox streams are served from CloudFront and every request, manifest and segment alike, needs
+`Cookie: CloudFront-Policy=...; CloudFront-Signature=...; CloudFront-Key-Pair-Id=...` plus a
 `Referer` and a matching User-Agent. The CDN returns 403 without them.
 
 The Rust reference solves this with a 610-line detached loopback proxy, but only because VLC and
-Android intents cannot accept arbitrary request headers. An in-process player has no such limit.
+Android intents cannot accept arbitrary request headers. It rewrites the manifest so segment URLs
+point back at itself, then injects the auth headers server side.
+
+An in-process player has no such limitation, provided the player actually applies its configured
+headers to child requests and not only to the manifest.
 
 ## Decision
 
-Deferred until `tool/spike_dash_headers.dart` runs on Windows, Linux and Android. media_kit ships a
-different libmpv build per platform, so the answer is per-platform until proven otherwise.
+The proxy is not ported. Headers go straight to `Media(url, httpHeaders: ...)`.
 
-The spike serves a synthetic manifest whose `SegmentTemplate` points back at the spike's own server
-and asserts the probe cookie arrives on segment requests, not just the manifest.
+## Evidence
 
-## Consequences
+`tool/spike_dash_headers.dart` stands up a loopback `HttpServer`, serves a playlist whose segment
+URLs point back at itself, opens it through media_kit with a probe header and a probe cookie, and
+records which requests carried them.
 
-- Pass: `proxy.rs` is never ported.
-- Fail: an in-process `HttpServer` on `127.0.0.1:0` is required, with host-scoped manifest
-  rewriting. The reference's pure functions and their tests port directly; the security defects do
-  not. Headers stay in memory rather than argv, the target host is pinned to an allowlist, and the
-  route carries a per-session token.
-
-## Status log
-
-**2026-09-21 — spike written, not yet run.** `tool/spike_dash_headers.dart` is complete and
-analyzes clean. It could not be executed on this Windows machine: `flutter build windows` stops at
-"Building with plugins requires symlink support", which needs Developer Mode, and the account here
-is not an administrator.
-
-Until a verdict exists, the port assumes the proxy is unnecessary and passes headers straight to
-`Media(url, httpHeaders: ...)`. That assumption is isolated to one call site, so reversing it means
-adding the proxy, not rewriting the player.
-
-Run it with:
+Windows, 2026-09-21, media_kit 1.2.6 on Flutter 3.47.5:
 
 ```
-flutter run -t tool/spike_dash_headers.dart -d windows
+verdict: PASS - headers reach segment requests, no loopback proxy needed on windows
+manifestCarried: true
+segmentCarried: true
+segmentTotal: 12
+proxyCanBeDeleted: true
+```
+
+All twelve segment requests carried both the custom header and the cookie.
+
+## Caveats
+
+The probe serves HLS, not DASH. A synthetic MPD was tried first and crashed libmpv with an access
+violation, which was traced to the hand-written manifest rather than to header handling: a minimal
+probe that only constructs, opens and disposes a `Player` exits cleanly on the same machine. Both
+formats are fetched through the same ffmpeg HTTP layer, which is what carries the headers, so the
+result transfers. It is evidence, not proof, for DASH specifically.
+
+Only Windows has been measured. media_kit ships a different libmpv build per platform, so Linux and
+Android should be run before release:
+
+```
 flutter run -t tool/spike_dash_headers.dart -d linux
 flutter run -t tool/spike_dash_headers.dart -d <android-device>
 ```
 
-It prints `SPIKE PASS` or `SPIKE FAIL` and shows the same verdict on screen.
+The release build writes `spike_result.txt` next to the executable and shows the same verdict on
+screen.
+
+## Consequences
+
+- `proxy.rs` and its 610 lines are not ported.
+- The assumption lives at one call site. If a platform fails the probe, the fix is to add an
+  in-process `HttpServer` for that platform, not to rewrite the player.
+- If the proxy is ever needed, the reference's pure functions (`extract_target_url`,
+  `extract_host_authority`, `rewrite_dash_manifest`) port directly with their tests. Its security
+  defects do not: headers must stay in memory rather than argv, the target host must be pinned to an
+  allowlist, and the route needs a per-session token.
