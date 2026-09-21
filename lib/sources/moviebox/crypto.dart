@@ -222,14 +222,9 @@ class DeviceIdentity {
     });
 
     final prefix = _ipPrefixes[random.nextInt(_ipPrefixes.length)];
-    final forwardedFor =
-        '$prefix.${1 + random.nextInt(253)}.${1 + random.nextInt(253)}';
+    final forwardedFor = '$prefix.${1 + random.nextInt(253)}.${1 + random.nextInt(253)}';
 
-    return DeviceIdentity(
-      userAgent: userAgent,
-      clientInfo: clientInfo,
-      forwardedFor: forwardedFor,
-    );
+    return DeviceIdentity(userAgent: userAgent, clientInfo: clientInfo, forwardedFor: forwardedFor);
   }
 
   static String _randomHex(Random random, int length) {

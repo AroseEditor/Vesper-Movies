@@ -7,9 +7,7 @@ import '../../metadata/metadata_service.dart';
 import '../../metadata/metadata_source.dart';
 import '../../models/media.dart';
 
-final metadataServiceProvider = Provider<MetadataService>(
-  (ref) => MetadataService(),
-);
+final metadataServiceProvider = Provider<MetadataService>((ref) => MetadataService());
 
 const _shelfTimeout = Duration(seconds: 25);
 const _spotlightTimeout = Duration(seconds: 15);
@@ -36,11 +34,7 @@ class HomeFeed {
 
   bool get isEmpty => shelves.isEmpty;
 
-  HomeFeed copyWith({
-    CatalogItem? spotlight,
-    String? spotlightOverview,
-    bool? spotlightPending,
-  }) {
+  HomeFeed copyWith({CatalogItem? spotlight, String? spotlightOverview, bool? spotlightPending}) {
     return HomeFeed(
       spotlight: spotlight ?? this.spotlight,
       spotlightOverview: spotlightOverview ?? this.spotlightOverview,
@@ -85,9 +79,7 @@ class HomeFeedNotifier extends AsyncNotifier<HomeFeed> {
     final shelves = <HomeShelf>[];
     for (var i = 0; i < CatalogShelf.values.length; i++) {
       if (results[i].isEmpty) continue;
-      shelves.add(
-        HomeShelf(title: CatalogShelf.values[i].title, items: results[i]),
-      );
+      shelves.add(HomeShelf(title: CatalogShelf.values[i].title, items: results[i]));
     }
 
     if (shelves.isEmpty) return HomeFeed.empty;
@@ -128,10 +120,7 @@ class HomeFeedNotifier extends AsyncNotifier<HomeFeed> {
             ),
             cancel: cancel,
           )
-          .timeout(
-            _spotlightTimeout,
-            onTimeout: () => MediaDetails.of(enriched),
-          );
+          .timeout(_spotlightTimeout, onTimeout: () => MediaDetails.of(enriched));
 
       final current = state.value;
       if (current == null || cancel.isCancelled) return;
@@ -164,6 +153,4 @@ class HomeFeedNotifier extends AsyncNotifier<HomeFeed> {
   }
 }
 
-final homeFeedProvider = AsyncNotifierProvider<HomeFeedNotifier, HomeFeed>(
-  HomeFeedNotifier.new,
-);
+final homeFeedProvider = AsyncNotifierProvider<HomeFeedNotifier, HomeFeed>(HomeFeedNotifier.new);

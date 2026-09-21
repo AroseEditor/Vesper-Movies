@@ -49,10 +49,7 @@ class _BootApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(
-        backgroundColor: Color(0xFF141414),
-        body: SizedBox.shrink(),
-      ),
+      home: Scaffold(backgroundColor: Color(0xFF141414), body: SizedBox.shrink()),
     );
   }
 }

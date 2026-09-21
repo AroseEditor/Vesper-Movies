@@ -61,10 +61,7 @@ const _seriesPageHtml = '''
 void main() {
   group('search parsing', () {
     test('reads cards, titles, years and type', () {
-      final items = parseSearch(
-        html.parse(_searchHtml),
-        ProviderKind.fourkhdhub,
-      );
+      final items = parseSearch(html.parse(_searchHtml), ProviderKind.fourkhdhub);
 
       expect(items, hasLength(2));
       expect(items.first.title, 'Dune Part Two');
@@ -74,24 +71,15 @@ void main() {
       expect(items.first.posterUrl, 'https://img.example/dune.jpg');
     });
 
-    test(
-      'detects a series from its metadata and normalises absolute links',
-      () {
-        final items = parseSearch(
-          html.parse(_searchHtml),
-          ProviderKind.fourkhdhub,
-        );
+    test('detects a series from its metadata and normalises absolute links', () {
+      final items = parseSearch(html.parse(_searchHtml), ProviderKind.fourkhdhub);
 
-        expect(items.last.mediaType, MediaType.series);
-        expect(items.last.id.value, '/series/severance');
-      },
-    );
+      expect(items.last.mediaType, MediaType.series);
+      expect(items.last.id.value, '/series/severance');
+    });
 
     test('drops a card with no title', () {
-      final items = parseSearch(
-        html.parse(_searchHtml),
-        ProviderKind.fourkhdhub,
-      );
+      final items = parseSearch(html.parse(_searchHtml), ProviderKind.fourkhdhub);
       expect(items.any((e) => e.id.value == '/broken'), isFalse);
     });
   });
@@ -125,10 +113,7 @@ void main() {
 
   group('release parsing', () {
     test('keeps playable mirrors and rejects archives and plain http', () {
-      final releases = parseReleases(
-        html.parse(_moviePageHtml),
-        ProviderKind.fourkhdhub,
-      );
+      final releases = parseReleases(html.parse(_moviePageHtml), ProviderKind.fourkhdhub);
 
       expect(releases, hasLength(1));
       expect(releases.single.mirrors.single.url, contains('pixeldrain.dev'));
@@ -138,10 +123,7 @@ void main() {
     });
 
     test('attaches the referer the site requires', () {
-      final releases = parseReleases(
-        html.parse(_moviePageHtml),
-        ProviderKind.fourkhdhub,
-      );
+      final releases = parseReleases(html.parse(_moviePageHtml), ProviderKind.fourkhdhub);
       expect(releases.single.mirrors.single.headers['Referer'], fourKHdHubBase);
     });
 

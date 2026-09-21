@@ -82,9 +82,7 @@ class _FocusableItemState extends State<FocusableItem> {
       autofocus: widget.autofocus,
       onShowFocusHighlight: _handleFocusHighlight,
       onShowHoverHighlight: _handleHoverHighlight,
-      mouseCursor: widget.onActivate == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+      mouseCursor: widget.onActivate == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
@@ -117,13 +115,7 @@ class _FocusableItemState extends State<FocusableItem> {
                   width: 2,
                 ),
                 boxShadow: _active && widget.glow
-                    ? const [
-                        BoxShadow(
-                          color: Color(0x593BE8C4),
-                          blurRadius: 24,
-                          spreadRadius: 1,
-                        ),
-                      ]
+                    ? const [BoxShadow(color: Color(0x593BE8C4), blurRadius: 24, spreadRadius: 1)]
                     : const [],
               ),
               child: ClipRRect(borderRadius: radius, child: widget.child),

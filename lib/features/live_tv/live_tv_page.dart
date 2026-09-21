@@ -37,10 +37,7 @@ class PlaylistStore {
       if (!file.existsSync()) return const [];
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! List) return const [];
-      return decoded
-          .whereType<String>()
-          .where((e) => e.trim().isNotEmpty)
-          .toList();
+      return decoded.whereType<String>().where((e) => e.trim().isNotEmpty).toList();
     } on Object catch (_) {
       return const [];
     }
@@ -82,10 +79,9 @@ class PlaylistsNotifier extends AsyncNotifier<List<String>> {
   }
 }
 
-final playlistsProvider =
-    AsyncNotifierProvider<PlaylistsNotifier, List<String>>(
-      PlaylistsNotifier.new,
-    );
+final playlistsProvider = AsyncNotifierProvider<PlaylistsNotifier, List<String>>(
+  PlaylistsNotifier.new,
+);
 
 final channelsProvider = FutureProvider.autoDispose<List<Channel>>((ref) async {
   final sources = ref.watch(playlistsProvider).value ?? const <String>[];
@@ -124,9 +120,7 @@ final channelsProvider = FutureProvider.autoDispose<List<Channel>>((ref) async {
         if (seen.add(channel.url)) all.add(channel);
       }
     } on Object catch (error) {
-      log.warn(
-        'playlist failed: ${describeCause(error)} ${describePlaylist(all.length)}',
-      );
+      log.warn('playlist failed: ${describeCause(error)} ${describePlaylist(all.length)}');
       continue;
     }
   }
@@ -162,9 +156,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
           subtitle: channel.group,
         ),
       );
-      await navigator.push(
-        MaterialPageRoute<void>(builder: (context) => const PlayerPage()),
-      );
+      await navigator.push(MaterialPageRoute<void>(builder: (context) => const PlayerPage()));
       await controller.stop();
     } on Object catch (_) {
       messenger.showSnackBar(
@@ -194,9 +186,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: VesperColors.divider),
             ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: VesperColors.accent),
-            ),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: VesperColors.accent)),
           ),
           onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
         ),
@@ -207,10 +197,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: Text(
-              'Add',
-              style: VesperType.label.copyWith(color: VesperColors.accent),
-            ),
+            child: Text('Add', style: VesperType.label.copyWith(color: VesperColors.accent)),
           ),
         ],
       ),
@@ -247,10 +234,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
                   scaleOnFocus: false,
                   semanticLabel: 'Add playlist',
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: VesperColors.surface,
                       borderRadius: BorderRadius.circular(16),
@@ -258,11 +242,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          VesperIcons.add,
-                          size: 17,
-                          color: VesperColors.accent,
-                        ),
+                        Icon(VesperIcons.add, size: 17, color: VesperColors.accent),
                         SizedBox(width: 6),
                         Text('Playlist', style: VesperType.label),
                       ],
@@ -296,26 +276,16 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
           Expanded(
             child: channels.when(
               loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: VesperColors.accent,
-                  strokeWidth: 3,
-                ),
+                child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
               ),
-              error: (error, stack) =>
-                  const _TvMessage(message: 'That playlist would not load.'),
+              error: (error, stack) => const _TvMessage(message: 'That playlist would not load.'),
               data: (items) {
                 if (items.isEmpty) {
-                  return const _TvMessage(
-                    message: 'No channels found in that playlist.',
-                  );
+                  return const _TvMessage(message: 'No channels found in that playlist.');
                 }
 
                 final groups = groupsOf(items);
-                final visible = filterChannels(
-                  items,
-                  group: _group,
-                  query: _query,
-                );
+                final visible = filterChannels(items, group: _group, query: _query);
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -325,16 +295,11 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
                         height: 40,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: mode.gutter,
-                          ),
+                          padding: EdgeInsets.symmetric(horizontal: mode.gutter),
                           itemCount: groups.length + 1,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 8),
+                          separatorBuilder: (context, index) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
-                            final label = index == 0
-                                ? 'All'
-                                : groups[index - 1];
+                            final label = index == 0 ? 'All' : groups[index - 1];
                             final value = index == 0 ? null : groups[index - 1];
                             final selected = _group == value;
 
@@ -345,14 +310,9 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
                               semanticLabel: label,
                               child: AnimatedContainer(
                                 duration: VesperMotion.fast,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
-                                  vertical: 9,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
                                 decoration: BoxDecoration(
-                                  color: selected
-                                      ? VesperColors.accent
-                                      : VesperColors.surface,
+                                  color: selected ? VesperColors.accent : VesperColors.surface,
                                   borderRadius: BorderRadius.circular(17),
                                 ),
                                 child: Text(
@@ -400,11 +360,7 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
 }
 
 class _ChannelTile extends StatelessWidget {
-  const _ChannelTile({
-    required this.channel,
-    required this.onPlay,
-    this.autofocus = false,
-  });
+  const _ChannelTile({required this.channel, required this.onPlay, this.autofocus = false});
 
   final Channel channel;
   final VoidCallback onPlay;
@@ -424,11 +380,7 @@ class _ChannelTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
           child: Row(
             children: [
-              const Icon(
-                VesperIcons.liveTv,
-                size: 21,
-                color: VesperColors.accent,
-              ),
+              const Icon(VesperIcons.liveTv, size: 21, color: VesperColors.accent),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -453,11 +405,7 @@ class _ChannelTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                VesperIcons.play,
-                size: 22,
-                color: VesperColors.textTertiary,
-              ),
+              const Icon(VesperIcons.play, size: 22, color: VesperColors.textTertiary),
             ],
           ),
         ),
@@ -479,11 +427,7 @@ class _NoPlaylists extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              VesperIcons.liveTv,
-              size: 44,
-              color: VesperColors.textTertiary,
-            ),
+            const Icon(VesperIcons.liveTv, size: 44, color: VesperColors.textTertiary),
             const SizedBox(height: 14),
             const Text('No playlists yet', style: VesperType.sectionTitle),
             const SizedBox(height: 7),
@@ -500,10 +444,7 @@ class _NoPlaylists extends StatelessWidget {
               scaleOnFocus: false,
               semanticLabel: 'Add playlist',
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 decoration: BoxDecoration(
                   color: VesperColors.accent,
                   borderRadius: BorderRadius.circular(5),
@@ -531,11 +472,7 @@ class _TvMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              VesperIcons.warning,
-              size: 38,
-              color: VesperColors.textTertiary,
-            ),
+            const Icon(VesperIcons.warning, size: 38, color: VesperColors.textTertiary),
             const SizedBox(height: 12),
             Text(message, style: VesperType.body, textAlign: TextAlign.center),
           ],

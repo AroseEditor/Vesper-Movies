@@ -117,9 +117,7 @@ class VRibbonPainter extends CustomPainter {
             Offset(center.dx + travel + halfW * 0.5, center.dy),
             [
               VesperColors.accent.withValues(alpha: 0),
-              Colors.white.withValues(
-                alpha: 0.85 * (1 - (sweep - 0.5).abs() * 2).clamp(0.0, 1.0),
-              ),
+              Colors.white.withValues(alpha: 0.85 * (1 - (sweep - 0.5).abs() * 2).clamp(0.0, 1.0)),
               VesperColors.accent.withValues(alpha: 0),
             ],
             const [0.0, 0.5, 1.0],

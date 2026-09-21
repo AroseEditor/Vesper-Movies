@@ -75,8 +75,7 @@ class TrackPanel extends ConsumerWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: sheetWidth,
-          maxHeight:
-              MediaQuery.sizeOf(context).height * (mode.isTouch ? 0.72 : 1.0),
+          maxHeight: MediaQuery.sizeOf(context).height * (mode.isTouch ? 0.72 : 1.0),
         ),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -116,9 +115,7 @@ class _PanelHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 16, 10, 8),
       child: Row(
         children: [
-          const Expanded(
-            child: Text('Playback', style: VesperType.sectionTitle),
-          ),
+          const Expanded(child: Text('Playback', style: VesperType.sectionTitle)),
           FocusableItem(
             onActivate: onClose,
             borderRadius: 18,
@@ -126,11 +123,7 @@ class _PanelHeader extends StatelessWidget {
             semanticLabel: 'Close',
             child: const Padding(
               padding: EdgeInsets.all(8),
-              child: Icon(
-                VesperIcons.close,
-                size: 22,
-                color: VesperColors.textSecondary,
-              ),
+              child: Icon(VesperIcons.close, size: 22, color: VesperColors.textSecondary),
             ),
           ),
         ],
@@ -176,17 +169,13 @@ class _PanelTabs extends StatelessWidget {
                   Icon(
                     icon,
                     size: 17,
-                    color: selected
-                        ? VesperColors.canvas
-                        : VesperColors.textSecondary,
+                    color: selected ? VesperColors.canvas : VesperColors.textSecondary,
                   ),
                   const SizedBox(width: 7),
                   Text(
                     label,
                     style: VesperType.label.copyWith(
-                      color: selected
-                          ? VesperColors.canvas
-                          : VesperColors.textSecondary,
+                      color: selected ? VesperColors.canvas : VesperColors.textSecondary,
                     ),
                   ),
                 ],
@@ -234,21 +223,14 @@ class _PanelBody extends ConsumerWidget {
         ],
         emptyMessage: 'Quality is chosen automatically for this stream.',
       ),
-      PlayerPanel.speed => _SpeedList(
-        controller: controller,
-        current: player.state.rate,
-      ),
+      PlayerPanel.speed => _SpeedList(controller: controller, current: player.state.rate),
       PlayerPanel.none => const SizedBox.shrink(),
     };
   }
 }
 
 class _TrackEntry {
-  const _TrackEntry({
-    required this.label,
-    required this.selected,
-    required this.onSelect,
-  });
+  const _TrackEntry({required this.label, required this.selected, required this.onSelect});
 
   final String label;
   final bool selected;
@@ -289,20 +271,14 @@ class _TrackList extends StatelessWidget {
                   child: Text(
                     item.label,
                     style: VesperType.bodyStrong.copyWith(
-                      color: item.selected
-                          ? VesperColors.accent
-                          : VesperColors.textPrimary,
+                      color: item.selected ? VesperColors.accent : VesperColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (item.selected)
-                  const Icon(
-                    VesperIcons.check,
-                    size: 19,
-                    color: VesperColors.accent,
-                  ),
+                  const Icon(VesperIcons.check, size: 19, color: VesperColors.accent),
               ],
             ),
           ),
@@ -391,20 +367,14 @@ class _SubtitleSection extends ConsumerWidget {
                     child: Text(
                       describeSubtitleTrack(track),
                       style: VesperType.bodyStrong.copyWith(
-                        color: track == selected
-                            ? VesperColors.accent
-                            : VesperColors.textPrimary,
+                        color: track == selected ? VesperColors.accent : VesperColors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (track == selected)
-                    const Icon(
-                      VesperIcons.check,
-                      size: 19,
-                      color: VesperColors.accent,
-                    ),
+                    const Icon(VesperIcons.check, size: 19, color: VesperColors.accent),
                 ],
               ),
             ),
@@ -438,12 +408,9 @@ class _SubtitleSection extends ConsumerWidget {
         _OptionRow(
           label: 'Position',
           value: '${style.position}',
-          onPrevious: () => controller.applySubtitleStyle(
-            style.copyWith(position: style.position - 5),
-          ),
-          onNext: () => controller.applySubtitleStyle(
-            style.copyWith(position: style.position + 5),
-          ),
+          onPrevious: () =>
+              controller.applySubtitleStyle(style.copyWith(position: style.position - 5)),
+          onNext: () => controller.applySubtitleStyle(style.copyWith(position: style.position + 5)),
         ),
         _OptionRow(
           label: 'Delay',
@@ -455,37 +422,21 @@ class _SubtitleSection extends ConsumerWidget {
     );
   }
 
-  void _cycleSize(
-    PlayerControllerNotifier controller,
-    SubtitleStyle style,
-    int delta,
-  ) {
+  void _cycleSize(PlayerControllerNotifier controller, SubtitleStyle style, int delta) {
     const values = SubtitleSize.values;
-    final next =
-        (values.indexOf(style.size) + delta + values.length) % values.length;
+    final next = (values.indexOf(style.size) + delta + values.length) % values.length;
     controller.applySubtitleStyle(style.copyWith(size: values[next]));
   }
 
-  void _cycleColour(
-    PlayerControllerNotifier controller,
-    SubtitleStyle style,
-    int delta,
-  ) {
+  void _cycleColour(PlayerControllerNotifier controller, SubtitleStyle style, int delta) {
     const values = SubtitleColour.values;
-    final next =
-        (values.indexOf(style.colour) + delta + values.length) % values.length;
+    final next = (values.indexOf(style.colour) + delta + values.length) % values.length;
     controller.applySubtitleStyle(style.copyWith(colour: values[next]));
   }
 
-  void _cycleBackground(
-    PlayerControllerNotifier controller,
-    SubtitleStyle style,
-    int delta,
-  ) {
+  void _cycleBackground(PlayerControllerNotifier controller, SubtitleStyle style, int delta) {
     const values = SubtitleBackground.values;
-    final next =
-        (values.indexOf(style.background) + delta + values.length) %
-        values.length;
+    final next = (values.indexOf(style.background) + delta + values.length) % values.length;
     controller.applySubtitleStyle(style.copyWith(background: values[next]));
   }
 }
@@ -510,11 +461,7 @@ class _OptionRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(label, style: VesperType.body)),
-          _Stepper(
-            icon: VesperIcons.chevronLeft,
-            onTap: onPrevious,
-            label: 'Decrease $label',
-          ),
+          _Stepper(icon: VesperIcons.chevronLeft, onTap: onPrevious, label: 'Decrease $label'),
           SizedBox(
             width: 92,
             child: Text(
@@ -525,11 +472,7 @@ class _OptionRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          _Stepper(
-            icon: VesperIcons.chevronRight,
-            onTap: onNext,
-            label: 'Increase $label',
-          ),
+          _Stepper(icon: VesperIcons.chevronRight, onTap: onNext, label: 'Increase $label'),
         ],
       ),
     );
@@ -537,11 +480,7 @@ class _OptionRow extends StatelessWidget {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper({
-    required this.icon,
-    required this.onTap,
-    required this.label,
-  });
+  const _Stepper({required this.icon, required this.onTap, required this.label});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -557,10 +496,7 @@ class _Stepper extends StatelessWidget {
       child: Container(
         width: 30,
         height: 30,
-        decoration: const BoxDecoration(
-          color: VesperColors.surface,
-          shape: BoxShape.circle,
-        ),
+        decoration: const BoxDecoration(color: VesperColors.surface, shape: BoxShape.circle),
         child: Icon(icon, size: 18, color: VesperColors.textSecondary),
       ),
     );
@@ -568,11 +504,7 @@ class _Stepper extends StatelessWidget {
 }
 
 class _SubtitleRow extends StatelessWidget {
-  const _SubtitleRow({
-    required this.label,
-    required this.selected,
-    required this.onSelect,
-  });
+  const _SubtitleRow({required this.label, required this.selected, required this.onSelect});
 
   final String label;
   final bool selected;
@@ -593,20 +525,13 @@ class _SubtitleRow extends StatelessWidget {
               child: Text(
                 label,
                 style: VesperType.bodyStrong.copyWith(
-                  color: selected
-                      ? VesperColors.accent
-                      : VesperColors.textPrimary,
+                  color: selected ? VesperColors.accent : VesperColors.textPrimary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (selected)
-              const Icon(
-                VesperIcons.check,
-                size: 19,
-                color: VesperColors.accent,
-              ),
+            if (selected) const Icon(VesperIcons.check, size: 19, color: VesperColors.accent),
           ],
         ),
       ),

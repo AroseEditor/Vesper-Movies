@@ -31,9 +31,7 @@ Widget _host(Widget child, {InputMode mode = InputMode.touch}) {
 }
 
 void main() {
-  testWidgets('bottom dock renders every destination and reports taps', (
-    tester,
-  ) async {
+  testWidgets('bottom dock renders every destination and reports taps', (tester) async {
     var selected = -1;
 
     await tester.pumpWidget(
@@ -50,9 +48,7 @@ void main() {
     expect(selected, AppDestination.values.indexOf(AppDestination.search));
   });
 
-  testWidgets('side rail starts collapsed and hides its labels', (
-    tester,
-  ) async {
+  testWidgets('side rail starts collapsed and hides its labels', (tester) async {
     await tester.pumpWidget(
       _host(
         SideRail(currentIndex: 0, onSelect: (_) {}, mode: InputMode.tv),
@@ -62,12 +58,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final rail = tester.widget<AnimatedContainer>(
-      find
-          .descendant(
-            of: find.byType(SideRail),
-            matching: find.byType(AnimatedContainer),
-          )
-          .first,
+      find.descendant(of: find.byType(SideRail), matching: find.byType(AnimatedContainer)).first,
     );
     expect(rail.constraints?.maxWidth, 84.0);
 
@@ -86,9 +77,7 @@ void main() {
     final items = [_item('One'), _item('Two'), _item('Three')];
 
     await tester.pumpWidget(
-      _host(
-        MediaRow(title: 'Trending Now', items: items, mode: InputMode.touch),
-      ),
+      _host(MediaRow(title: 'Trending Now', items: items, mode: InputMode.touch)),
     );
     await tester.pump();
 
@@ -96,39 +85,24 @@ void main() {
     expect(find.byType(PosterCard), findsNWidgets(3));
   });
 
-  testWidgets('media row shows skeletons while loading and no cards', (
-    tester,
-  ) async {
+  testWidgets('media row shows skeletons while loading and no cards', (tester) async {
     await tester.pumpWidget(
-      _host(
-        const MediaRow(
-          title: 'Trending Now',
-          items: [],
-          mode: InputMode.touch,
-          loading: true,
-        ),
-      ),
+      _host(const MediaRow(title: 'Trending Now', items: [], mode: InputMode.touch, loading: true)),
     );
     await tester.pump();
 
     expect(find.byType(PosterCard), findsNothing);
   });
 
-  testWidgets('poster falls back to a branded tile when art is missing', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(PosterCard(item: _item('Harbour Lights'), width: 120)),
-    );
+  testWidgets('poster falls back to a branded tile when art is missing', (tester) async {
+    await tester.pumpWidget(_host(PosterCard(item: _item('Harbour Lights'), width: 120)));
     await tester.pump();
 
     expect(find.byType(PosterFallback), findsOneWidget);
     expect(find.text('Harbour Lights'), findsOneWidget);
   });
 
-  testWidgets('poster shows the title and meta below the image', (
-    tester,
-  ) async {
+  testWidgets('poster shows the title and meta below the image', (tester) async {
     const item = CatalogItem(
       id: MediaId(ProviderKind.moviebox, 'tt1'),
       title: 'Harbour Lights',
@@ -148,18 +122,14 @@ void main() {
     expect(label.top, greaterThan(art.bottom - 1));
   });
 
-  testWidgets('poster hides the title when the label is turned off', (
-    tester,
-  ) async {
+  testWidgets('poster hides the title when the label is turned off', (tester) async {
     const item = CatalogItem(
       id: MediaId(ProviderKind.moviebox, 'tt2'),
       title: 'Quiet Frequency',
       mediaType: MediaType.series,
     );
 
-    await tester.pumpWidget(
-      _host(const PosterCard(item: item, width: 140, showLabel: false)),
-    );
+    await tester.pumpWidget(_host(const PosterCard(item: item, width: 140, showLabel: false)));
     await tester.pump();
 
     expect(find.text('Quiet Frequency'), findsOneWidget);

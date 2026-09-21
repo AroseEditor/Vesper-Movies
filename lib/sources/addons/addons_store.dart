@@ -39,10 +39,7 @@ class AddonsStore {
   Future<void> save(List<InstalledAddon> addons) async {
     try {
       final file = await _file();
-      await file.writeAsString(
-        jsonEncode(addons.map((e) => e.toJson()).toList()),
-        flush: true,
-      );
+      await file.writeAsString(jsonEncode(addons.map((e) => e.toJson()).toList()), flush: true);
     } on Object catch (_) {
       return;
     }
@@ -78,9 +75,7 @@ class AddonsNotifier extends AsyncNotifier<List<InstalledAddon>> {
 
   Future<void> remove(InstalledAddon addon) async {
     final current = state.value ?? const <InstalledAddon>[];
-    final next = current
-        .where((e) => e.manifestUrl != addon.manifestUrl)
-        .toList();
+    final next = current.where((e) => e.manifestUrl != addon.manifestUrl).toList();
     state = AsyncValue.data(next);
     await const AddonsStore().save(next);
   }
@@ -99,10 +94,9 @@ class AddonsNotifier extends AsyncNotifier<List<InstalledAddon>> {
   }
 }
 
-final addonsProvider =
-    AsyncNotifierProvider<AddonsNotifier, List<InstalledAddon>>(
-      AddonsNotifier.new,
-    );
+final addonsProvider = AsyncNotifierProvider<AddonsNotifier, List<InstalledAddon>>(
+  AddonsNotifier.new,
+);
 
 final enabledAddonsProvider = Provider<List<InstalledAddon>>((ref) {
   final addons = ref.watch(addonsProvider).value ?? const <InstalledAddon>[];

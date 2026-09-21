@@ -51,11 +51,7 @@ class _MediaRowState extends State<MediaRow> {
       0.0,
       _controller.position.maxScrollExtent,
     );
-    _controller.animateTo(
-      target,
-      duration: VesperMotion.normal,
-      curve: VesperMotion.enter,
-    );
+    _controller.animateTo(target, duration: VesperMotion.normal, curve: VesperMotion.enter);
   }
 
   @override
@@ -81,15 +77,9 @@ class _MediaRowState extends State<MediaRow> {
                   ),
                 ),
                 if (widget.mode.usesPointer && widget.items.isNotEmpty) ...[
-                  RowArrow(
-                    icon: VesperIcons.chevronLeft,
-                    onTap: () => _nudge(-1),
-                  ),
+                  RowArrow(icon: VesperIcons.chevronLeft, onTap: () => _nudge(-1)),
                   const SizedBox(width: 4),
-                  RowArrow(
-                    icon: VesperIcons.chevronRight,
-                    onTap: () => _nudge(1),
-                  ),
+                  RowArrow(icon: VesperIcons.chevronRight, onTap: () => _nudge(1)),
                 ],
               ],
             ),
@@ -101,9 +91,7 @@ class _MediaRowState extends State<MediaRow> {
               node: _scope,
               child: FocusTraversalGroup(
                 policy: WidgetOrderTraversalPolicy(),
-                child: widget.loading
-                    ? _buildSkeleton(posterWidth)
-                    : _buildItems(posterWidth),
+                child: widget.loading ? _buildSkeleton(posterWidth) : _buildItems(posterWidth),
               ),
             ),
           ),
@@ -171,10 +159,7 @@ class RowArrow extends StatelessWidget {
       child: Container(
         width: 30,
         height: 30,
-        decoration: const BoxDecoration(
-          color: VesperColors.surface,
-          shape: BoxShape.circle,
-        ),
+        decoration: const BoxDecoration(color: VesperColors.surface, shape: BoxShape.circle),
         child: Icon(icon, size: 19, color: VesperColors.textSecondary),
       ),
     );

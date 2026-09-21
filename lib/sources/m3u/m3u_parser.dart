@@ -1,11 +1,5 @@
 class Channel {
-  const Channel({
-    required this.name,
-    required this.url,
-    this.id = '',
-    this.logoUrl,
-    this.group,
-  });
+  const Channel({required this.name, required this.url, this.id = '', this.logoUrl, this.group});
 
   final String name;
   final String url;
@@ -126,11 +120,7 @@ List<String> groupsOf(List<Channel> channels) {
   return sorted;
 }
 
-List<Channel> filterChannels(
-  List<Channel> channels, {
-  String? group,
-  String query = '',
-}) {
+List<Channel> filterChannels(List<Channel> channels, {String? group, String query = ''}) {
   final needle = query.trim().toLowerCase();
 
   return channels.where((channel) {

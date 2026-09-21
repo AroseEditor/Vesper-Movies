@@ -66,10 +66,7 @@ class _PosterCardState extends State<PosterCard> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  PosterArt(
-                    item: widget.item,
-                    compactFallback: widget.showLabel,
-                  ),
+                  PosterArt(item: widget.item, compactFallback: widget.showLabel),
                   if (widget.progress != null && widget.progress! > 0)
                     Positioned(
                       left: 0,
@@ -93,9 +90,7 @@ class _PosterCardState extends State<PosterCard> {
                     duration: VesperMotion.fast,
                     style: VesperType.cardTitle.copyWith(
                       fontSize: 13.5,
-                      color: _focused
-                          ? VesperColors.accent
-                          : VesperColors.textHover,
+                      color: _focused ? VesperColors.accent : VesperColors.textHover,
                     ),
                     child: Text(
                       widget.item.title,
@@ -144,9 +139,7 @@ class PosterArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final raw = useBackdrop
-        ? (item.backdropUrl ?? item.posterUrl)
-        : item.posterUrl;
+    final raw = useBackdrop ? (item.backdropUrl ?? item.posterUrl) : item.posterUrl;
     if (raw == null || raw.isEmpty) {
       return PosterFallback(item: item, compact: compactFallback);
     }
@@ -155,10 +148,8 @@ class PosterArt extends StatelessWidget {
       imageUrl: upgradePosterUrl(raw),
       fit: BoxFit.cover,
       fadeInDuration: const Duration(milliseconds: 220),
-      placeholder: (context, _) =>
-          const ColoredBox(color: VesperColors.surface),
-      errorWidget: (context, _, error) =>
-          PosterFallback(item: item, compact: compactFallback),
+      placeholder: (context, _) => const ColoredBox(color: VesperColors.surface),
+      errorWidget: (context, _, error) => PosterFallback(item: item, compact: compactFallback),
     );
   }
 }

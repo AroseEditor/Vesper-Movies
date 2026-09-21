@@ -12,9 +12,7 @@ void main() {
     addTearDown(container.dispose);
 
     final started = DateTime.now();
-    final feed = await container
-        .read(homeFeedProvider.future)
-        .timeout(const Duration(seconds: 60));
+    final feed = await container.read(homeFeedProvider.future).timeout(const Duration(seconds: 60));
     final ms = DateTime.now().difference(started).inMilliseconds;
 
     debugPrint('PROBE feed in ${ms}ms, shelves=${feed.shelves.length}');

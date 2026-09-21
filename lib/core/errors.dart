@@ -16,12 +16,9 @@ sealed class SourceError implements Exception {
             ? 'Rate limited. Try again later.'
             : 'Rate limited. Wait ${retryAfterSeconds}s.',
       NotFound() => 'No results found.',
-      ParseError(:final where) =>
-        '${kind.label} returned unexpected data ($where).',
+      ParseError(:final where) => '${kind.label} returned unexpected data ($where).',
       Unavailable(:final status) =>
-        status == null
-            ? '${kind.label} is unavailable.'
-            : '${kind.label} error ($status).',
+        status == null ? '${kind.label} is unavailable.' : '${kind.label} error ($status).',
       Cancelled() => '',
     };
   }

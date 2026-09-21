@@ -43,25 +43,16 @@ void main() {
     });
 
     test('undoes the cloudfront base64 alphabet', () {
-      expect(
-        decodeCloudFrontPolicy(_policy),
-        contains('sacdn.hakunaymatata.com'),
-      );
+      expect(decodeCloudFrontPolicy(_policy), contains('sacdn.hakunaymatata.com'));
     });
 
     test('returns nothing when there is no policy', () {
-      expect(
-        resolveDashManifestFromPolicy('CloudFront-Key-Pair-Id=APKAEXAMPLE'),
-        isNull,
-      );
+      expect(resolveDashManifestFromPolicy('CloudFront-Key-Pair-Id=APKAEXAMPLE'), isNull);
       expect(resolveDashManifestFromPolicy(''), isNull);
     });
 
     test('rejects a resource that is not an http url', () {
-      expect(
-        resolveDashManifestFromPolicy('CloudFront-Policy=bm90anNvbg'),
-        isNull,
-      );
+      expect(resolveDashManifestFromPolicy('CloudFront-Policy=bm90anNvbg'), isNull);
     });
   });
 
@@ -87,26 +78,21 @@ void main() {
       expect(
         resolveStreamUrl(
           signCookie: edgeCookie,
-          fallbackUrl: 'https://macdn.aoneroom.com/other/2026/09/04/b164fbfb4347792950bdfbfb563d39d9.mp4',
+          fallbackUrl:
+              'https://macdn.aoneroom.com/other/2026/09/04/b164fbfb4347792950bdfbfb563d39d9.mp4',
         ),
         startsWith('https://sbcdn3.hakunaymatata.com/dash/'),
       );
     });
 
     test('survive a malformed prefix', () {
-      expect(
-        resolveEdgeCacheManifest('Edge-Cache-Cookie=urlprefix=!!!:sign=x'),
-        isNull,
-      );
+      expect(resolveEdgeCacheManifest('Edge-Cache-Cookie=urlprefix=!!!:sign=x'), isNull);
       expect(resolveEdgeCacheManifest('Edge-Cache-Cookie=sign=x:t=1'), isNull);
       expect(resolveEdgeCacheManifest('Other-Cookie=urlprefix=abc'), isNull);
     });
 
     test('are passed through to the player as a single header value', () {
-      expect(
-        normalizeSignCookie(edgeCookie),
-        startsWith('Edge-Cache-Cookie=urlprefix='),
-      );
+      expect(normalizeSignCookie(edgeCookie), startsWith('Edge-Cache-Cookie=urlprefix='));
       expect(normalizeSignCookie(edgeCookie), contains(':sign='));
     });
   });
@@ -114,43 +100,26 @@ void main() {
   group('deprecation notices', () {
     test('rejects the known notice files', () {
       expect(
-        isDeprecationNoticeUrl(
-          'https://cdn.example.com/1c7de0bd3393702d9191801f15f88f8d.mp4',
-        ),
+        isDeprecationNoticeUrl('https://cdn.example.com/1c7de0bd3393702d9191801f15f88f8d.mp4'),
         isTrue,
       );
       expect(
-        isDeprecationNoticeUrl(
-          'https://cdn.example.com/9a0461bc39da389663bf3dbb17091d3f.mp4',
-        ),
+        isDeprecationNoticeUrl('https://cdn.example.com/9a0461bc39da389663bf3dbb17091d3f.mp4'),
         isTrue,
       );
       expect(
-        isDeprecationNoticeUrl(
-          'https://cdn.example.com/b164fbfb4347792950bdfbfb563d39d9.mp4',
-        ),
+        isDeprecationNoticeUrl('https://cdn.example.com/b164fbfb4347792950bdfbfb563d39d9.mp4'),
         isTrue,
       );
     });
 
     test('rejects notice paths and the other bucket', () {
-      expect(
-        isDeprecationNoticeUrl('https://cdn.example.com/notice.mp4'),
-        isTrue,
-      );
-      expect(
-        isDeprecationNoticeUrl('https://macdn.aoneroom.com/other/clip.mp4'),
-        isTrue,
-      );
+      expect(isDeprecationNoticeUrl('https://cdn.example.com/notice.mp4'), isTrue);
+      expect(isDeprecationNoticeUrl('https://macdn.aoneroom.com/other/clip.mp4'), isTrue);
     });
 
     test('keeps a genuine stream url', () {
-      expect(
-        isDeprecationNoticeUrl(
-          'https://sacdn.hakunaymatata.com/r/abc/index.mpd',
-        ),
-        isFalse,
-      );
+      expect(isDeprecationNoticeUrl('https://sacdn.hakunaymatata.com/r/abc/index.mpd'), isFalse);
     });
   });
 
@@ -167,20 +136,14 @@ void main() {
 
     test('falls back to the advertised url when it is genuine', () {
       expect(
-        resolveStreamUrl(
-          signCookie: null,
-          fallbackUrl: 'https://cdn.example.com/movie.mp4',
-        ),
+        resolveStreamUrl(signCookie: null, fallbackUrl: 'https://cdn.example.com/movie.mp4'),
         'https://cdn.example.com/movie.mp4',
       );
     });
 
     test('yields nothing when the only candidate is a notice', () {
       expect(
-        resolveStreamUrl(
-          signCookie: '',
-          fallbackUrl: 'https://cdn.example.com/notice.mp4',
-        ),
+        resolveStreamUrl(signCookie: '', fallbackUrl: 'https://cdn.example.com/notice.mp4'),
         isNull,
       );
     });
@@ -211,13 +174,7 @@ void main() {
         '/wefeed-mobile-bff/subject-api/resource?subjectId=67890&se=2&ep=5&page=1&perPage=20',
       );
       expect(
-        MovieBoxEndpoints.resource(
-          '67890',
-          season: 1,
-          episode: 10,
-          page: 2,
-          resolution: 1080,
-        ),
+        MovieBoxEndpoints.resource('67890', season: 1, episode: 10, page: 2, resolution: 1080),
         '/wefeed-mobile-bff/subject-api/resource?subjectId=67890&se=1&ep=10&page=2&perPage=20'
         '&resolution=1080',
       );

@@ -9,8 +9,7 @@ class MediaId {
   final String value;
 
   @override
-  bool operator ==(Object other) =>
-      other is MediaId && other.kind == kind && other.value == value;
+  bool operator ==(Object other) => other is MediaId && other.kind == kind && other.value == value;
 
   @override
   int get hashCode => Object.hash(kind, value);
@@ -44,12 +43,7 @@ class CatalogItem {
 
   bool get isSeries => mediaType == MediaType.series;
 
-  CatalogItem copyWith({
-    String? posterUrl,
-    String? backdropUrl,
-    String? logoUrl,
-    double? rating,
-  }) {
+  CatalogItem copyWith({String? posterUrl, String? backdropUrl, String? logoUrl, double? rating}) {
     return CatalogItem(
       id: id,
       title: title,
@@ -92,11 +86,7 @@ class Season {
 }
 
 class AudioTrackOption {
-  const AudioTrackOption({
-    required this.mediaId,
-    required this.language,
-    required this.label,
-  });
+  const AudioTrackOption({required this.mediaId, required this.language, required this.label});
 
   final String mediaId;
   final String language;
@@ -202,20 +192,13 @@ CatalogItem? catalogFromJson(Object? source) {
   if (id is! String || id.isEmpty || title is! String) return null;
 
   return CatalogItem(
-    id: MediaId(
-      ProviderKind.byId('${source['kind']}') ?? ProviderKind.addons,
-      id,
-    ),
+    id: MediaId(ProviderKind.byId('${source['kind']}') ?? ProviderKind.addons, id),
     title: title,
-    mediaType: source['mediaType'] == 'series'
-        ? MediaType.series
-        : MediaType.movie,
+    mediaType: source['mediaType'] == 'series' ? MediaType.series : MediaType.movie,
     year: source['year'] as String?,
     posterUrl: source['posterUrl'] as String?,
     backdropUrl: source['backdropUrl'] as String?,
     logoUrl: source['logoUrl'] as String?,
-    rating: source['rating'] is num
-        ? (source['rating'] as num).toDouble()
-        : null,
+    rating: source['rating'] is num ? (source['rating'] as num).toDouble() : null,
   );
 }

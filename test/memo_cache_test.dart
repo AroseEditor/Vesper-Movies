@@ -5,9 +5,7 @@ void main() {
   test('resolve completes and does not wait on itself', () async {
     final cache = MemoCache<String, int>();
 
-    final value = await cache
-        .resolve('k', () async => 7)
-        .timeout(const Duration(seconds: 5));
+    final value = await cache.resolve('k', () async => 7).timeout(const Duration(seconds: 5));
 
     expect(value, 7);
   });
@@ -52,14 +50,9 @@ void main() {
   test('a failed load is not cached and does not wedge the key', () async {
     final cache = MemoCache<String, int>();
 
-    await expectLater(
-      cache.resolve('k', () async => throw StateError('boom')),
-      throwsStateError,
-    );
+    await expectLater(cache.resolve('k', () async => throw StateError('boom')), throwsStateError);
 
-    final value = await cache
-        .resolve('k', () async => 3)
-        .timeout(const Duration(seconds: 5));
+    final value = await cache.resolve('k', () async => 3).timeout(const Duration(seconds: 5));
 
     expect(value, 3);
   });

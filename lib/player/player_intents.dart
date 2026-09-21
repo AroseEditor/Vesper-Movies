@@ -67,63 +67,37 @@ final Map<ShortcutActivator, Intent> playerShortcuts = {
   const SingleActivator(LogicalKeyboardKey.keyK): const TogglePlayIntent(),
   const SingleActivator(LogicalKeyboardKey.enter): const TogglePlayIntent(),
   const SingleActivator(LogicalKeyboardKey.select): const TogglePlayIntent(),
-  const SingleActivator(LogicalKeyboardKey.mediaPlayPause):
-      const TogglePlayIntent(),
+  const SingleActivator(LogicalKeyboardKey.mediaPlayPause): const TogglePlayIntent(),
   const SingleActivator(LogicalKeyboardKey.mediaPlay): const TogglePlayIntent(),
-  const SingleActivator(LogicalKeyboardKey.mediaPause):
-      const TogglePlayIntent(),
+  const SingleActivator(LogicalKeyboardKey.mediaPause): const TogglePlayIntent(),
 
-  const SingleActivator(LogicalKeyboardKey.arrowLeft): const SeekIntent(
-    shortRewind,
-  ),
+  const SingleActivator(LogicalKeyboardKey.arrowLeft): const SeekIntent(shortRewind),
   const SingleActivator(LogicalKeyboardKey.keyJ): const SeekIntent(shortRewind),
-  const SingleActivator(LogicalKeyboardKey.mediaRewind): const SeekIntent(
-    shortRewind,
-  ),
-  const SingleActivator(LogicalKeyboardKey.arrowRight): const SeekIntent(
-    shortSeek,
-  ),
+  const SingleActivator(LogicalKeyboardKey.mediaRewind): const SeekIntent(shortRewind),
+  const SingleActivator(LogicalKeyboardKey.arrowRight): const SeekIntent(shortSeek),
   const SingleActivator(LogicalKeyboardKey.keyL): const SeekIntent(shortSeek),
-  const SingleActivator(LogicalKeyboardKey.mediaFastForward): const SeekIntent(
-    shortSeek,
-  ),
+  const SingleActivator(LogicalKeyboardKey.mediaFastForward): const SeekIntent(shortSeek),
 
-  const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true):
-      const SeekIntent(longRewind),
-  const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true):
-      const SeekIntent(longSeek),
+  const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true): const SeekIntent(longRewind),
+  const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true): const SeekIntent(longSeek),
 
   const SingleActivator(LogicalKeyboardKey.arrowUp): const VolumeIntent(5),
   const SingleActivator(LogicalKeyboardKey.arrowDown): const VolumeIntent(-5),
   const SingleActivator(LogicalKeyboardKey.keyM): const ToggleMuteIntent(),
 
-  const SingleActivator(LogicalKeyboardKey.bracketLeft): const SpeedIntent(
-    -0.25,
-  ),
-  const SingleActivator(LogicalKeyboardKey.bracketRight): const SpeedIntent(
-    0.25,
-  ),
+  const SingleActivator(LogicalKeyboardKey.bracketLeft): const SpeedIntent(-0.25),
+  const SingleActivator(LogicalKeyboardKey.bracketRight): const SpeedIntent(0.25),
 
-  const SingleActivator(LogicalKeyboardKey.keyZ): const SubtitleDelayIntent(
-    -100,
-  ),
-  const SingleActivator(LogicalKeyboardKey.keyX): const SubtitleDelayIntent(
-    100,
-  ),
+  const SingleActivator(LogicalKeyboardKey.keyZ): const SubtitleDelayIntent(-100),
+  const SingleActivator(LogicalKeyboardKey.keyX): const SubtitleDelayIntent(100),
 
-  const SingleActivator(LogicalKeyboardKey.keyT): const OpenPanelIntent(
-    PlayerPanel.subtitles,
-  ),
-  const SingleActivator(LogicalKeyboardKey.keyA): const OpenPanelIntent(
-    PlayerPanel.audio,
-  ),
+  const SingleActivator(LogicalKeyboardKey.keyT): const OpenPanelIntent(PlayerPanel.subtitles),
+  const SingleActivator(LogicalKeyboardKey.keyA): const OpenPanelIntent(PlayerPanel.audio),
 
-  const SingleActivator(LogicalKeyboardKey.keyF):
-      const ToggleFullscreenIntent(),
+  const SingleActivator(LogicalKeyboardKey.keyF): const ToggleFullscreenIntent(),
 
   const SingleActivator(LogicalKeyboardKey.keyN): const NextEpisodeIntent(),
-  const SingleActivator(LogicalKeyboardKey.mediaTrackNext):
-      const NextEpisodeIntent(),
+  const SingleActivator(LogicalKeyboardKey.mediaTrackNext): const NextEpisodeIntent(),
 
   const SingleActivator(LogicalKeyboardKey.escape): const ExitPlayerIntent(),
   const SingleActivator(LogicalKeyboardKey.backspace): const ExitPlayerIntent(),

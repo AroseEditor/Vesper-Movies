@@ -62,13 +62,7 @@ String extractYear(String? raw) {
 }
 
 String? readPoster(Object? source) {
-  final direct = readString(source, const [
-    'coverUrl',
-    'poster',
-    'pic',
-    'image',
-    'cover',
-  ]);
+  final direct = readString(source, const ['coverUrl', 'poster', 'pic', 'image', 'cover']);
   if (direct != null && direct.startsWith('http')) return direct;
 
   if (source is Map) {
@@ -86,9 +80,7 @@ MediaType readMediaType(Object? source) {
   final text = readString(source, const ['type', 'subjectTypeName']);
   if (text != null) {
     final lower = text.toLowerCase();
-    if (lower.contains('series') ||
-        lower.contains('tv') ||
-        lower.contains('show')) {
+    if (lower.contains('series') || lower.contains('tv') || lower.contains('show')) {
       return MediaType.series;
     }
   }
@@ -118,12 +110,7 @@ CatalogItem? subjectToCatalogItem(Object? source) {
   if (id == null || title == null) return null;
 
   final year = extractYear(
-    readString(source, const [
-      'releaseDate',
-      'year',
-      'releaseInfo',
-      'releaseTime',
-    ]),
+    readString(source, const ['releaseDate', 'year', 'releaseInfo', 'releaseTime']),
   );
 
   return CatalogItem(
@@ -133,12 +120,7 @@ CatalogItem? subjectToCatalogItem(Object? source) {
     year: year.isEmpty ? null : year,
     posterUrl: readPoster(source),
     seasonCount: readInt(source, const ['seasonCount', 'seasons', 'maxSeason']),
-    rating: readDouble(source, const [
-      'imdbRatingValue',
-      'imdbRate',
-      'imdbRating',
-      'rating',
-    ]),
+    rating: readDouble(source, const ['imdbRatingValue', 'imdbRate', 'imdbRating', 'rating']),
   );
 }
 
@@ -204,8 +186,7 @@ List<Season> seasonsFromDetails(Object? source) {
   final seasons = <Season>[];
   for (final entry in entries) {
     if (entry is! Map) continue;
-    final number =
-        readInt(entry, const ['se', 'season', 'seasonNumber', 'number']) ?? 0;
+    final number = readInt(entry, const ['se', 'season', 'seasonNumber', 'number']) ?? 0;
     if (number <= 0) continue;
 
     final numbers = readList(entry, const ['episodeNumbers', 'episodes']);
@@ -222,17 +203,14 @@ List<Season> seasonsFromDetails(Object? source) {
             season: number,
             number: episodeNumber,
             title: raw is Map ? readString(raw, const ['title', 'name']) : null,
-            overview: raw is Map
-                ? readString(raw, const ['description', 'overview'])
-                : null,
+            overview: raw is Map ? readString(raw, const ['description', 'overview']) : null,
           ),
         );
       }
     }
 
     if (episodes.isEmpty) {
-      final maxEp =
-          readInt(entry, const ['maxEp', 'episodeCount', 'total']) ?? 0;
+      final maxEp = readInt(entry, const ['maxEp', 'episodeCount', 'total']) ?? 0;
       for (var i = 1; i <= maxEp; i++) {
         episodes.add(Episode(season: number, number: i));
       }
@@ -256,27 +234,18 @@ List<AudioTrackOption> dubsFromDetails(Object? source) {
     final id = readString(entry, const ['subjectId', 'id']);
     if (id == null || !seen.add(id)) continue;
 
-    final language =
-        readString(entry, const ['lanName', 'language', 'lan', 'name']) ??
-        'Unknown';
-    dubs.add(
-      AudioTrackOption(mediaId: id, language: language, label: language),
-    );
+    final language = readString(entry, const ['lanName', 'language', 'lan', 'name']) ?? 'Unknown';
+    dubs.add(AudioTrackOption(mediaId: id, language: language, label: language));
   }
 
   return dubs;
 }
 
-MediaDetails detailsJsonToMediaDetails(
-  Map<String, dynamic> payload,
-  String fallbackId,
-) {
+MediaDetails detailsJsonToMediaDetails(Map<String, dynamic> payload, String fallbackId) {
   final id = readString(payload, const ['subjectId', 'id']) ?? fallbackId;
   final title = readString(payload, const ['title', 'name']) ?? 'Unknown';
   final seasons = seasonsFromDetails(payload);
-  final mediaType = seasons.isNotEmpty
-      ? MediaType.series
-      : readMediaType(payload);
+  final mediaType = seasons.isNotEmpty ? MediaType.series : readMediaType(payload);
 
   final genres = <String>[];
   for (final genre in readList(payload, const ['genres', 'genre', 'tags'])) {
@@ -288,27 +257,16 @@ MediaDetails detailsJsonToMediaDetails(
     }
   }
 
-  final year = extractYear(
-    readString(payload, const ['releaseDate', 'year', 'releaseInfo']),
-  );
+  final year = extractYear(readString(payload, const ['releaseDate', 'year', 'releaseInfo']));
 
   return MediaDetails(
     id: MediaId(ProviderKind.moviebox, id),
     title: title,
     mediaType: mediaType,
     year: year.isEmpty ? null : year,
-    description: readString(payload, const [
-      'description',
-      'overview',
-      'introduction',
-      'desc',
-    ]),
+    description: readString(payload, const ['description', 'overview', 'introduction', 'desc']),
     tagline: readString(payload, const ['tagline', 'subtitle']),
-    rating: readString(payload, const [
-      'imdbRatingValue',
-      'imdbRate',
-      'imdbRating',
-    ]),
+    rating: readString(payload, const ['imdbRatingValue', 'imdbRate', 'imdbRating']),
     director: readString(payload, const ['director', 'directors']),
     cast: readString(payload, const ['stars', 'actors', 'cast']),
     posterUrl: readPoster(payload),
@@ -325,11 +283,7 @@ List<SubtitleOption> captionsJsonToOptions(Map<String, dynamic> payload) {
   final options = <SubtitleOption>[];
   final seenUrls = <String>{};
 
-  for (final entry in readList(payload, const [
-    'extCaptions',
-    'captions',
-    'list',
-  ])) {
+  for (final entry in readList(payload, const ['extCaptions', 'captions', 'list'])) {
     if (entry is! Map) continue;
 
     final url = readString(entry, const ['url', 'link', 'captionUrl']);
@@ -340,9 +294,7 @@ List<SubtitleOption> captionsJsonToOptions(Map<String, dynamic> payload) {
     final size = readInt(entry, const ['size', 'fileSize']);
     if (size != null && size >= 1 && size <= 50) continue;
 
-    final name =
-        readString(entry, const ['lanName', 'lan', 'language', 'name']) ??
-        'Unknown';
+    final name = readString(entry, const ['lanName', 'lan', 'language', 'name']) ?? 'Unknown';
     if (name.toLowerCase() == 'in' && size != null && size <= 100) continue;
 
     options.add(SubtitleOption(name: name, url: url));
@@ -367,11 +319,7 @@ bool _matchesEpisode(Object? entry, int season, int episode) {
   return entrySeason == season && entryEpisode == episode;
 }
 
-List<String> resourceIdsFor(
-  Map<String, dynamic> payload, {
-  int season = 0,
-  int episode = 0,
-}) {
+List<String> resourceIdsFor(Map<String, dynamic> payload, {int season = 0, int episode = 0}) {
   final ids = <String>[];
   for (final entry in readList(payload, const ['list', 'resources', 'items'])) {
     if (!_matchesEpisode(entry, season, episode)) continue;
@@ -390,9 +338,7 @@ List<SubtitleOption> inlineCaptionsFromResources(
   for (final entry in readList(payload, const ['list', 'resources', 'items'])) {
     if (!_matchesEpisode(entry, season, episode)) continue;
     if (entry is! Map) continue;
-    options.addAll(
-      captionsJsonToOptions({'extCaptions': entry['extCaptions']}),
-    );
+    options.addAll(captionsJsonToOptions({'extCaptions': entry['extCaptions']}));
   }
   return options;
 }
@@ -433,32 +379,18 @@ List<Release> playInfoJsonToReleases(
   final releases = <Release>[];
   final seen = <String>{};
 
-  for (final entry in readList(payload, const [
-    'streams',
-    'list',
-    'playList',
-  ])) {
+  for (final entry in readList(payload, const ['streams', 'list', 'playList'])) {
     if (entry is! Map) continue;
 
-    final signCookie = readString(entry, const [
-      'signCookie',
-      'sign_cookie',
-      'cookie',
-    ]);
+    final signCookie = readString(entry, const ['signCookie', 'sign_cookie', 'cookie']);
     final advertised = readString(entry, const ['url', 'playUrl', 'link']);
-    final url = resolveStreamUrl(
-      signCookie: signCookie,
-      fallbackUrl: advertised,
-    );
+    final url = resolveStreamUrl(signCookie: signCookie, fallbackUrl: advertised);
     if (url == null) continue;
 
     final base = url.split('?').first;
     if (base.isEmpty || !seen.add(base)) continue;
 
-    final headers = <String, String>{
-      'Referer': streamReferer,
-      'User-Agent': userAgent,
-    };
+    final headers = <String, String>{'Referer': streamReferer, 'User-Agent': userAgent};
     if (signCookie != null && signCookie.isNotEmpty) {
       headers['Cookie'] = normalizeSignCookie(signCookie);
     }
@@ -468,9 +400,7 @@ List<Release> playInfoJsonToReleases(
     releases.add(
       Release(
         kind: ProviderKind.moviebox,
-        filename:
-            readString(entry, const ['title', 'filename', 'name']) ??
-            'MovieBox stream',
+        filename: readString(entry, const ['title', 'filename', 'name']) ?? 'MovieBox stream',
         quality: resolution == null ? null : '${resolution}p',
         codec: readString(entry, const ['codecName', 'codec', 'videoCodec']),
         language: readString(entry, const ['lanName', 'language']),
@@ -504,12 +434,7 @@ List<Release> resourceJsonToReleases(
   for (final entry in readList(payload, const ['list', 'resources', 'items'])) {
     if (entry is! Map) continue;
 
-    final url = readString(entry, const [
-      'resourceLink',
-      'url',
-      'link',
-      'downloadUrl',
-    ]);
+    final url = readString(entry, const ['resourceLink', 'url', 'link', 'downloadUrl']);
     if (url == null || url.isEmpty) continue;
     if (isDeprecationNoticeUrl(url)) continue;
 
@@ -530,9 +455,7 @@ List<Release> resourceJsonToReleases(
     releases.add(
       Release(
         kind: ProviderKind.moviebox,
-        filename:
-            readString(entry, const ['title', 'filename', 'name']) ??
-            'MovieBox file',
+        filename: readString(entry, const ['title', 'filename', 'name']) ?? 'MovieBox file',
         quality: resolution == null ? null : '${resolution}p',
         codec: readString(entry, const ['codecName', 'codec', 'videoCodec']),
         language: readString(entry, const ['lanName', 'language']),

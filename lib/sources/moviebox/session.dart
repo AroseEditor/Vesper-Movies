@@ -85,14 +85,8 @@ JwtClaims parseJwtClaims(String token) {
 }
 
 String? _decodeSegment(String segment) {
-  final padded = segment.padRight(
-    segment.length + ((4 - segment.length % 4) % 4),
-    '=',
-  );
-  final decoders = <List<int> Function(String)>[
-    base64Url.decode,
-    base64.decode,
-  ];
+  final padded = segment.padRight(segment.length + ((4 - segment.length % 4) % 4), '=');
+  final decoders = <List<int> Function(String)>[base64Url.decode, base64.decode];
 
   for (final candidate in [segment, padded]) {
     for (final decode in decoders) {

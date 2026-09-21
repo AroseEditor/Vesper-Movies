@@ -48,10 +48,7 @@ class WatchEntry {
   }
 
   bool get isInProgress =>
-      !completed &&
-      durationMs > 0 &&
-      progress > 0.01 &&
-      progress < completionRatio;
+      !completed && durationMs > 0 && progress > 0.01 && progress < completionRatio;
 
   Duration get resumeAt => Duration(milliseconds: positionMs);
 
@@ -67,12 +64,7 @@ class WatchEntry {
     );
   }
 
-  WatchEntry copyWith({
-    int? positionMs,
-    int? durationMs,
-    int? updatedAt,
-    bool? completed,
-  }) {
+  WatchEntry copyWith({int? positionMs, int? durationMs, int? updatedAt, bool? completed}) {
     return WatchEntry(
       id: id,
       title: title,
@@ -115,9 +107,7 @@ class WatchEntry {
     return WatchEntry(
       id: id,
       title: title,
-      mediaType: source['mediaType'] == 'series'
-          ? MediaType.series
-          : MediaType.movie,
+      mediaType: source['mediaType'] == 'series' ? MediaType.series : MediaType.movie,
       year: source['year'] as String?,
       posterUrl: source['posterUrl'] as String?,
       backdropUrl: source['backdropUrl'] as String?,
@@ -131,8 +121,7 @@ class WatchEntry {
     );
   }
 
-  static int _int(Object? value) =>
-      value is int ? value : (value is num ? value.toInt() : 0);
+  static int _int(Object? value) => value is int ? value : (value is num ? value.toInt() : 0);
 
   String get key => season > 0 ? '$id:$season:$episode' : id;
 }
@@ -217,10 +206,7 @@ class LibraryStore {
     try {
       final file = await _resolveFile();
       final payload = jsonEncode({
-        'history': data.history
-            .take(maxHistory)
-            .map((e) => e.toJson())
-            .toList(),
+        'history': data.history.take(maxHistory).map((e) => e.toJson()).toList(),
         'favourites': data.favourites.map(catalogToJson).toList(),
       });
 

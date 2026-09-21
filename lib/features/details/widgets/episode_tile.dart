@@ -59,8 +59,7 @@ class EpisodeTile extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (episode.stillUrl != null &&
-                          episode.stillUrl!.isNotEmpty)
+                      if (episode.stillUrl != null && episode.stillUrl!.isNotEmpty)
                         CachedNetworkImage(
                           imageUrl: episode.stillUrl!,
                           fit: BoxFit.cover,
@@ -93,9 +92,7 @@ class EpisodeTile extends StatelessWidget {
                             child: FractionallySizedBox(
                               alignment: Alignment.centerLeft,
                               widthFactor: progress!.clamp(0.0, 1.0),
-                              child: const ColoredBox(
-                                color: VesperColors.accent,
-                              ),
+                              child: const ColoredBox(color: VesperColors.accent),
                             ),
                           ),
                         ),
@@ -115,8 +112,7 @@ class EpisodeTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (episode.overview != null &&
-                        episode.overview!.isNotEmpty) ...[
+                    if (episode.overview != null && episode.overview!.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
                         episode.overview!,

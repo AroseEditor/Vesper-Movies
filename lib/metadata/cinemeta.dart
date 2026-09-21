@@ -41,8 +41,7 @@ class CinemetaSource implements MetadataSource {
     maxEntries: 1024,
     name: 'meta',
     encode: (meta) => meta,
-    decode: (raw) =>
-        raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{},
+    decode: (raw) => raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{},
   );
 
   @override
@@ -67,11 +66,7 @@ class CinemetaSource implements MetadataSource {
 
   @override
   Future<CatalogItem?> enrich(CatalogItem item, {CancelToken? cancel}) async {
-    final meta = await rawMeta(
-      item.id.value,
-      item.isSeries ? 'series' : 'movie',
-      cancel,
-    );
+    final meta = await rawMeta(item.id.value, item.isSeries ? 'series' : 'movie', cancel);
     if (meta == null) return null;
 
     return item.copyWith(
@@ -83,46 +78,29 @@ class CinemetaSource implements MetadataSource {
   }
 
   @override
-  Future<MediaDetails?> describe(
-    MediaDetails details, {
-    CancelToken? cancel,
-  }) async {
-    final meta = await rawMeta(
-      details.id.value,
-      details.isSeries ? 'series' : 'movie',
-      cancel,
-    );
+  Future<MediaDetails?> describe(MediaDetails details, {CancelToken? cancel}) async {
+    final meta = await rawMeta(details.id.value, details.isSeries ? 'series' : 'movie', cancel);
     if (meta == null) return null;
 
     return details.copyWith(
-      description:
-          details.description ?? readString(meta, const ['description']),
-      backdropUrl:
-          details.backdropUrl ?? readString(meta, const ['background']),
+      description: details.description ?? readString(meta, const ['description']),
+      backdropUrl: details.backdropUrl ?? readString(meta, const ['background']),
       logoUrl: details.logoUrl ?? readString(meta, const ['logo']),
       rating: details.rating ?? readString(meta, const ['imdbRating']),
       genres: details.genres.isEmpty ? _genres(meta) : details.genres,
     );
   }
 
-  Future<MediaDetails?> fullDetails(
-    CatalogItem item, {
-    CancelToken? cancel,
-  }) async {
+  Future<MediaDetails?> fullDetails(CatalogItem item, {CancelToken? cancel}) async {
     final primary = item.isSeries ? 'series' : 'movie';
     var meta = await rawMeta(item.id.value, primary, cancel);
 
-    meta ??= await rawMeta(
-      item.id.value,
-      item.isSeries ? 'movie' : 'series',
-      cancel,
-    );
+    meta ??= await rawMeta(item.id.value, item.isSeries ? 'movie' : 'series', cancel);
     if (meta == null) return null;
 
     final seasons = seasonsFromVideos(meta);
     final declaredSeries =
-        (readString(meta, const ['type']) ?? '').toLowerCase() == 'series' ||
-        seasons.isNotEmpty;
+        (readString(meta, const ['type']) ?? '').toLowerCase() == 'series' || seasons.isNotEmpty;
 
     return MediaDetails(
       id: item.id,
@@ -142,11 +120,7 @@ class CinemetaSource implements MetadataSource {
     );
   }
 
-  Future<Map<String, dynamic>?> rawMeta(
-    String id,
-    String type,
-    CancelToken? cancel,
-  ) async {
+  Future<Map<String, dynamic>?> rawMeta(String id, String type, CancelToken? cancel) async {
     if (!id.startsWith('tt')) return null;
 
     final cached = _metaCache.peek('$type/$id');
@@ -214,8 +188,7 @@ List<Season> seasonsFromVideos(Map<String, dynamic> meta) {
   }
 
   final seasons = grouped.entries.map((entry) {
-    final episodes = [...entry.value]
-      ..sort((a, b) => a.number.compareTo(b.number));
+    final episodes = [...entry.value]..sort((a, b) => a.number.compareTo(b.number));
     return Season(number: entry.key, episodes: episodes);
   }).toList()..sort((a, b) => a.number.compareTo(b.number));
 
@@ -236,9 +209,7 @@ CatalogItem? metaToCatalogItem(Object? source, String fallbackType) {
     id: MediaId(ProviderKind.addons, id),
     title: title,
     mediaType: isSeries ? MediaType.series : MediaType.movie,
-    year: extractYear(
-      readString(source, const ['year', 'releaseInfo', 'released']),
-    ),
+    year: extractYear(readString(source, const ['year', 'releaseInfo', 'released'])),
     posterUrl: readString(source, const ['poster']),
     backdropUrl: readString(source, const ['background']),
     logoUrl: readString(source, const ['logo']),

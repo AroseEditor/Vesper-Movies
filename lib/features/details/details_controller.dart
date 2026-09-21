@@ -47,49 +47,44 @@ class TitleDetails {
   }
 }
 
-final _detailsCache = MemoCache<String, TitleDetails>(
-  ttl: const Duration(hours: 6),
-);
+final _detailsCache = MemoCache<String, TitleDetails>(ttl: const Duration(hours: 6));
 
-final titleDetailsProvider = FutureProvider.autoDispose
-    .family<TitleDetails, CatalogItem>((ref, item) async {
-      final cached = _detailsCache.peek(item.id.toString());
-      if (cached != null) return cached;
+final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, CatalogItem>((
+  ref,
+  item,
+) async {
+  final cached = _detailsCache.peek(item.id.toString());
+  if (cached != null) return cached;
 
-      final cancel = CancelToken();
-      ref.onDispose(cancel.cancel);
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
 
-      final cinemeta = ref.read(cinemetaProvider);
-      final registry = ref.read(sourceRegistryProvider);
+  final cinemeta = ref.read(cinemetaProvider);
+  final registry = ref.read(sourceRegistryProvider);
 
-      final results = await Future.wait([
-        cinemeta.fullDetails(item, cancel: cancel),
-        SourceMatcher(registry).findAll(item, cancel: cancel),
-      ]);
+  final results = await Future.wait([
+    cinemeta.fullDetails(item, cancel: cancel),
+    SourceMatcher(registry).findAll(item, cancel: cancel),
+  ]);
 
-      final meta = results[0] as MediaDetails?;
-      final matches = results[1] as List<SourceMatch>;
+  final meta = results[0] as MediaDetails?;
+  final matches = results[1] as List<SourceMatch>;
 
-      final resolved = TitleDetails(
-        item: item,
-        details: meta ?? MediaDetails.of(item),
-        matches: matches,
-        addonCount: ref.read(enabledAddonsProvider).length,
-      );
+  final resolved = TitleDetails(
+    item: item,
+    details: meta ?? MediaDetails.of(item),
+    matches: matches,
+    addonCount: ref.read(enabledAddonsProvider).length,
+  );
 
-      _detailsCache.put(item.id.toString(), resolved);
-      return resolved;
-    });
+  _detailsCache.put(item.id.toString(), resolved);
+  return resolved;
+});
 
 void invalidateDetailsCache() => _detailsCache.clear();
 
 class EpisodeRef {
-  const EpisodeRef(
-    this.matches,
-    this.item, {
-    this.season = 0,
-    this.episode = 0,
-  });
+  const EpisodeRef(this.matches, this.item, {this.season = 0, this.episode = 0});
 
   final List<SourceMatch> matches;
   final CatalogItem item;
@@ -110,64 +105,64 @@ class EpisodeRef {
   int get hashCode => Object.hash(_key, item.id, season, episode);
 }
 
-final _releasesCache = MemoCache<String, List<Release>>(
-  ttl: const Duration(minutes: 20),
-);
+final _releasesCache = MemoCache<String, List<Release>>(ttl: const Duration(minutes: 20));
 
-final releasesProvider = FutureProvider.autoDispose
-    .family<List<Release>, EpisodeRef>((ref, target) async {
-      final cacheKey = '${target.item.id}:${target.season}:${target.episode}';
-      final cached = _releasesCache.peek(cacheKey);
-      if (cached != null) return cached;
+final releasesProvider = FutureProvider.autoDispose.family<List<Release>, EpisodeRef>((
+  ref,
+  target,
+) async {
+  final cacheKey = '${target.item.id}:${target.season}:${target.episode}';
+  final cached = _releasesCache.peek(cacheKey);
+  if (cached != null) return cached;
 
-      final cancel = CancelToken();
-      ref.onDispose(cancel.cancel);
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
 
-      final registry = ref.read(sourceRegistryProvider);
-      final addons = ref.read(enabledAddonsProvider);
-      final addonClient = ref.read(addonClientProvider);
+  final registry = ref.read(sourceRegistryProvider);
+  final addons = ref.read(enabledAddonsProvider);
+  final addonClient = ref.read(addonClientProvider);
 
-      final jobs = <Future<List<Release>>>[
-        for (final match in target.matches)
-          _safeReleases(
-            registry[match.kind],
-            match.id,
-            season: target.season,
-            episode: target.episode,
-            cancel: cancel,
-          ),
-        if (target.item.id.value.startsWith('tt'))
-          for (final addon in addons)
-            _safeAddonStreams(
-              addonClient,
-              addon,
-              target.item.id.value,
-              isSeries: target.item.isSeries,
-              season: target.season,
-              episode: target.episode,
-              cancel: cancel,
-            ),
-      ];
+  final jobs = <Future<List<Release>>>[
+    for (final match in target.matches)
+      _safeReleases(
+        registry[match.kind],
+        match.id,
+        season: target.season,
+        episode: target.episode,
+        cancel: cancel,
+      ),
+    if (target.item.id.value.startsWith('tt'))
+      for (final addon in addons)
+        _safeAddonStreams(
+          addonClient,
+          addon,
+          target.item.id.value,
+          isSeries: target.item.isSeries,
+          season: target.season,
+          episode: target.episode,
+          cancel: cancel,
+        ),
+  ];
 
-      final results = await Future.wait(jobs);
+  final results = await Future.wait(jobs);
 
-      final combined = <Release>[];
-      final seen = <String>{};
-      for (final group in results) {
-        for (final release in group) {
-          final url = release.directUrl;
-          if (url == null || url.isEmpty) continue;
-          if (!seen.add(url.split('?').first)) continue;
-          combined.add(release);
-        }
-      }
+  final combined = <Release>[];
+  final seen = <String>{};
+  for (final group in results) {
+    for (final release in group) {
+      final url = release.directUrl;
+      if (url == null || url.isEmpty) continue;
+      if (!seen.add(url.split('?').first)) continue;
+      combined.add(release);
+    }
+  }
 
-      if (combined.isEmpty) throw const Unavailable();
+  if (combined.isEmpty) throw const Unavailable();
 
-      final sorted = sortReleases(combined);
-      _releasesCache.put(cacheKey, sorted);
-      return sorted;
-    });
+  final sorted = sortReleases(combined);
+  _releasesCache.put(cacheKey, sorted);
+  return sorted;
+});
 
 Future<List<Release>> _safeReleases(
   ContentSource? source,
@@ -178,12 +173,7 @@ Future<List<Release>> _safeReleases(
 }) async {
   if (source == null) return const [];
   try {
-    return await source.releases(
-      id,
-      season: season,
-      episode: episode,
-      cancel: cancel,
-    );
+    return await source.releases(id, season: season, episode: episode, cancel: cancel);
   } on Cancelled {
     rethrow;
   } on Object catch (_) {

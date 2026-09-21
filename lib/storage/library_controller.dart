@@ -40,10 +40,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
         ? data.favourites.where((e) => e.id.value != item.id.value).toList()
         : [item, ...data.favourites];
 
-    _apply(
-      LibraryData(history: data.history, favourites: favourites),
-      immediate: true,
-    );
+    _apply(LibraryData(history: data.history, favourites: favourites), immediate: true);
   }
 
   Future<void> recordProgress({
@@ -72,8 +69,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
       updatedAt: DateTime.now().millisecondsSinceEpoch,
       completed:
           completed ||
-          position.inMilliseconds >=
-              duration.inMilliseconds * WatchEntry.completionRatio,
+          position.inMilliseconds >= duration.inMilliseconds * WatchEntry.completionRatio,
     );
 
     final history = [entry, ...data.history.where((e) => e.key != entry.key)];
@@ -83,10 +79,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
   Future<void> forget(WatchEntry entry) async {
     final data = _current;
     final history = data.history.where((e) => e.key != entry.key).toList();
-    _apply(
-      LibraryData(history: history, favourites: data.favourites),
-      immediate: true,
-    );
+    _apply(LibraryData(history: history, favourites: data.favourites), immediate: true);
   }
 
   Future<void> clearHistory() async {
@@ -95,9 +88,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
   }
 }
 
-final libraryProvider = AsyncNotifierProvider<LibraryNotifier, LibraryData>(
-  LibraryNotifier.new,
-);
+final libraryProvider = AsyncNotifierProvider<LibraryNotifier, LibraryData>(LibraryNotifier.new);
 
 final continueWatchingProvider = Provider<List<WatchEntry>>((ref) {
   return ref.watch(libraryProvider).value?.continueWatching ?? const [];

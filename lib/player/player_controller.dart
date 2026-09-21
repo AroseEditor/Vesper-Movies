@@ -34,11 +34,7 @@ class PlaybackTarget {
 }
 
 class Preload {
-  const Preload({
-    this.active = false,
-    this.buffered = Duration.zero,
-    this.target = Duration.zero,
-  });
+  const Preload({this.active = false, this.buffered = Duration.zero, this.target = Duration.zero});
 
   final bool active;
   final Duration buffered;
@@ -87,9 +83,7 @@ class PlayerState {
       target: target ?? this.target,
       subtitleStyle: subtitleStyle ?? this.subtitleStyle,
       externalSubtitles: externalSubtitles ?? this.externalSubtitles,
-      activeExternal: clearActiveExternal
-          ? null
-          : (activeExternal ?? this.activeExternal),
+      activeExternal: clearActiveExternal ? null : (activeExternal ?? this.activeExternal),
       isReady: isReady ?? this.isReady,
       error: clearError ? null : (error ?? this.error),
       preload: preload ?? this.preload,
@@ -105,14 +99,10 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   bool _preloadObserved = false;
 
   Player get player => _player ??= Player(
-    configuration: const PlayerConfiguration(
-      title: 'Vesper Movies',
-      bufferSize: 256 * 1024 * 1024,
-    ),
+    configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 256 * 1024 * 1024),
   );
 
-  VideoController get videoController =>
-      _videoController ??= VideoController(player);
+  VideoController get videoController => _videoController ??= VideoController(player);
 
   @override
   PlayerState build() {
@@ -142,11 +132,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     await _applyNetworkTuning();
 
     await player.open(
-      Media(
-        target.source.url,
-        httpHeaders: target.source.headers,
-        start: target.startAt,
-      ),
+      Media(target.source.url, httpHeaders: target.source.headers, start: target.startAt),
       play: false,
     );
 
@@ -154,9 +140,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     final external = target.subtitle ?? target.source.subtitle;
     if (external != null && external.isNotEmpty) {
-      await selectExternalSubtitle(
-        SubtitleOption(name: 'Default', url: external),
-      );
+      await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
     }
 
     state = state.copyWith(isReady: true);
@@ -170,15 +154,10 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       return;
     }
 
-    state = state.copyWith(
-      preload: const Preload(active: true, target: preloadWindow),
-    );
+    state = state.copyWith(preload: const Preload(active: true, target: preloadWindow));
 
     _preloadDeadline?.cancel();
-    _preloadDeadline = Timer(
-      preloadDeadline,
-      () => unawaited(_releasePreload()),
-    );
+    _preloadDeadline = Timer(preloadDeadline, () => unawaited(_releasePreload()));
 
     if (!_preloadObserved) {
       _preloadObserved = true;
@@ -195,9 +174,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     final buffered = Duration(milliseconds: (seconds * 1000).round());
     final remaining = player.state.duration - player.state.position;
-    final goal = remaining > Duration.zero && remaining < preloadWindow
-        ? remaining
-        : preloadWindow;
+    final goal = remaining > Duration.zero && remaining < preloadWindow ? remaining : preloadWindow;
 
     state = state.copyWith(
       preload: Preload(active: true, buffered: buffered, target: goal),
@@ -245,7 +222,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       'demuxer-readahead-secs': '600',
       'demuxer-hysteresis-secs': '60',
       'network-timeout': '30',
-      'stream-lavf-o': 'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
+      'stream-lavf-o':
+          'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
       'keep-open': 'yes',
       'hr-seek': 'yes',
       'force-seekable': 'yes',
@@ -263,9 +241,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> selectExternalSubtitle(SubtitleOption option) async {
-    await player.setSubtitleTrack(
-      SubtitleTrack.uri(option.url, title: option.name),
-    );
+    await player.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
     state = state.copyWith(activeExternal: option.url);
   }
 
@@ -304,22 +280,17 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     final duration = player.state.duration;
     final clamped = position < Duration.zero
         ? Duration.zero
-        : (duration > Duration.zero && position > duration
-              ? duration
-              : position);
+        : (duration > Duration.zero && position > duration ? duration : position);
     await player.seek(clamped);
   }
 
   Future<void> seekTo(Duration position) => player.seek(position);
 
-  Future<void> setVolume(double volume) =>
-      player.setVolume(volume.clamp(0, 100));
+  Future<void> setVolume(double volume) => player.setVolume(volume.clamp(0, 100));
 
-  Future<void> nudgeVolume(double delta) =>
-      setVolume(player.state.volume + delta);
+  Future<void> nudgeVolume(double delta) => setVolume(player.state.volume + delta);
 
-  Future<void> toggleMute() =>
-      player.setVolume(player.state.volume > 0 ? 0 : 100);
+  Future<void> toggleMute() => player.setVolume(player.state.volume > 0 ? 0 : 100);
 
   Future<void> setSpeed(double rate) => player.setRate(rate.clamp(0.25, 3.0));
 
@@ -345,10 +316,9 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 }
 
-final playerControllerProvider =
-    NotifierProvider<PlayerControllerNotifier, PlayerState>(
-      PlayerControllerNotifier.new,
-    );
+final playerControllerProvider = NotifierProvider<PlayerControllerNotifier, PlayerState>(
+  PlayerControllerNotifier.new,
+);
 
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
   return ref.watch(playerControllerProvider.notifier).player.stream.position;

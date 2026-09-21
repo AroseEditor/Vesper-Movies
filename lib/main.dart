@@ -33,10 +33,7 @@ Future<void> main() async {
     ),
   );
 
-  AppLifecycleListener(
-    onInactive: MemoCache.flushAll,
-    onPause: MemoCache.flushAll,
-  );
+  AppLifecycleListener(onInactive: MemoCache.flushAll, onPause: MemoCache.flushAll);
 
   runApp(const ProviderScope(child: VesperApp()));
 }

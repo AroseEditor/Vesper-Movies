@@ -91,8 +91,7 @@ class SubtitleStyle {
       'sub-ass-override': forceStyle ? 'force' : 'no',
       'sub-font-size': '${size.fontSize}',
       'sub-color': '#${colour.argb}',
-      'sub-border-size':
-          '${background == SubtitleBackground.shadow ? borderSize : 0}',
+      'sub-border-size': '${background == SubtitleBackground.shadow ? borderSize : 0}',
       'sub-border-color': '#FF000000',
       'sub-back-color': '#${background.argb}',
       'sub-shadow-offset': '${background.shadowSize}',
@@ -113,17 +112,12 @@ class SubtitleStyle {
   static SubtitleStyle fromJson(Map<String, dynamic> json) {
     return SubtitleStyle(
       size: _byName(SubtitleSize.values, json['size']) ?? SubtitleSize.medium,
-      colour:
-          _byName(SubtitleColour.values, json['colour']) ??
-          SubtitleColour.white,
+      colour: _byName(SubtitleColour.values, json['colour']) ?? SubtitleColour.white,
       background:
-          _byName(SubtitleBackground.values, json['background']) ??
-          SubtitleBackground.shadow,
+          _byName(SubtitleBackground.values, json['background']) ?? SubtitleBackground.shadow,
       borderSize: json['borderSize'] is int ? json['borderSize'] as int : 3,
       position: json['position'] is int ? json['position'] as int : 95,
-      forceStyle: json['forceStyle'] is bool
-          ? json['forceStyle'] as bool
-          : true,
+      forceStyle: json['forceStyle'] is bool ? json['forceStyle'] as bool : true,
     );
   }
 
@@ -157,31 +151,25 @@ class SubtitleDefaultsNotifier extends Notifier<SubtitleStyle> {
 
   void cycleSize(int delta) {
     const values = SubtitleSize.values;
-    final next =
-        (values.indexOf(state.size) + delta + values.length) % values.length;
+    final next = (values.indexOf(state.size) + delta + values.length) % values.length;
     state = state.copyWith(size: values[next]);
   }
 
   void cycleColour(int delta) {
     const values = SubtitleColour.values;
-    final next =
-        (values.indexOf(state.colour) + delta + values.length) % values.length;
+    final next = (values.indexOf(state.colour) + delta + values.length) % values.length;
     state = state.copyWith(colour: values[next]);
   }
 
   void cycleBackground(int delta) {
     const values = SubtitleBackground.values;
-    final next =
-        (values.indexOf(state.background) + delta + values.length) %
-        values.length;
+    final next = (values.indexOf(state.background) + delta + values.length) % values.length;
     state = state.copyWith(background: values[next]);
   }
 
-  void nudgePosition(int delta) =>
-      state = state.copyWith(position: state.position + delta);
+  void nudgePosition(int delta) => state = state.copyWith(position: state.position + delta);
 }
 
-final subtitleDefaultsProvider =
-    NotifierProvider<SubtitleDefaultsNotifier, SubtitleStyle>(
-      SubtitleDefaultsNotifier.new,
-    );
+final subtitleDefaultsProvider = NotifierProvider<SubtitleDefaultsNotifier, SubtitleStyle>(
+  SubtitleDefaultsNotifier.new,
+);

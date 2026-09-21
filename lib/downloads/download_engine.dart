@@ -87,10 +87,7 @@ class DownloadEngine {
     final response = await _dio.get<ResponseBody>(
       url,
       cancelToken: cancel,
-      options: Options(
-        headers: requestHeaders,
-        responseType: ResponseType.stream,
-      ),
+      options: Options(headers: requestHeaders, responseType: ResponseType.stream),
     );
 
     final status = response.statusCode ?? 0;
@@ -107,13 +104,10 @@ class DownloadEngine {
       offset = 0;
     }
 
-    final contentLength =
-        int.tryParse(response.headers.value('content-length') ?? '') ?? 0;
+    final contentLength = int.tryParse(response.headers.value('content-length') ?? '') ?? 0;
     final total = contentLength > 0 ? contentLength + offset : 0;
 
-    final sink = partial.openWrite(
-      mode: offset > 0 ? FileMode.append : FileMode.write,
-    );
+    final sink = partial.openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
     var received = offset;
     var lastTick = DateTime.now();
     var lastBytes = received;
@@ -126,14 +120,9 @@ class DownloadEngine {
         final now = DateTime.now();
         final elapsed = now.difference(lastTick);
         if (elapsed.inMilliseconds >= 400) {
-          final speed =
-              (received - lastBytes) / (elapsed.inMilliseconds / 1000);
+          final speed = (received - lastBytes) / (elapsed.inMilliseconds / 1000);
           onProgress?.call(
-            DownloadProgress(
-              received: received,
-              total: total,
-              bytesPerSecond: speed,
-            ),
+            DownloadProgress(received: received, total: total, bytesPerSecond: speed),
           );
           lastTick = now;
           lastBytes = received;
@@ -146,11 +135,7 @@ class DownloadEngine {
 
     await _finalise(partial, destination);
     onProgress?.call(
-      DownloadProgress(
-        received: received,
-        total: total == 0 ? received : total,
-        bytesPerSecond: 0,
-      ),
+      DownloadProgress(received: received, total: total == 0 ? received : total, bytesPerSecond: 0),
     );
   }
 

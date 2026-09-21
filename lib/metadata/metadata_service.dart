@@ -16,13 +16,9 @@ class MetadataService {
 
   String get activeName => _tmdb.isConfigured ? _tmdb.name : _cinemeta.name;
 
-  List<MetadataSource> get _chain =>
-      _tmdb.isConfigured ? [_tmdb, _cinemeta] : [_cinemeta];
+  List<MetadataSource> get _chain => _tmdb.isConfigured ? [_tmdb, _cinemeta] : [_cinemeta];
 
-  Future<List<CatalogItem>> shelf(
-    CatalogShelf shelf, {
-    CancelToken? cancel,
-  }) async {
+  Future<List<CatalogItem>> shelf(CatalogShelf shelf, {CancelToken? cancel}) async {
     for (final source in _chain) {
       try {
         final items = await source.shelf(shelf, cancel: cancel);
@@ -37,9 +33,7 @@ class MetadataService {
   }
 
   Future<CatalogItem> enrich(CatalogItem item, {CancelToken? cancel}) async {
-    if (item.backdropUrl != null &&
-        item.logoUrl != null &&
-        item.posterUrl != null) {
+    if (item.backdropUrl != null && item.logoUrl != null && item.posterUrl != null) {
       return item;
     }
 
@@ -58,10 +52,7 @@ class MetadataService {
     return current;
   }
 
-  Future<MediaDetails> describe(
-    MediaDetails details, {
-    CancelToken? cancel,
-  }) async {
+  Future<MediaDetails> describe(MediaDetails details, {CancelToken? cancel}) async {
     var current = details;
     for (final source in _chain) {
       try {

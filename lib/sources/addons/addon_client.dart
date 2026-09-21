@@ -97,8 +97,7 @@ class AddonClient {
       throw const ParseError('addon url');
     }
     if (!url.endsWith('.json')) {
-      url =
-          '${url.endsWith('/') ? url.substring(0, url.length - 1) : url}/manifest.json';
+      url = '${url.endsWith('/') ? url.substring(0, url.length - 1) : url}/manifest.json';
     }
 
     final payload = await _fetch(url, cancel);
@@ -140,12 +139,7 @@ class AddonClient {
     final seen = <String>{};
 
     for (final entry in readList(payload, const ['streams'])) {
-      final release = streamToRelease(
-        entry,
-        addon.name,
-        season: season,
-        episode: episode,
-      );
+      final release = streamToRelease(entry, addon.name, season: season, episode: episode);
       if (release == null) continue;
 
       final key = release.directUrl ?? '';
@@ -168,12 +162,7 @@ class AddonClient {
   }
 }
 
-Release? streamToRelease(
-  Object? source,
-  String addonName, {
-  int season = 0,
-  int episode = 0,
-}) {
+Release? streamToRelease(Object? source, String addonName, {int season = 0, int episode = 0}) {
   if (source is! Map) return null;
 
   final url = readString(source, const ['url']);
@@ -208,12 +197,7 @@ Release? streamToRelease(
     season: season == 0 ? null : season,
     episode: episode == 0 ? null : episode,
     mirrors: [
-      SourceMirror(
-        label: cleanStreamText(label),
-        url: url,
-        headers: headers,
-        directFile: true,
-      ),
+      SourceMirror(label: cleanStreamText(label), url: url, headers: headers, directFile: true),
     ],
   );
 }

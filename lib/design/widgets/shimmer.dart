@@ -3,12 +3,7 @@ import 'package:flutter/material.dart';
 import '../colors.dart';
 
 class Shimmer extends StatefulWidget {
-  const Shimmer({
-    super.key,
-    required this.width,
-    required this.height,
-    this.borderRadius = 6,
-  });
+  const Shimmer({super.key, required this.width, required this.height, this.borderRadius = 6});
 
   final double width;
   final double height;

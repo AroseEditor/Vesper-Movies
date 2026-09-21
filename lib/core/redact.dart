@@ -7,8 +7,7 @@ String redactUrl(String raw) {
 
 String redactPath(String raw) {
   final normalized = raw.replaceAll(r'\', '/');
-  final match = RegExp(r'^([A-Za-z]:)?/(Users|home)/[^/]+')
-      .firstMatch(normalized);
+  final match = RegExp(r'^([A-Za-z]:)?/(Users|home)/[^/]+').firstMatch(normalized);
   if (match == null) return normalized;
   return '~${normalized.substring(match.end)}';
 }

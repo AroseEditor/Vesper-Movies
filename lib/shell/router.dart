@@ -21,21 +21,17 @@ GoRouter buildRouter() {
         path: '/splash',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) => NoTransitionPage(
-          child: SplashPage(
-            onComplete: () => context.go(AppDestination.home.path),
-          ),
+          child: SplashPage(onComplete: () => context.go(AppDestination.home.path)),
         ),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            AppShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppDestination.home.path,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: HomePage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: HomePage()),
               ),
             ],
           ),
@@ -43,8 +39,7 @@ GoRouter buildRouter() {
             routes: [
               GoRoute(
                 path: AppDestination.categories.path,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CategoriesPage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: CategoriesPage()),
               ),
             ],
           ),
@@ -52,8 +47,7 @@ GoRouter buildRouter() {
             routes: [
               GoRoute(
                 path: AppDestination.search.path,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SearchPage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: SearchPage()),
               ),
             ],
           ),
@@ -61,8 +55,7 @@ GoRouter buildRouter() {
             routes: [
               GoRoute(
                 path: AppDestination.liveTv.path,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: LiveTvPage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: LiveTvPage()),
               ),
             ],
           ),
@@ -70,8 +63,7 @@ GoRouter buildRouter() {
             routes: [
               GoRoute(
                 path: AppDestination.downloads.path,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: DownloadsPage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: DownloadsPage()),
               ),
             ],
           ),

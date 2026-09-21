@@ -37,8 +37,7 @@ class _DetailsPageState extends ConsumerState<DetailsPage> {
       backgroundColor: VesperColors.canvas,
       body: async.when(
         loading: () => _DetailsSkeleton(item: widget.item, mode: mode),
-        error: (error, stack) =>
-            _DetailsError(onBack: () => Navigator.of(context).maybePop()),
+        error: (error, stack) => _DetailsError(onBack: () => Navigator.of(context).maybePop()),
         data: (data) => _DetailsBody(
           data: data,
           mode: mode,
@@ -128,12 +127,7 @@ class _DetailsBody extends ConsumerWidget {
             ),
           ),
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              mode.gutter,
-              4,
-              mode.gutter,
-              mode.isTouch ? 110 : 40,
-            ),
+            padding: EdgeInsets.fromLTRB(mode.gutter, 4, mode.gutter, mode.isTouch ? 110 : 40),
             sliver: SliverList.builder(
               itemCount: active?.episodes.length ?? 0,
               itemBuilder: (context, index) {
@@ -142,12 +136,8 @@ class _DetailsBody extends ConsumerWidget {
                   episode: episode,
                   mode: mode,
                   enabled: data.isPlayable,
-                  onPlay: () => _play(
-                    context,
-                    ref,
-                    seasonNo: episode.season,
-                    episodeNo: episode.number,
-                  ),
+                  onPlay: () =>
+                      _play(context, ref, seasonNo: episode.season, episodeNo: episode.number),
                 );
               },
             ),
@@ -184,10 +174,7 @@ class _Backdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final height = (size.height * (mode.isTouch ? 0.56 : 0.62)).clamp(
-      300.0,
-      size.height,
-    );
+    final height = (size.height * (mode.isTouch ? 0.56 : 0.62)).clamp(300.0, size.height);
     final backdrop = details.backdropUrl ?? details.posterUrl;
 
     return SizedBox(
@@ -200,19 +187,13 @@ class _Backdrop extends StatelessWidget {
               imageUrl: backdrop,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
-              placeholder: (context, _) =>
-                  const ColoredBox(color: VesperColors.surface),
-              errorWidget: (context, _, error) =>
-                  const ColoredBox(color: VesperColors.surface),
+              placeholder: (context, _) => const ColoredBox(color: VesperColors.surface),
+              errorWidget: (context, _, error) => const ColoredBox(color: VesperColors.surface),
             )
           else
             const ColoredBox(color: VesperColors.surface),
-          const DecoratedBox(
-            decoration: BoxDecoration(gradient: VesperColors.heroFade),
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(gradient: VesperColors.heroBottomFade),
-          ),
+          const DecoratedBox(decoration: BoxDecoration(gradient: VesperColors.heroFade)),
+          const DecoratedBox(decoration: BoxDecoration(gradient: VesperColors.heroBottomFade)),
           SafeArea(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: mode.isTouch ? 6 : 14),
@@ -277,16 +258,12 @@ class _TitleBlock extends StatelessWidget {
       children: [
         if (logo != null && logo.isNotEmpty)
           ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: mode.isTouch ? 96 : 132,
-              maxWidth: 520,
-            ),
+            constraints: BoxConstraints(maxHeight: mode.isTouch ? 96 : 132, maxWidth: 520),
             child: CachedNetworkImage(
               imageUrl: logo,
               fit: BoxFit.contain,
               alignment: Alignment.centerLeft,
-              errorWidget: (context, _, error) =>
-                  Text(details.title, style: VesperType.heroTitle),
+              errorWidget: (context, _, error) => Text(details.title, style: VesperType.heroTitle),
             ),
           )
         else
@@ -343,9 +320,7 @@ class _MetaRow extends StatelessWidget {
     if (details.duration != null && details.duration!.isNotEmpty) {
       parts.add(Text(details.duration!, style: VesperType.meta));
     }
-    parts.add(
-      Text(details.isSeries ? 'Series' : 'Film', style: VesperType.meta),
-    );
+    parts.add(Text(details.isSeries ? 'Series' : 'Film', style: VesperType.meta));
     for (final genre in details.genres.take(3)) {
       parts.add(Text(genre, style: VesperType.meta));
     }
@@ -357,10 +332,7 @@ class _MetaRow extends StatelessWidget {
       children: [
         for (var i = 0; i < parts.length; i++) ...[
           if (i > 0)
-            const Text(
-              '|',
-              style: TextStyle(color: VesperColors.textTertiary, fontSize: 11),
-            ),
+            const Text('|', style: TextStyle(color: VesperColors.textTertiary, fontSize: 11)),
           parts[i],
         ],
       ],
@@ -401,9 +373,7 @@ class _PlayButton extends StatelessWidget {
             Text(
               'Play',
               style: VesperType.button.copyWith(
-                color: enabled
-                    ? VesperColors.canvas
-                    : VesperColors.textTertiary,
+                color: enabled ? VesperColors.canvas : VesperColors.textTertiary,
               ),
             ),
           ],
@@ -469,10 +439,7 @@ class _Synopsis extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (description != null && description.isNotEmpty)
-              Text(
-                description,
-                style: VesperType.body.copyWith(color: VesperColors.textHover),
-              ),
+              Text(description, style: VesperType.body.copyWith(color: VesperColors.textHover)),
             if (details.cast != null) ...[
               const SizedBox(height: 12),
               _CreditLine(label: 'Cast', value: details.cast!),
@@ -557,22 +524,15 @@ class _SeasonPicker extends StatelessWidget {
                   semanticLabel: 'Season ${season.number}',
                   child: AnimatedContainer(
                     duration: VesperMotion.fast,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 9,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? VesperColors.accent
-                          : VesperColors.surface,
+                      color: selected ? VesperColors.accent : VesperColors.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       'Season ${season.number}',
                       style: VesperType.label.copyWith(
-                        color: selected
-                            ? VesperColors.canvas
-                            : VesperColors.textSecondary,
+                        color: selected ? VesperColors.canvas : VesperColors.textSecondary,
                       ),
                     ),
                   ),
@@ -608,22 +568,16 @@ class _DetailsSkeleton extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 PosterArt(item: item, useBackdrop: true, compactFallback: true),
+                const DecoratedBox(decoration: BoxDecoration(gradient: VesperColors.heroFade)),
                 const DecoratedBox(
-                  decoration: BoxDecoration(gradient: VesperColors.heroFade),
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: VesperColors.heroBottomFade,
-                  ),
+                  decoration: BoxDecoration(gradient: VesperColors.heroBottomFade),
                 ),
                 Positioned(
                   left: mode.gutter,
                   bottom: 30,
                   child: Text(
                     item.title,
-                    style: mode.isTouch
-                        ? VesperType.heroTitle
-                        : VesperType.display,
+                    style: mode.isTouch ? VesperType.heroTitle : VesperType.display,
                   ),
                 ),
               ],
@@ -660,16 +614,9 @@ class _DetailsError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              VesperIcons.warning,
-              size: 42,
-              color: VesperColors.textTertiary,
-            ),
+            const Icon(VesperIcons.warning, size: 42, color: VesperColors.textTertiary),
             const SizedBox(height: 14),
-            const Text(
-              'Could not load this title',
-              style: VesperType.sectionTitle,
-            ),
+            const Text('Could not load this title', style: VesperType.sectionTitle),
             const SizedBox(height: 8),
             const Text(
               'Check your connection and try again.',
@@ -684,10 +631,7 @@ class _DetailsError extends StatelessWidget {
               scaleOnFocus: false,
               semanticLabel: 'Go back',
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 decoration: BoxDecoration(
                   color: VesperColors.accent,
                   borderRadius: BorderRadius.circular(5),
@@ -709,12 +653,10 @@ class _ListButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final saved =
-        ref.watch(libraryProvider).value?.isFavourite(item.id.value) ?? false;
+    final saved = ref.watch(libraryProvider).value?.isFavourite(item.id.value) ?? false;
 
     return FocusableItem(
-      onActivate: () =>
-          ref.read(libraryProvider.notifier).toggleFavourite(item),
+      onActivate: () => ref.read(libraryProvider.notifier).toggleFavourite(item),
       borderRadius: 6,
       scaleOnFocus: false,
       semanticLabel: saved ? 'Remove from My List' : 'Add to My List',
@@ -735,9 +677,7 @@ class _ListButton extends ConsumerWidget {
             const SizedBox(width: 7),
             Text(
               saved ? 'In List' : 'My List',
-              style: VesperType.button.copyWith(
-                color: VesperColors.textPrimary,
-              ),
+              style: VesperType.button.copyWith(color: VesperColors.textPrimary),
             ),
           ],
         ),

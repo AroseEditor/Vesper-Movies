@@ -72,9 +72,7 @@ class MovieBoxClient {
     if (current != null && current.isValid()) {
       return Future.value(current.token);
     }
-    return _pendingSession ??= _openSession().whenComplete(
-      () => _pendingSession = null,
-    );
+    return _pendingSession ??= _openSession().whenComplete(() => _pendingSession = null);
   }
 
   Future<String> _openSession() async {
@@ -117,12 +115,7 @@ class MovieBoxClient {
     String path,
     Map<String, dynamic> body, {
     CancelToken? cancel,
-  }) => _request(
-    method: 'POST',
-    path: path,
-    body: jsonEncode(body),
-    cancel: cancel,
-  );
+  }) => _request(method: 'POST', path: path, body: jsonEncode(body), cancel: cancel);
 
   Future<Map<String, dynamic>> _request({
     required String method,
@@ -132,29 +125,16 @@ class MovieBoxClient {
   }) async {
     final token = await ensureSession();
     try {
-      return await _send(
-        method: method,
-        path: path,
-        body: body,
-        authToken: token,
-        cancel: cancel,
-      );
+      return await _send(method: method, path: path, body: body, authToken: token, cancel: cancel);
     } on SourceError catch (error) {
       final retryable =
-          (error is Unavailable &&
-              (error.status == 401 || error.status == 403)) ||
+          (error is Unavailable && (error.status == 401 || error.status == 403)) ||
           (error is Unavailable && error.status == null);
       if (!retryable) rethrow;
 
       await invalidateSession();
       final fresh = await ensureSession();
-      return _send(
-        method: method,
-        path: path,
-        body: body,
-        authToken: fresh,
-        cancel: cancel,
-      );
+      return _send(method: method, path: path, body: body, authToken: fresh, cancel: cancel);
     }
   }
 
@@ -211,12 +191,8 @@ class MovieBoxClient {
       final status = response.statusCode ?? 0;
       if (retryableStatuses.contains(status)) {
         if (status == 429) {
-          final retryAfter = int.tryParse(
-            response.headers.value('retry-after') ?? '',
-          );
-          backoffMs = retryAfter == null
-              ? 400
-              : (retryAfter * 1000).clamp(50, 3000);
+          final retryAfter = int.tryParse(response.headers.value('retry-after') ?? '');
+          backoffMs = retryAfter == null ? 400 : (retryAfter * 1000).clamp(50, 3000);
           last = RateLimited(retryAfter);
         } else {
           last = Unavailable(status);

@@ -11,15 +11,9 @@ import 'dramachi/dramachi_source.dart';
 import 'fourkhdhub/fourkhdhub_source.dart';
 import 'moviebox/moviebox_source.dart';
 
-typedef SourceOutcome = ({
-  ProviderKind kind,
-  List<CatalogItem> items,
-  SourceError? error,
-});
+typedef SourceOutcome = ({ProviderKind kind, List<CatalogItem> items, SourceError? error});
 
-final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((
-  ref,
-) {
+final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((ref) {
   return {
     ProviderKind.moviebox: MovieBoxSource(),
     ProviderKind.dramachi: DramachiSource(),
@@ -47,48 +41,48 @@ class SearchQuery {
   int get hashCode => Object.hash(text, page);
 }
 
-final searchResultsProvider = FutureProvider.autoDispose
-    .family<List<SourceOutcome>, SearchQuery>((ref, query) async {
-      final trimmed = query.text.trim();
-      if (trimmed.isEmpty) return const [];
+final searchResultsProvider = FutureProvider.autoDispose.family<List<SourceOutcome>, SearchQuery>((
+  ref,
+  query,
+) async {
+  final trimmed = query.text.trim();
+  if (trimmed.isEmpty) return const [];
 
-      final cancel = CancelToken();
-      ref.onDispose(cancel.cancel);
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
 
-      final registry = ref.watch(sourceRegistryProvider);
+  final registry = ref.watch(sourceRegistryProvider);
 
-      final futures = registry.entries.map((entry) async {
-        try {
-          final items = await entry.value.search(
-            trimmed,
-            page: query.page,
-            cancel: cancel,
-          );
-          return (kind: entry.key, items: items, error: null as SourceError?);
-        } on SourceError catch (error) {
-          return (kind: entry.key, items: const <CatalogItem>[], error: error);
-        } on Object catch (_) {
-          return (
-            kind: entry.key,
-            items: const <CatalogItem>[],
-            error: const Unavailable() as SourceError?,
-          );
-        }
-      });
+  final futures = registry.entries.map((entry) async {
+    try {
+      final items = await entry.value.search(trimmed, page: query.page, cancel: cancel);
+      return (kind: entry.key, items: items, error: null as SourceError?);
+    } on SourceError catch (error) {
+      return (kind: entry.key, items: const <CatalogItem>[], error: error);
+    } on Object catch (_) {
+      return (
+        kind: entry.key,
+        items: const <CatalogItem>[],
+        error: const Unavailable() as SourceError?,
+      );
+    }
+  });
 
-      return Future.wait(futures);
-    });
+  return Future.wait(futures);
+});
 
-final mediaDetailsProvider = FutureProvider.autoDispose
-    .family<MediaDetails, MediaId>((ref, id) async {
-      final cancel = CancelToken();
-      ref.onDispose(cancel.cancel);
+final mediaDetailsProvider = FutureProvider.autoDispose.family<MediaDetails, MediaId>((
+  ref,
+  id,
+) async {
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
 
-      final source = ref.watch(sourceRegistryProvider)[id.kind];
-      if (source == null) throw const Unavailable();
+  final source = ref.watch(sourceRegistryProvider)[id.kind];
+  if (source == null) throw const Unavailable();
 
-      return source.details(id.value, cancel: cancel);
-    });
+  return source.details(id.value, cancel: cancel);
+});
 
 List<CatalogItem> flattenOutcomes(List<SourceOutcome> outcomes) {
   final items = <CatalogItem>[];

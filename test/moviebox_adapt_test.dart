@@ -37,10 +37,7 @@ void main() {
 
   group('poster resolution', () {
     test('prefers a flat url and falls back to a nested cover object', () {
-      expect(
-        readPoster({'coverUrl': 'https://img/a.jpg'}),
-        'https://img/a.jpg',
-      );
+      expect(readPoster({'coverUrl': 'https://img/a.jpg'}), 'https://img/a.jpg');
       expect(
         readPoster({
           'cover': {'url': 'https://img/b.jpg'},
@@ -64,12 +61,7 @@ void main() {
                 'releaseDate': '2021-10-22',
                 'coverUrl': 'https://img/dune.jpg',
               },
-              {
-                'subjectId': '2',
-                'title': 'Severance',
-                'subjectType': 2,
-                'seasonCount': 2,
-              },
+              {'subjectId': '2', 'title': 'Severance', 'subjectType': 2, 'seasonCount': 2},
             ],
           },
         ],
@@ -139,11 +131,7 @@ void main() {
         ],
       });
 
-      expect(items.map((e) => e.title), [
-        'Banner Title',
-        'Custom Title',
-        'Plain Title',
-      ]);
+      expect(items.map((e) => e.title), ['Banner Title', 'Custom Title', 'Plain Title']);
     });
   });
 
@@ -182,12 +170,7 @@ void main() {
       }, '11');
 
       expect(details.seasons.single.number, 2);
-      expect(details.seasons.single.episodes.map((e) => e.number), [
-        1,
-        2,
-        3,
-        4,
-      ]);
+      expect(details.seasons.single.episodes.map((e) => e.number), [1, 2, 3, 4]);
     });
 
     test('maps alternate dubs to their own subject ids', () {
@@ -285,47 +268,37 @@ void main() {
 
     test('normalises language labels for comparison', () {
       expect(normaliseLanguage('English '), normaliseLanguage('english'));
-      expect(
-        normaliseLanguage('Portugues (BR)'),
-        normaliseLanguage('portugues br'),
-      );
+      expect(normaliseLanguage('Portugues (BR)'), normaliseLanguage('portugues br'));
     });
   });
 
   group('play info', () {
-    test(
-      'rebuilds the manifest from the cookie and attaches playback headers',
-      () {
-        final releases = playInfoJsonToReleases(
-          {
-            'streams': [
-              {
-                'url': 'https://macdn.aoneroom.com/other/notice.mp4',
-                'signCookie':
-                    'CloudFront-Policy=$_policy; CloudFront-Signature=sig',
-                'resolution': 1080,
-              },
-            ],
-          },
-          season: 1,
-          episode: 2,
-          userAgent: 'test-agent',
-        );
+    test('rebuilds the manifest from the cookie and attaches playback headers', () {
+      final releases = playInfoJsonToReleases(
+        {
+          'streams': [
+            {
+              'url': 'https://macdn.aoneroom.com/other/notice.mp4',
+              'signCookie': 'CloudFront-Policy=$_policy; CloudFront-Signature=sig',
+              'resolution': 1080,
+            },
+          ],
+        },
+        season: 1,
+        episode: 2,
+        userAgent: 'test-agent',
+      );
 
-        expect(releases, hasLength(1));
-        final mirror = releases.single.mirrors.single;
-        expect(
-          mirror.url,
-          'https://sacdn.hakunaymatata.com/resource/abc123/index.mpd',
-        );
-        expect(mirror.headers['Referer'], 'https://sportslive.wine');
-        expect(mirror.headers['User-Agent'], 'test-agent');
-        expect(mirror.headers['Cookie'], contains('CloudFront-Policy='));
-        expect(releases.single.quality, '1080p');
-        expect(releases.single.season, 1);
-        expect(releases.single.episode, 2);
-      },
-    );
+      expect(releases, hasLength(1));
+      final mirror = releases.single.mirrors.single;
+      expect(mirror.url, 'https://sacdn.hakunaymatata.com/resource/abc123/index.mpd');
+      expect(mirror.headers['Referer'], 'https://sportslive.wine');
+      expect(mirror.headers['User-Agent'], 'test-agent');
+      expect(mirror.headers['Cookie'], contains('CloudFront-Policy='));
+      expect(releases.single.quality, '1080p');
+      expect(releases.single.season, 1);
+      expect(releases.single.episode, 2);
+    });
 
     test('skips a stream that only offers a deprecation notice', () {
       final releases = playInfoJsonToReleases(
@@ -348,18 +321,8 @@ void main() {
       final releases = resourceJsonToReleases(
         {
           'list': [
-            {
-              'resourceLink': 'https://cdn/s1e1.mkv',
-              'se': 1,
-              'ep': 1,
-              'resolution': 720,
-            },
-            {
-              'resourceLink': 'https://cdn/s1e2.mkv',
-              'se': 1,
-              'ep': 2,
-              'resolution': 1080,
-            },
+            {'resourceLink': 'https://cdn/s1e1.mkv', 'se': 1, 'ep': 1, 'resolution': 720},
+            {'resourceLink': 'https://cdn/s1e2.mkv', 'se': 1, 'ep': 2, 'resolution': 1080},
           ],
         },
         season: 1,

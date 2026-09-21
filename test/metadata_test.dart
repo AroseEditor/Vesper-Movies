@@ -14,8 +14,7 @@ void main() {
         'type': 'movie',
         'year': '2026',
         'poster': 'https://images.metahub.space/poster/small/tt28014327/img',
-        'background':
-            'https://images.metahub.space/background/medium/tt28014327/img',
+        'background': 'https://images.metahub.space/background/medium/tt28014327/img',
         'imdbRating': '6.9',
       }, 'movie');
 
@@ -42,10 +41,7 @@ void main() {
     });
 
     test('fall back to the requested type when the entry omits one', () {
-      final item = metaToCatalogItem({
-        'id': 'tt1',
-        'name': 'Untyped',
-      }, 'series');
+      final item = metaToCatalogItem({'id': 'tt1', 'name': 'Untyped'}, 'series');
       expect(item!.mediaType, MediaType.series);
     });
 
@@ -72,14 +68,8 @@ void main() {
 
   group('tmdb image urls', () {
     test('build sized urls and tolerate a missing path', () {
-      expect(
-        TmdbImage.poster('/abc.jpg'),
-        'https://image.tmdb.org/t/p/w500/abc.jpg',
-      );
-      expect(
-        TmdbImage.backdrop('/abc.jpg'),
-        'https://image.tmdb.org/t/p/w1280/abc.jpg',
-      );
+      expect(TmdbImage.poster('/abc.jpg'), 'https://image.tmdb.org/t/p/w500/abc.jpg');
+      expect(TmdbImage.backdrop('/abc.jpg'), 'https://image.tmdb.org/t/p/w1280/abc.jpg');
       expect(TmdbImage.poster(null), isNull);
       expect(TmdbImage.poster(''), isNull);
     });
@@ -107,8 +97,7 @@ void main() {
     });
 
     test('returns nothing from a shelf when unconfigured', () async {
-      final items = await TmdbSource(apiKey: '')
-          .shelf(CatalogShelf.trendingMovies);
+      final items = await TmdbSource(apiKey: '').shelf(CatalogShelf.trendingMovies);
       expect(items, isEmpty);
     });
   });

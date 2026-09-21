@@ -71,9 +71,7 @@ class InputModeNotifier extends Notifier<InputMode> {
   Future<void> resolve() async => set(await detectInputMode());
 }
 
-final inputModeProvider = NotifierProvider<InputModeNotifier, InputMode>(
-  InputModeNotifier.new,
-);
+final inputModeProvider = NotifierProvider<InputModeNotifier, InputMode>(InputModeNotifier.new);
 
 class InputModeScope extends StatelessWidget {
   const InputModeScope({super.key, required this.mode, required this.child});
@@ -86,9 +84,7 @@ class InputModeScope extends StatelessWidget {
     final media = MediaQuery.of(context);
     return MediaQuery(
       data: media.copyWith(
-        navigationMode: mode.isTv
-            ? NavigationMode.directional
-            : NavigationMode.traditional,
+        navigationMode: mode.isTv ? NavigationMode.directional : NavigationMode.traditional,
         textScaler: TextScaler.linear(mode.textScale),
       ),
       child: child,

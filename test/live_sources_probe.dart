@@ -26,14 +26,10 @@ void main() {
       try {
         final results = await entry.value.search('interstellar');
         final ms = DateTime.now().difference(started).inMilliseconds;
-        debugPrint(
-          'PROBE ${entry.key.label}: ${results.length} results in ${ms}ms',
-        );
+        debugPrint('PROBE ${entry.key.label}: ${results.length} results in ${ms}ms');
 
         for (final item in results.take(2)) {
-          debugPrint(
-            'PROBE   ${item.title} (${item.year}) ${item.mediaType.name}',
-          );
+          debugPrint('PROBE   ${item.title} (${item.year}) ${item.mediaType.name}');
         }
 
         if (results.isNotEmpty) {
@@ -42,9 +38,7 @@ void main() {
             debugPrint('PROBE   releases: ${releases.length}');
             for (final release in releases.take(2)) {
               final host = Uri.tryParse(release.directUrl ?? '')?.host;
-              debugPrint(
-                'PROBE     ${release.quality} ${release.sizeLabel} -> $host',
-              );
+              debugPrint('PROBE     ${release.quality} ${release.sizeLabel} -> $host');
             }
           } on Object catch (error) {
             debugPrint('PROBE   releases failed: $error');
