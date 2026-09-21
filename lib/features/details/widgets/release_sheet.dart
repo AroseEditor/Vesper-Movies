@@ -8,9 +8,11 @@ import '../../../design/colors.dart';
 import '../../../design/icons.dart';
 import '../../../design/typography.dart';
 import '../../../design/widgets/focusable_item.dart';
+import '../../../downloads/download_queue.dart';
 import '../../../models/media.dart';
 import '../../../models/release.dart';
 import '../../../player/player_controller.dart';
+import '../../../player/subtitle_style.dart';
 import '../../../sources/registry.dart';
 import '../../../sources/source_matcher.dart';
 import '../../../storage/library_controller.dart';
@@ -20,7 +22,7 @@ import '../details_controller.dart';
 Future<void> showReleaseSheet(
   BuildContext context, {
   required WidgetRef ref,
-  required SourceMatch match,
+  required List<SourceMatch> matches,
   required CatalogItem item,
   required String title,
   int season = 0,
@@ -35,27 +37,34 @@ Future<void> showReleaseSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
     ),
     builder: (sheetContext) =>
-        ReleaseSheet(match: match, item: item, title: title, season: season, episode: episode),
+        ReleaseSheet(matches: matches, item: item, title: title, season: season, episode: episode),
   );
 }
 
 class ReleaseSheet extends ConsumerWidget {
   const ReleaseSheet({
     super.key,
-    required this.match,
+    required this.matches,
     required this.item,
     required this.title,
     this.season = 0,
     this.episode = 0,
   });
 
-  final SourceMatch match;
+  final List<SourceMatch> matches;
   final CatalogItem item;
   final String title;
   final int season;
   final int episode;
 
   String get _subtitle => season > 0 ? 'S${season}E$episode' : '';
+
+  SourceMatch? _matchFor(Release release) {
+    for (final match in matches) {
+      if (match.kind == release.kind) return match;
+    }
+    return null;
+  }
 
   Future<void> _launch(BuildContext context, WidgetRef ref, Release release) async {
     final navigator = Navigator.of(context);
@@ -67,7 +76,7 @@ class ReleaseSheet extends ConsumerWidget {
         ref.read(sourceRegistryProvider),
         PlaybackRequest(
           release: release,
-          match: match,
+          match: _matchFor(release),
           title: title,
           subtitle: _subtitle.isEmpty ? null : _subtitle,
           season: season,
@@ -82,6 +91,7 @@ class ReleaseSheet extends ConsumerWidget {
       final resumeFrom = saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
 
       final controller = ref.read(playerControllerProvider.notifier);
+      await controller.applySubtitleStyle(ref.read(subtitleDefaultsProvider));
       await controller.load(
         PlaybackTarget(
           source: target.source,
@@ -118,7 +128,7 @@ class ReleaseSheet extends ConsumerWidget {
     } on SourceError catch (error) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(error.userMessage(match.kind)),
+          content: Text(error.userMessage(release.kind)),
           backgroundColor: VesperColors.surfaceRaised,
         ),
       );
@@ -132,9 +142,33 @@ class ReleaseSheet extends ConsumerWidget {
     }
   }
 
+  Future<void> _download(BuildContext context, WidgetRef ref, Release release) async {
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+
+    final mirror = release.mirrors.first;
+    final error = await ref
+        .read(downloadQueueProvider.notifier)
+        .enqueue(
+          item: item,
+          release: release,
+          headers: mirror.headers,
+          url: mirror.url,
+          season: season,
+          episode: episode,
+        );
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(error ?? 'Added to downloads.'),
+        backgroundColor: VesperColors.surfaceRaised,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final target = EpisodeRef(match, season: season, episode: episode);
+    final target = EpisodeRef(matches, item, season: season, episode: episode);
     final releases = ref.watch(releasesProvider(target));
 
     return SafeArea(
@@ -153,7 +187,7 @@ class ReleaseSheet extends ConsumerWidget {
                   const Text('Streams', style: VesperType.sectionTitle),
                   const SizedBox(height: 3),
                   Text(
-                    _subtitle.isEmpty ? '$title  ${match.kind.label}' : '$title  $_subtitle',
+                    _subtitle.isEmpty ? title : '$title  $_subtitle',
                     style: VesperType.meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -173,11 +207,8 @@ class ReleaseSheet extends ConsumerWidget {
                     ),
                   ),
                 ),
-                error: (error, stack) => _SheetMessage(
-                  message: error is SourceError
-                      ? error.userMessage(match.kind)
-                      : 'No streams were returned.',
-                ),
+                error: (error, stack) =>
+                    const _SheetMessage(message: 'No streams were returned for this title.'),
                 data: (items) {
                   if (items.isEmpty) {
                     return const _SheetMessage(message: 'No streams available for this episode.');
@@ -192,6 +223,7 @@ class ReleaseSheet extends ConsumerWidget {
                         release: release,
                         autofocus: index == 0,
                         onTap: () => _launch(context, ref, release),
+                        onDownload: () => _download(context, ref, release),
                       );
                     },
                   );
@@ -206,10 +238,16 @@ class ReleaseSheet extends ConsumerWidget {
 }
 
 class _ReleaseRow extends StatelessWidget {
-  const _ReleaseRow({required this.release, required this.onTap, this.autofocus = false});
+  const _ReleaseRow({
+    required this.release,
+    required this.onTap,
+    required this.onDownload,
+    this.autofocus = false,
+  });
 
   final Release release;
   final VoidCallback onTap;
+  final VoidCallback onDownload;
   final bool autofocus;
 
   @override
@@ -256,7 +294,16 @@ class _ReleaseRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(VesperIcons.chevronRight, size: 20, color: VesperColors.textTertiary),
+            FocusableItem(
+              onActivate: onDownload,
+              borderRadius: 16,
+              scaleOnFocus: false,
+              semanticLabel: 'Download this stream',
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(VesperIcons.downloads, size: 21, color: VesperColors.textSecondary),
+              ),
+            ),
           ],
         ),
       ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../design/colors.dart';
+import '../design/icons.dart';
 import '../design/motion.dart';
 import '../design/typography.dart';
+import '../features/settings/settings_page.dart';
 import 'destinations.dart';
 import 'input_mode.dart';
 
@@ -87,6 +89,17 @@ class _SideRailState extends State<SideRail> {
                         onSelect: () => widget.onSelect(i),
                       ),
                     const Spacer(),
+                    _RailAction(
+                      icon: VesperIcons.settings,
+                      label: 'Settings',
+                      expanded: _expanded,
+                      iconSlot: _collapsedWidth,
+                      tv: widget.mode.isTv,
+                      onActivate: () => Navigator.of(
+                        context,
+                      ).push(MaterialPageRoute<void>(builder: (context) => const SettingsPage())),
+                    ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -240,6 +253,84 @@ class _RailItemState extends State<_RailItem> {
                         fontSize: widget.tv ? 17 : 15,
                         fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RailAction extends StatefulWidget {
+  const _RailAction({
+    required this.icon,
+    required this.label,
+    required this.expanded,
+    required this.iconSlot,
+    required this.tv,
+    required this.onActivate,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool expanded;
+  final double iconSlot;
+  final bool tv;
+  final VoidCallback onActivate;
+
+  @override
+  State<_RailAction> createState() => _RailActionState();
+}
+
+class _RailActionState extends State<_RailAction> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _focused ? VesperColors.textPrimary : VesperColors.textTertiary;
+
+    return FocusableActionDetector(
+      onShowFocusHighlight: (value) {
+        if (_focused != value) setState(() => _focused = value);
+      },
+      mouseCursor: SystemMouseCursors.click,
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onActivate();
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onActivate,
+        child: Semantics(
+          label: widget.label,
+          button: true,
+          child: Container(
+            height: widget.tv ? 52 : 46,
+            color: _focused ? VesperColors.surfaceRaised : Colors.transparent,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: widget.iconSlot,
+                  child: Icon(widget.icon, size: widget.tv ? 24 : 21, color: color),
+                ),
+                Flexible(
+                  child: AnimatedOpacity(
+                    opacity: widget.expanded ? 1 : 0,
+                    duration: VesperMotion.fast,
+                    child: Text(
+                      widget.label,
+                      style: VesperType.bodyStrong.copyWith(color: color, fontSize: 15),
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 enum SubtitleSize {
   small('Small', 34),
   medium('Medium', 46),
@@ -140,3 +142,34 @@ class SubtitleStyle {
     return null;
   }
 }
+
+class SubtitleDefaultsNotifier extends Notifier<SubtitleStyle> {
+  @override
+  SubtitleStyle build() => SubtitleStyle.defaults;
+
+  void set(SubtitleStyle style) => state = style;
+
+  void cycleSize(int delta) {
+    const values = SubtitleSize.values;
+    final next = (values.indexOf(state.size) + delta + values.length) % values.length;
+    state = state.copyWith(size: values[next]);
+  }
+
+  void cycleColour(int delta) {
+    const values = SubtitleColour.values;
+    final next = (values.indexOf(state.colour) + delta + values.length) % values.length;
+    state = state.copyWith(colour: values[next]);
+  }
+
+  void cycleBackground(int delta) {
+    const values = SubtitleBackground.values;
+    final next = (values.indexOf(state.background) + delta + values.length) % values.length;
+    state = state.copyWith(background: values[next]);
+  }
+
+  void nudgePosition(int delta) => state = state.copyWith(position: state.position + delta);
+}
+
+final subtitleDefaultsProvider = NotifierProvider<SubtitleDefaultsNotifier, SubtitleStyle>(
+  SubtitleDefaultsNotifier.new,
+);

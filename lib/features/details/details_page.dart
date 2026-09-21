@@ -77,13 +77,12 @@ class _DetailsBody extends ConsumerWidget {
     int seasonNo = 0,
     int episodeNo = 0,
   }) async {
-    final match = data.bestMatch;
-    if (match == null) return;
+    if (!data.isPlayable) return;
 
     await showReleaseSheet(
       context,
       ref: ref,
-      match: match,
+      matches: data.matches,
       item: data.item,
       title: data.details.title,
       season: seasonNo,
@@ -105,7 +104,7 @@ class _DetailsBody extends ConsumerWidget {
             details: details,
             mode: mode,
             playable: data.isPlayable,
-            matchLabel: data.bestMatch?.kind.label,
+            matchLabel: data.isPlayable ? data.sourceLabel : null,
             onPlay: () => _play(
               context,
               ref,
