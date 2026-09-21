@@ -18,6 +18,18 @@ class MetadataService {
 
   List<MetadataSource> get _chain => _tmdb.isConfigured ? [_tmdb, _cinemeta] : [_cinemeta];
 
+  Future<List<CatalogItem>> search(String query, {CancelToken? cancel}) async {
+    if (_tmdb.isConfigured) {
+      try {
+        final items = await _tmdb.search(query, cancel: cancel);
+        if (items.isNotEmpty) return items;
+      } on Cancelled {
+        rethrow;
+      } on Object catch (_) {}
+    }
+    return _cinemeta.search(query, cancel: cancel);
+  }
+
   Future<String?> imdbIdFor(String tmdbKey, {CancelToken? cancel}) =>
       _tmdb.imdbIdFor(tmdbKey, cancel: cancel);
 

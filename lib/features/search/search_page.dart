@@ -11,8 +11,8 @@ import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
-import '../details/details_controller.dart';
 import '../details/details_page.dart';
+import '../home/home_controller.dart';
 
 class SearchTextNotifier extends Notifier<String> {
   @override
@@ -173,7 +173,7 @@ final titleSearchProvider = FutureProvider.autoDispose.family<List<CatalogItem>,
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
   return ref
-      .read(cinemetaProvider)
+      .read(metadataServiceProvider)
       .search(query, cancel: cancel)
       .timeout(const Duration(seconds: 20));
 });

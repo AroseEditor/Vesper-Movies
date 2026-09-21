@@ -104,6 +104,27 @@ class TmdbSource implements MetadataSource {
     );
   }
 
+  Future<List<CatalogItem>> search(String query, {CancelToken? cancel}) async {
+    if (!isConfigured || query.trim().isEmpty) return const [];
+
+    final payload = await _fetch(
+      '/search/multi',
+      cancel,
+      query: {'query': query.trim(), 'include_adult': 'false'},
+    );
+    if (payload == null) throw const Unavailable();
+
+    final items = <CatalogItem>[];
+    for (final entry in readList(payload, const ['results'])) {
+      if (entry is! Map) continue;
+      final type = entry['media_type'];
+      if (type != 'movie' && type != 'tv') continue;
+      final item = _toCatalogItem(entry, type == 'tv');
+      if (item != null) items.add(item);
+    }
+    return items;
+  }
+
   Future<String?> imdbIdFor(String tmdbKey, {CancelToken? cancel}) async {
     if (!isConfigured) return null;
     final parts = tmdbKey.split(':');
