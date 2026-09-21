@@ -5,6 +5,7 @@ import '../core/memo_cache.dart';
 import '../models/media.dart';
 import '../models/provider_kind.dart';
 import '../sources/moviebox/adapt.dart';
+import '../sources/source_matcher.dart';
 import 'metadata_source.dart';
 
 const String cinemetaBase = 'https://v3-cinemeta.strem.io';
@@ -118,6 +119,32 @@ class CinemetaSource implements MetadataSource {
       genres: _genres(meta),
       seasons: seasons,
     );
+  }
+
+  Future<String?> findImdbId(CatalogItem item, {CancelToken? cancel}) async {
+    final type = item.isSeries ? 'series' : 'movie';
+    final query = Uri.encodeComponent(item.title);
+    final payload = await _fetch('$cinemetaBase/catalog/$type/top/search=$query.json', cancel);
+    if (payload == null) return null;
+
+    String? best;
+    var bestScore = SourceMatcher.minimumScore - 1;
+    for (final entry in readList(payload, const ['metas'])) {
+      final candidate = metaToCatalogItem(entry, type);
+      if (candidate == null || !candidate.id.value.startsWith('tt')) continue;
+
+      final score = scoreCandidate(
+        wantedTitle: item.title,
+        wantedYear: item.year,
+        wantedSeries: item.isSeries,
+        candidate: candidate,
+      );
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate.id.value;
+      }
+    }
+    return best;
   }
 
   Future<Map<String, dynamic>?> rawMeta(String id, String type, CancelToken? cancel) async {

@@ -12,6 +12,12 @@ class SourceMatch {
   final String id;
   final String title;
   final int score;
+
+  @override
+  bool operator ==(Object other) => other is SourceMatch && other.kind == kind && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(kind, id);
 }
 
 String normaliseTitle(String raw) {

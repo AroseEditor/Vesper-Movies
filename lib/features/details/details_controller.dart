@@ -75,17 +75,26 @@ final _imdbIds = MemoCache<String, String>(
 
 Future<CatalogItem> _canonical(Ref ref, CatalogItem item, CancelToken cancel) async {
   final raw = item.id.value;
-  if (!raw.startsWith('tmdb:')) return item;
+  if (raw.startsWith('tt')) return item;
 
-  final imdb =
-      _imdbIds.peek(raw) ??
-      await ref
-          .read(metadataServiceProvider)
-          .imdbIdFor(raw, cancel: cancel)
-          .timeout(const Duration(seconds: 10), onTimeout: () => null);
+  final key = '${item.id.kind.id}:$raw';
+  var imdb = _imdbIds.peek(key);
+
+  if (imdb == null && raw.startsWith('tmdb:')) {
+    imdb = await ref
+        .read(metadataServiceProvider)
+        .imdbIdFor(raw, cancel: cancel)
+        .timeout(const Duration(seconds: 10), onTimeout: () => null);
+  }
+
+  imdb ??= await ref
+      .read(cinemetaProvider)
+      .findImdbId(item, cancel: cancel)
+      .timeout(const Duration(seconds: 10), onTimeout: () => null);
+
   if (imdb == null) return item;
+  _imdbIds.put(key, imdb);
 
-  _imdbIds.put(raw, imdb);
   return item.copyWith(id: MediaId(ProviderKind.addons, imdb));
 }
 
@@ -133,6 +142,26 @@ final sourceMatchesProvider = FutureProvider.autoDispose.family<List<SourceMatch
 
   _matchesCache.put(key, matches);
   return matches;
+});
+
+final matchSeasonsProvider = FutureProvider.autoDispose.family<List<Season>, SourceMatch>((
+  ref,
+  match,
+) async {
+  final source = ref.read(sourceRegistryProvider)[match.kind];
+  if (source == null) return const [];
+
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
+
+  try {
+    final details = await source
+        .details(match.id, cancel: cancel)
+        .timeout(const Duration(seconds: 15));
+    return details.seasons;
+  } on Object {
+    return const [];
+  }
 });
 
 void invalidateDetailsCache() {
