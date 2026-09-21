@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/errors.dart';
 import '../../../design/colors.dart';
 import '../../../design/icons.dart';
 import '../../../design/typography.dart';
@@ -11,13 +10,9 @@ import '../../../design/widgets/focusable_item.dart';
 import '../../../downloads/download_queue.dart';
 import '../../../models/media.dart';
 import '../../../models/release.dart';
-import '../../../player/player_controller.dart';
-import '../../../player/subtitle_style.dart';
-import '../../../sources/registry.dart';
 import '../../../sources/source_matcher.dart';
-import '../../../storage/library_controller.dart';
-import '../../player/player_page.dart';
 import '../details_controller.dart';
+import '../launch_playback.dart';
 
 Future<void> showReleaseSheet(
   BuildContext context, {
@@ -25,6 +20,7 @@ Future<void> showReleaseSheet(
   required List<SourceMatch> matches,
   required CatalogItem item,
   required String title,
+  List<Season> seasons = const [],
   int season = 0,
   int episode = 0,
 }) {
@@ -36,8 +32,14 @@ Future<void> showReleaseSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
     ),
-    builder: (sheetContext) =>
-        ReleaseSheet(matches: matches, item: item, title: title, season: season, episode: episode),
+    builder: (sheetContext) => ReleaseSheet(
+      matches: matches,
+      item: item,
+      title: title,
+      seasons: seasons,
+      season: season,
+      episode: episode,
+    ),
   );
 }
 
@@ -47,6 +49,7 @@ class ReleaseSheet extends ConsumerWidget {
     required this.matches,
     required this.item,
     required this.title,
+    this.seasons = const [],
     this.season = 0,
     this.episode = 0,
   });
@@ -54,86 +57,25 @@ class ReleaseSheet extends ConsumerWidget {
   final List<SourceMatch> matches;
   final CatalogItem item;
   final String title;
+  final List<Season> seasons;
   final int season;
   final int episode;
 
   String get _subtitle => season > 0 ? 'S${season}E$episode' : '';
 
-  SourceMatch? _matchFor(Release release) {
-    for (final match in matches) {
-      if (match.kind == release.kind) return match;
-    }
-    return null;
-  }
-
-  Future<void> _launch(BuildContext context, WidgetRef ref, Release release) async {
-    final container = ProviderScope.containerOf(context, listen: false);
-    final root = Navigator.of(context, rootNavigator: true);
+  Future<void> _launch(BuildContext context, Release release) async {
+    final root = Navigator.of(context, rootNavigator: true).context;
     Navigator.of(context).pop();
-
-    final controller = container.read(playerControllerProvider.notifier);
-    controller.beginOpening();
-
-    final route = root.push(
-      MaterialPageRoute<void>(
-        builder: (context) => PlayerPage(
-          onProgress: (position, duration, completed) {
-            unawaited(
-              container
-                  .read(libraryProvider.notifier)
-                  .recordProgress(
-                    item: item,
-                    position: position,
-                    duration: duration,
-                    season: season,
-                    episode: episode,
-                    completed: completed,
-                  ),
-            );
-          },
-        ),
-      ),
+    await launchPlayback(
+      root,
+      item: item,
+      title: title,
+      matches: matches,
+      seasons: seasons,
+      season: season,
+      episode: episode,
+      preferred: release,
     );
-
-    try {
-      final target = await resolvePlayback(
-        container.read(sourceRegistryProvider),
-        PlaybackRequest(
-          release: release,
-          match: _matchFor(release),
-          title: title,
-          subtitle: _subtitle.isEmpty ? null : _subtitle,
-          season: season,
-          episode: episode,
-        ),
-      );
-
-      final saved = container
-          .read(libraryProvider)
-          .value
-          ?.entryFor(item.id.value, season: season, episode: episode);
-      final resumeFrom = saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
-
-      await controller.applySubtitleStyle(container.read(subtitleDefaultsProvider));
-      await controller.load(
-        PlaybackTarget(
-          source: target.source,
-          title: target.title,
-          subtitle: target.subtitle,
-          startAt: resumeFrom,
-          season: target.season,
-          episode: target.episode,
-          mediaId: target.mediaId,
-        ),
-      );
-    } on SourceError catch (error) {
-      controller.fail(error.userMessage(release.kind));
-    } on Object catch (_) {
-      controller.fail('That stream would not start.');
-    }
-
-    await route;
-    await controller.stop();
   }
 
   Future<void> _download(BuildContext context, WidgetRef ref, Release release) async {
@@ -216,7 +158,7 @@ class ReleaseSheet extends ConsumerWidget {
                       return _ReleaseRow(
                         release: release,
                         autofocus: index == 0,
-                        onTap: () => _launch(context, ref, release),
+                        onTap: () => _launch(context, release),
                         onDownload: () => _download(context, ref, release),
                       );
                     },

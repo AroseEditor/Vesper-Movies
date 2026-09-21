@@ -193,16 +193,10 @@ class EpisodeRef {
 
 final _releasesCache = MemoCache<String, List<Release>>(ttl: const Duration(minutes: 20));
 
-final releasesProvider = FutureProvider.autoDispose.family<List<Release>, EpisodeRef>((
-  ref,
-  target,
-) async {
+Future<List<Release>> gatherReleases(Ref ref, EpisodeRef target, {CancelToken? cancel}) async {
   final cacheKey = '${target.item.id}:${target.season}:${target.episode}';
   final cached = _releasesCache.peek(cacheKey);
   if (cached != null) return cached;
-
-  final cancel = CancelToken();
-  ref.onDispose(cancel.cancel);
 
   final registry = ref.read(sourceRegistryProvider);
   final addons = ref.read(enabledAddonsProvider);
@@ -248,6 +242,15 @@ final releasesProvider = FutureProvider.autoDispose.family<List<Release>, Episod
   final sorted = sortReleases(combined);
   _releasesCache.put(cacheKey, sorted);
   return sorted;
+}
+
+final releasesProvider = FutureProvider.autoDispose.family<List<Release>, EpisodeRef>((
+  ref,
+  target,
+) async {
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
+  return gatherReleases(ref, target, cancel: cancel);
 });
 
 Future<List<Release>> _safeReleases(
