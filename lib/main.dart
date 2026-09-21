@@ -8,12 +8,15 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/memo_cache.dart';
+import 'core/secure_dns.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = SecureDnsHttpOverrides();
   MediaKit.ensureInitialized();
 
   await MemoCache.openDisk();
+  await StreamTunnel.start();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
