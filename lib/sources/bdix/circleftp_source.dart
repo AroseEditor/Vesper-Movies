@@ -78,8 +78,9 @@ class CircleFtpSource extends BaseContentSource {
             ),
           );
         }
-        if (episodes.isNotEmpty)
+        if (episodes.isNotEmpty) {
           seasons.add(Season(number: index + 1, episodes: episodes));
+        }
       }
     }
 
@@ -227,10 +228,14 @@ String? codecFromFilename(String name) {
   final lower = name.toLowerCase();
   if (lower.contains('x265') ||
       lower.contains('hevc') ||
-      lower.contains('h265'))
+      lower.contains('h265')) {
     return 'hevc';
-  if (lower.contains('x264') || lower.contains('h264') || lower.contains('avc'))
+  }
+  if (lower.contains('x264') ||
+      lower.contains('h264') ||
+      lower.contains('avc')) {
     return 'h264';
+  }
   if (lower.contains('av1')) return 'av1';
   return null;
 }

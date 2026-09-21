@@ -46,7 +46,10 @@ class ProbeServer {
         (carried ? manifestHits : manifestMisses).add(path);
         request.response
           ..statusCode = 200
-          ..headers.contentType = ContentType('application', 'vnd.apple.mpegurl')
+          ..headers.contentType = ContentType(
+            'application',
+            'vnd.apple.mpegurl',
+          )
           ..write(_playlist());
       } else if (path.startsWith('/seg/')) {
         (carried ? segmentHits : segmentMisses).add(path);
@@ -114,7 +117,10 @@ Future<SpikeResult> runSpike() async {
     await player.open(
       Media(
         server.manifestUrl,
-        httpHeaders: const {_probeHeader: _probeValue, 'Cookie': 'probe=$_probeValue'},
+        httpHeaders: const {
+          _probeHeader: _probeValue,
+          'Cookie': 'probe=$_probeValue',
+        },
       ),
       play: true,
     );
@@ -130,7 +136,8 @@ Future<SpikeResult> runSpike() async {
 
     return SpikeResult(
       manifestCarried: server.manifestHits.isNotEmpty,
-      segmentCarried: server.segmentHits.isNotEmpty && server.segmentMisses.isEmpty,
+      segmentCarried:
+          server.segmentHits.isNotEmpty && server.segmentMisses.isEmpty,
       segmentTotal: server.segmentHits.length + server.segmentMisses.length,
       platform: Platform.operatingSystem,
     );

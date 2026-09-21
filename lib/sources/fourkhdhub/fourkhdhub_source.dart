@@ -290,14 +290,16 @@ bool isPlayableMirror(String url) {
   final uri = Uri.tryParse(url);
   if (uri == null || !uri.isScheme('https')) return false;
   if (blockedMirrorHosts.contains(uri.host)) return false;
-  if (uri.host.startsWith('192.168.') || uri.host.startsWith('10.'))
+  if (uri.host.startsWith('192.168.') || uri.host.startsWith('10.')) {
     return false;
+  }
 
   final path = uri.path.toLowerCase();
   if (path.endsWith('.zip') ||
       path.endsWith('.rar') ||
-      path.contains('login.php'))
+      path.contains('login.php')) {
     return false;
+  }
 
   return true;
 }

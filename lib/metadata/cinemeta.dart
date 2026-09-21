@@ -196,8 +196,9 @@ List<Season> seasonsFromVideos(Map<String, dynamic> meta) {
 
     final season = readInt(entry, const ['season']);
     final number = readInt(entry, const ['episode', 'number']);
-    if (season == null || number == null || season <= 0 || number <= 0)
+    if (season == null || number == null || season <= 0 || number <= 0) {
       continue;
+    }
 
     grouped
         .putIfAbsent(season, () => <Episode>[])

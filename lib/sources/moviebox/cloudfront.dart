@@ -117,8 +117,9 @@ String? resolveEdgeCacheManifest(String signCookie) {
       base = base.substring(0, base.length - 1);
     }
     if (base.isEmpty) return null;
-    if (!base.startsWith('http://') && !base.startsWith('https://'))
+    if (!base.startsWith('http://') && !base.startsWith('https://')) {
       return null;
+    }
 
     return '$base/index.mpd';
   }

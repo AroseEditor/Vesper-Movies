@@ -238,8 +238,9 @@ List<Season> seasonsFromDetails(Object? source) {
       }
     }
 
-    if (episodes.isNotEmpty)
+    if (episodes.isNotEmpty) {
       seasons.add(Season(number: number, episodes: episodes));
+    }
   }
 
   seasons.sort((a, b) => a.number.compareTo(b.number));

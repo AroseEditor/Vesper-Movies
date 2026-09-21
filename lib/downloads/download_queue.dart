@@ -205,8 +205,9 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
     final title = '${item.title}$suffix';
     final id = '${item.id.value}:$season:$episode';
 
-    if (_current.any((e) => e.id == id))
+    if (_current.any((e) => e.id == id)) {
       return 'That is already in your downloads.';
+    }
 
     final dir = await _downloadsDirectory();
     final name = '${safeFileName(title)}.${extensionForUrl(url)}';

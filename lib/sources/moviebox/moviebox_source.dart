@@ -194,8 +194,9 @@ class MovieBoxSource extends BaseContentSource {
     }
 
     final resourceIds = <String>{};
-    if (resourceId != null && resourceId.isNotEmpty)
+    if (resourceId != null && resourceId.isNotEmpty) {
       resourceIds.add(resourceId);
+    }
 
     if (resourcePage != null) {
       absorb(

@@ -134,8 +134,9 @@ List<Channel> filterChannels(
   final needle = query.trim().toLowerCase();
 
   return channels.where((channel) {
-    if (group != null && group.isNotEmpty && channel.group != group)
+    if (group != null && group.isNotEmpty && channel.group != group) {
       return false;
+    }
     if (needle.isEmpty) return true;
     return channel.name.toLowerCase().contains(needle) ||
         (channel.group?.toLowerCase().contains(needle) ?? false);

@@ -12,6 +12,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../design/widgets/shimmer.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
 import '../../shell/input_mode.dart';
@@ -287,6 +288,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         onClose: _closePanel,
                         onPanelChanged: (panel) =>
                             setState(() => _panel = panel),
+                      ),
+                    if (!state.isReady && state.error == null)
+                      const ColoredBox(
+                        color: VesperColors.player,
+                        child: Center(
+                          child: LoadingNote(label: 'Opening your stream'),
+                        ),
                       ),
                     if (state.error != null)
                       _PlayerError(message: state.error!, onExit: _exit),
