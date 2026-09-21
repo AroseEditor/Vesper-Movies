@@ -6,6 +6,7 @@ import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
+import '../../design/widgets/action_menu.dart';
 import '../../design/widgets/focusable_item.dart';
 import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
@@ -13,6 +14,7 @@ import '../../models/media.dart';
 import '../../shell/input_mode.dart';
 import '../../storage/library_controller.dart';
 import 'details_controller.dart';
+import 'launch_playback.dart';
 import 'widgets/episode_tile.dart';
 import 'widgets/release_sheet.dart';
 
@@ -103,7 +105,27 @@ class _DetailsBody extends ConsumerWidget {
 
   Future<void> _play(
     BuildContext context,
-    WidgetRef ref, {
+    List<Season> seasons, {
+    int seasonNo = 0,
+    int episodeNo = 0,
+  }) async {
+    if (!data.isPlayable) return;
+
+    await launchPlayback(
+      context,
+      item: data.item,
+      title: data.details.title,
+      matches: data.matches,
+      seasons: seasons,
+      season: seasonNo,
+      episode: episodeNo,
+    );
+  }
+
+  Future<void> _streams(
+    BuildContext context,
+    WidgetRef ref,
+    List<Season> seasons, {
     int seasonNo = 0,
     int episodeNo = 0,
   }) async {
@@ -115,6 +137,7 @@ class _DetailsBody extends ConsumerWidget {
       matches: data.matches,
       item: data.item,
       title: data.details.title,
+      seasons: seasons,
       season: seasonNo,
       episode: episodeNo,
     );
@@ -170,7 +193,35 @@ class _DetailsBody extends ConsumerWidget {
             matchLabel: data.isPlayable || data.matchesPending ? data.sourceLabel : null,
             playLabel: playLabel,
             progress: heroProgress,
-            onPlay: () => _play(context, ref, seasonNo: playSeason, episodeNo: playEpisode),
+            onPlay: () => _play(context, seasons, seasonNo: playSeason, episodeNo: playEpisode),
+            actions: isSeries
+                ? const []
+                : [
+                    MenuAction(
+                      icon: VesperIcons.source,
+                      label: 'Choose a stream',
+                      onSelected: () => _streams(context, ref, seasons),
+                    ),
+                    MenuAction(
+                      icon: VesperIcons.downloads,
+                      label: 'Download',
+                      onSelected: () => _streams(context, ref, seasons),
+                    ),
+                    MenuAction(
+                      icon: (library?.entryFor(id)?.completed ?? false)
+                          ? VesperIcons.unwatched
+                          : VesperIcons.watched,
+                      label: (library?.entryFor(id)?.completed ?? false)
+                          ? 'Mark as unwatched'
+                          : 'Mark as watched',
+                      onSelected: () => ref
+                          .read(libraryProvider.notifier)
+                          .setWatched(
+                            data.item,
+                            watched: !(library?.entryFor(id)?.completed ?? false),
+                          ),
+                    ),
+                  ],
             onBack: () => Navigator.of(context).maybePop(),
           ),
         ),
@@ -202,8 +253,26 @@ class _DetailsBody extends ConsumerWidget {
                   mode: mode,
                   enabled: data.isPlayable,
                   progress: watched == null ? null : (watched.completed ? 1.0 : watched.progress),
+                  watched: watched?.completed ?? false,
+                  onToggleWatched: () => ref
+                      .read(libraryProvider.notifier)
+                      .setWatched(
+                        data.item,
+                        watched: !(watched?.completed ?? false),
+                        season: episode.season,
+                        episode: episode.number,
+                      ),
+                  onDownload: data.isPlayable
+                      ? () => _streams(
+                          context,
+                          ref,
+                          seasons,
+                          seasonNo: episode.season,
+                          episodeNo: episode.number,
+                        )
+                      : null,
                   onPlay: () =>
-                      _play(context, ref, seasonNo: episode.season, episodeNo: episode.number),
+                      _play(context, seasons, seasonNo: episode.season, episodeNo: episode.number),
                 );
               },
             ),
@@ -240,6 +309,7 @@ class _Backdrop extends StatelessWidget {
     required this.onBack,
     this.playLabel = 'Play',
     this.progress,
+    this.actions = const [],
   });
 
   final CatalogItem item;
@@ -251,6 +321,7 @@ class _Backdrop extends StatelessWidget {
   final VoidCallback onBack;
   final String playLabel;
   final double? progress;
+  final List<MenuAction> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -306,6 +377,7 @@ class _Backdrop extends StatelessWidget {
               onPlay: onPlay,
               playLabel: playLabel,
               progress: progress,
+              actions: actions,
             ),
           ),
         ],
@@ -324,6 +396,7 @@ class _TitleBlock extends StatelessWidget {
     required this.onPlay,
     required this.playLabel,
     this.progress,
+    this.actions = const [],
   });
 
   final CatalogItem item;
@@ -334,6 +407,7 @@ class _TitleBlock extends StatelessWidget {
   final VoidCallback onPlay;
   final String playLabel;
   final double? progress;
+  final List<MenuAction> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +447,7 @@ class _TitleBlock extends StatelessWidget {
               _SourceBadge(label: matchLabel!)
             else
               const _SourceBadge(label: 'No source found', muted: true),
+            if (actions.isNotEmpty) ...[const SizedBox(width: 4), ActionMenu(actions: actions)],
           ],
         ),
         if (progress != null && progress! > 0) ...[

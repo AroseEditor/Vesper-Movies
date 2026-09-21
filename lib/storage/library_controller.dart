@@ -76,6 +76,42 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
     _apply(LibraryData(history: history, favourites: data.favourites));
   }
 
+  Future<void> setWatched(
+    CatalogItem item, {
+    required bool watched,
+    int season = 0,
+    int episode = 0,
+  }) async {
+    final data = _current;
+    final existing = data.entryFor(item.id.value, season: season, episode: episode);
+
+    if (!watched) {
+      if (existing == null) return;
+      final history = data.history.where((e) => e.key != existing.key).toList();
+      _apply(LibraryData(history: history, favourites: data.favourites), immediate: true);
+      return;
+    }
+
+    final duration = existing != null && existing.durationMs > 0 ? existing.durationMs : 1;
+    final entry = WatchEntry(
+      id: item.id.value,
+      title: item.title,
+      mediaType: item.mediaType,
+      year: item.year,
+      posterUrl: item.posterUrl,
+      backdropUrl: item.backdropUrl,
+      logoUrl: item.logoUrl,
+      season: season,
+      episode: episode,
+      positionMs: duration,
+      durationMs: duration,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      completed: true,
+    );
+    final history = [entry, ...data.history.where((e) => e.key != entry.key)];
+    _apply(LibraryData(history: history, favourites: data.favourites), immediate: true);
+  }
+
   Future<void> forget(WatchEntry entry) async {
     final data = _current;
     final history = data.history.where((e) => e.key != entry.key).toList();

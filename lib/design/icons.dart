@@ -43,4 +43,12 @@ abstract final class VesperIcons {
   static const pauseCircle = Icons.pause_circle_outline_rounded;
   static const deleteItem = Icons.delete_outline_rounded;
   static const source = Icons.dns_rounded;
+  static const more = Icons.more_vert_rounded;
+  static const watched = Icons.check_circle_rounded;
+  static const unwatched = Icons.remove_done_rounded;
+  static const cloud = Icons.cloud_rounded;
+  static const skip = Icons.fast_forward_rounded;
+  static const backup = Icons.save_alt_rounded;
+  static const restore = Icons.restore_rounded;
+  static const update = Icons.system_update_alt_rounded;
 }

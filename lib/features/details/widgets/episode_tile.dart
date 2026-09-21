@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../design/colors.dart';
 import '../../../design/icons.dart';
 import '../../../design/typography.dart';
+import '../../../design/widgets/action_menu.dart';
 import '../../../design/widgets/focusable_item.dart';
 import '../../../models/media.dart';
 import '../../../shell/input_mode.dart';
@@ -16,6 +17,9 @@ class EpisodeTile extends StatelessWidget {
     required this.onPlay,
     this.enabled = true,
     this.progress,
+    this.watched = false,
+    this.onDownload,
+    this.onToggleWatched,
   });
 
   final Episode episode;
@@ -23,6 +27,9 @@ class EpisodeTile extends StatelessWidget {
   final VoidCallback onPlay;
   final bool enabled;
   final double? progress;
+  final bool watched;
+  final VoidCallback? onDownload;
+  final VoidCallback? onToggleWatched;
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +131,24 @@ class EpisodeTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onDownload != null || onToggleWatched != null)
+                ActionMenu(
+                  semanticLabel: 'Episode options',
+                  actions: [
+                    if (onToggleWatched != null)
+                      MenuAction(
+                        icon: watched ? VesperIcons.unwatched : VesperIcons.watched,
+                        label: watched ? 'Mark as unwatched' : 'Mark as watched',
+                        onSelected: onToggleWatched!,
+                      ),
+                    if (onDownload != null)
+                      MenuAction(
+                        icon: VesperIcons.downloads,
+                        label: 'Download episode',
+                        onSelected: onDownload!,
+                      ),
+                  ],
+                ),
             ],
           ),
         ),
