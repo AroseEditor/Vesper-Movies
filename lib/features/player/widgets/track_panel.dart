@@ -339,7 +339,7 @@ class _SubtitleSection extends ConsumerWidget {
             _SubtitleRow(
               label: option.name,
               selected: activeExternal == option.url,
-              onSelect: () => controller.selectExternalSubtitle(option),
+              onSelect: () => controller.selectExternalSubtitle(option, remember: true),
             ),
           _SubtitleRow(
             label: 'Off',

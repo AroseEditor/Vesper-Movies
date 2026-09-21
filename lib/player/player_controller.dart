@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../models/release.dart';
+import 'language_prefs.dart';
 import 'subtitle_style.dart';
 
 const Duration preloadWindow = Duration(minutes: 10);
@@ -31,6 +33,13 @@ class PlaybackTarget {
   final int? season;
   final int? episode;
   final String? mediaId;
+}
+
+class Chapter {
+  const Chapter({required this.title, required this.start});
+
+  final String title;
+  final Duration start;
 }
 
 class Preload {
@@ -268,14 +277,107 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> selectExternalSubtitle(SubtitleOption option) async {
+  Future<void> selectExternalSubtitle(SubtitleOption option, {bool remember = false}) async {
     await player.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
     state = state.copyWith(activeExternal: option.url);
+    if (remember) {
+      await ref.read(languagePrefsProvider.notifier).rememberSubtitle(languageKey(option.name));
+    }
   }
 
   Future<void> clearSubtitles() async {
     await player.setSubtitleTrack(SubtitleTrack.no());
     state = state.copyWith(clearActiveExternal: true);
+    await ref.read(languagePrefsProvider.notifier).rememberSubtitle(null);
+  }
+
+  Future<bool> waitUntilPlayable(Duration timeout) async {
+    if (state.error != null) return false;
+    if (player.state.duration > Duration.zero) return true;
+
+    final completer = Completer<bool>();
+    final subs = <StreamSubscription<Object>>[
+      player.stream.duration.listen((value) {
+        if (value > Duration.zero && !completer.isCompleted) completer.complete(true);
+      }),
+      player.stream.error.listen((_) {
+        if (!completer.isCompleted) completer.complete(false);
+      }),
+    ];
+
+    try {
+      return await completer.future.timeout(timeout, onTimeout: () => false);
+    } finally {
+      for (final sub in subs) {
+        await sub.cancel();
+      }
+    }
+  }
+
+  Future<void> applyPreferredTracks() async {
+    final prefs = ref.read(languagePrefsProvider);
+    if (prefs.audio == null && prefs.subtitle == null && !prefs.subtitlesOff) return;
+
+    var tracks = player.state.tracks;
+    if (tracks.audio.length <= 2 && tracks.subtitle.length <= 2) {
+      tracks = await player.stream.tracks
+          .firstWhere((t) => t.audio.length > 2 || t.subtitle.length > 2)
+          .timeout(const Duration(seconds: 15), onTimeout: () => player.state.tracks);
+    }
+
+    final audioPref = prefs.audio;
+    if (audioPref != null) {
+      for (final track in tracks.audio) {
+        if (languageKey(track.language, track.title) == audioPref) {
+          await player.setAudioTrack(track);
+          break;
+        }
+      }
+    }
+
+    if (prefs.subtitlesOff) {
+      await player.setSubtitleTrack(SubtitleTrack.no());
+      state = state.copyWith(clearActiveExternal: true);
+      return;
+    }
+
+    final subPref = prefs.subtitle;
+    if (subPref == null) return;
+
+    for (final track in tracks.subtitle) {
+      if (languageKey(track.language, track.title) == subPref) {
+        await player.setSubtitleTrack(track);
+        state = state.copyWith(clearActiveExternal: true);
+        return;
+      }
+    }
+
+    for (final option in state.externalSubtitles) {
+      if (languageKey(option.name) == subPref) {
+        await selectExternalSubtitle(option);
+        return;
+      }
+    }
+  }
+
+  Future<List<Chapter>> chapters() async {
+    final native = player.platform;
+    if (native is! NativePlayer) return const [];
+    try {
+      final raw = await native.getProperty('chapter-list');
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return [
+        for (final entry in decoded)
+          if (entry is Map && entry['time'] is num)
+            Chapter(
+              title: '${entry['title'] ?? ''}',
+              start: Duration(milliseconds: ((entry['time'] as num) * 1000).round()),
+            ),
+      ];
+    } on Object {
+      return const [];
+    }
   }
 
   Tracks get tracks => player.state.tracks;
@@ -324,11 +426,23 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
   Future<void> nudgeSpeed(double delta) => setSpeed(player.state.rate + delta);
 
-  Future<void> selectAudio(AudioTrack track) => player.setAudioTrack(track);
+  Future<void> selectAudio(AudioTrack track) async {
+    await player.setAudioTrack(track);
+    await ref
+        .read(languagePrefsProvider.notifier)
+        .rememberAudio(languageKey(track.language, track.title));
+  }
 
   Future<void> selectSubtitle(SubtitleTrack track) async {
     await player.setSubtitleTrack(track);
     state = state.copyWith(clearActiveExternal: true);
+    final prefs = ref.read(languagePrefsProvider.notifier);
+    if (track.id == 'no') {
+      await prefs.rememberSubtitle(null);
+    } else {
+      final key = languageKey(track.language, track.title);
+      if (key != null) await prefs.rememberSubtitle(key);
+    }
   }
 
   Future<void> selectVideo(VideoTrack track) => player.setVideoTrack(track);
