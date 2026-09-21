@@ -16,6 +16,7 @@ import '../../design/widgets/shimmer.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
 import '../../shell/input_mode.dart';
+import 'widgets/playback_overlays.dart';
 import 'widgets/player_scrubber.dart';
 import 'widgets/track_panel.dart';
 
@@ -294,6 +295,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         ),
                       ),
                     ),
+                    PlaybackOverlays(onInteract: _showControls),
                     if (_panel != PlayerPanel.none)
                       TrackPanel(
                         panel: _panel,
@@ -487,6 +489,7 @@ class _TopBar extends StatelessWidget {
               ],
             ),
           ),
+          const CloudSourceButton(),
         ],
       ),
     );
