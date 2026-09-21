@@ -92,6 +92,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress -y
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Build
         shell: pwsh
         env:
@@ -100,17 +106,27 @@ jobs:
           flutter pub get
           flutter build windows --release --dart-define=TMDB_API_KEY="$env:TMDB_API_KEY"
 
-      - name: Package
+      - name: Build installer
         shell: pwsh
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/vesper-movies-windows-x64.zip
+
+          $raw = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { $env:GITHUB_REF_NAME }
+          $version = "$raw" -replace '^v', ''
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { $version = '0.1.0' }
+          Write-Host "Installer version: $version"
+
+          makensis /DAPP_VERSION=$version installer/vesper.nsi
+          if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE" }
+
           Get-ChildItem dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/*.zip
+          path: dist/*.exe
           if-no-files-found: error
 
   linux:
@@ -167,7 +183,7 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p dist
-          find artifacts -type f \( -name '*.apk' -o -name '*.zip' -o -name '*.tar.gz' \) -exec cp {} dist/ \;
+          find artifacts -type f \( -name '*.apk' -o -name '*.exe' -o -name '*.tar.gz' \) -exec cp {} dist/ \;
           ls -la dist
 
       - name: Resolve tag
@@ -195,11 +211,11 @@ jobs:
             echo "| Android phone or tablet | vesper-movies-arm64-v8a.apk |"
             echo "| Older 32 bit Android | vesper-movies-armeabi-v7a.apk |"
             echo "| Android TV, Fire TV, Google TV | vesper-movies-arm64-v8a.apk |"
-            echo "| Windows | vesper-movies-windows-x64.zip |"
+            echo "| Windows | vesper-movies-windows-x64-setup.exe |"
             echo "| Linux | vesper-movies-linux-x64.tar.gz |"
             echo
-            echo "The same APK serves phones and televisions. On Windows, unzip and run vesper_movies.exe."
-            echo "On Linux, extract and run ./vesper_movies."
+            echo "The same APK serves phones and televisions. On Windows, run the setup installer."
+            echo "On Linux, extract the archive and run ./vesper_movies."
             echo
             echo "## Changes"
             echo
