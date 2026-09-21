@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../core/errors.dart';
+import '../core/memo_cache.dart';
 import '../models/media.dart';
 import '../models/provider_kind.dart';
 import '../sources/moviebox/adapt.dart';
@@ -25,21 +26,27 @@ class CinemetaSource implements MetadataSource {
 
   final Dio _dio;
 
+  static final _shelfCache = MemoCache<String, List<CatalogItem>>(ttl: const Duration(hours: 3));
+  static final _metaCache = MemoCache<String, Map<String, dynamic>>(ttl: const Duration(hours: 12));
+
   @override
   String get name => 'Cinemeta';
 
   @override
-  Future<List<CatalogItem>> shelf(CatalogShelf shelf, {CancelToken? cancel}) async {
-    final url = '$cinemetaBase/catalog/${shelf.type}/${shelf.sort}.json';
-    final payload = await _fetch(url, cancel);
-    if (payload == null) return const [];
+  Future<List<CatalogItem>> shelf(CatalogShelf shelf, {CancelToken? cancel}) {
+    final key = '${shelf.type}/${shelf.sort}';
+    return _shelfCache.resolve(key, () async {
+      final url = '$cinemetaBase/catalog/${shelf.type}/${shelf.sort}.json';
+      final payload = await _fetch(url, cancel);
+      if (payload == null) return const <CatalogItem>[];
 
-    final items = <CatalogItem>[];
-    for (final entry in readList(payload, const ['metas'])) {
-      final item = metaToCatalogItem(entry, shelf.type);
-      if (item != null) items.add(item);
-    }
-    return items;
+      final items = <CatalogItem>[];
+      for (final entry in readList(payload, const ['metas'])) {
+        final item = metaToCatalogItem(entry, shelf.type);
+        if (item != null) items.add(item);
+      }
+      return items;
+    });
   }
 
   @override
@@ -94,9 +101,16 @@ class CinemetaSource implements MetadataSource {
 
   Future<Map<String, dynamic>?> rawMeta(String id, String type, CancelToken? cancel) async {
     if (!id.startsWith('tt')) return null;
+
+    final cached = _metaCache.peek('$type/$id');
+    if (cached != null) return cached;
+
     final payload = await _fetch('$cinemetaBase/meta/$type/$id.json', cancel);
     final meta = payload?['meta'];
-    return meta is Map<String, dynamic> ? meta : null;
+    if (meta is! Map<String, dynamic>) return null;
+
+    _metaCache.put('$type/$id', meta);
+    return meta;
   }
 
   List<String> _genres(Map<String, dynamic> meta) {

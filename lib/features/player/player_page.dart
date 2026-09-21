@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../design/colors.dart';
 import '../../design/icons.dart';
@@ -34,7 +36,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   Timer? _hideTimer;
   bool _controlsVisible = true;
+  bool _fullscreen = false;
   PlayerPanel _panel = PlayerPanel.none;
+
+  Future<void> _toggleFullscreen() async {
+    final next = !_fullscreen;
+    setState(() => _fullscreen = next);
+
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      try {
+        await windowManager.setFullScreen(next);
+      } on Object catch (_) {
+        return;
+      }
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(
+        next ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+      );
+    }
+  }
 
   Timer? _progressTimer;
 
@@ -108,6 +128,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       _closePanel();
       return;
     }
+    if (_fullscreen) {
+      unawaited(_toggleFullscreen());
+      return;
+    }
     final onExit = widget.onExit;
     if (onExit != null) {
       onExit();
@@ -172,6 +196,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
           return null;
         },
       ),
+      ToggleFullscreenIntent: CallbackAction<ToggleFullscreenIntent>(
+        onInvoke: (_) {
+          unawaited(_toggleFullscreen());
+          _showControls();
+          return null;
+        },
+      ),
       ExitPlayerIntent: CallbackAction<ExitPlayerIntent>(
         onInvoke: (_) {
           _exit();
@@ -231,9 +262,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           node: _controlsScope,
                           child: _Controls(
                             mode: mode,
+                            fullscreen: _fullscreen,
                             onExit: _exit,
                             onOpenPanel: _openPanel,
                             onInteract: _showControls,
+                            onToggleFullscreen: () => unawaited(_toggleFullscreen()),
                           ),
                         ),
                       ),
@@ -293,15 +326,19 @@ class _GestureLayer extends StatelessWidget {
 class _Controls extends ConsumerWidget {
   const _Controls({
     required this.mode,
+    required this.fullscreen,
     required this.onExit,
     required this.onOpenPanel,
     required this.onInteract,
+    required this.onToggleFullscreen,
   });
 
   final InputMode mode;
+  final bool fullscreen;
   final VoidCallback onExit;
   final ValueChanged<PlayerPanel> onOpenPanel;
   final VoidCallback onInteract;
+  final VoidCallback onToggleFullscreen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -351,6 +388,8 @@ class _Controls extends ConsumerWidget {
             ),
             _BottomBar(
               mode: mode,
+              fullscreen: fullscreen,
+              onToggleFullscreen: onToggleFullscreen,
               position: position,
               duration: duration,
               onSeek: (value) {
@@ -459,6 +498,8 @@ class _CentreControls extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.mode,
+    required this.fullscreen,
+    required this.onToggleFullscreen,
     required this.position,
     required this.duration,
     required this.onSeek,
@@ -466,6 +507,8 @@ class _BottomBar extends StatelessWidget {
   });
 
   final InputMode mode;
+  final bool fullscreen;
+  final VoidCallback onToggleFullscreen;
   final Duration position;
   final Duration duration;
   final ValueChanged<Duration> onSeek;
@@ -508,6 +551,7 @@ class _BottomBar extends StatelessWidget {
                 onTap: () => onOpenPanel(PlayerPanel.speed),
               ),
               const Spacer(),
+              _FullscreenButton(fullscreen: fullscreen, onTap: onToggleFullscreen),
             ],
           ),
         ],
@@ -633,6 +677,40 @@ class _PlayerError extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullscreenButton extends StatelessWidget {
+  const _FullscreenButton({required this.fullscreen, required this.onTap});
+
+  final bool fullscreen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableItem(
+      onActivate: onTap,
+      borderRadius: 8,
+      scaleOnFocus: false,
+      semanticLabel: fullscreen ? 'Leave full screen' : 'Full screen',
+      child: Tooltip(
+        message: fullscreen ? 'Leave full screen  F' : 'Full screen  F',
+        child: Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            fullscreen ? VesperIcons.fullscreenExit : VesperIcons.fullscreen,
+            size: 24,
+            color: VesperColors.textPrimary,
           ),
         ),
       ),

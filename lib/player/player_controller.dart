@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../models/release.dart';
 import 'subtitle_style.dart';
@@ -71,7 +74,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   StreamSubscription<String>? _errorSubscription;
 
   Player get player => _player ??= Player(
-    configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 32 * 1024 * 1024),
+    configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 256 * 1024 * 1024),
   );
 
   VideoController get videoController => _videoController ??= VideoController(player);
@@ -121,17 +124,31 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     final native = player.platform;
     if (native is! NativePlayer) return;
 
+    try {
+      final dir = await getTemporaryDirectory();
+      final cacheDir = Directory(p.join(dir.path, 'stream-cache'));
+      if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
+      await native.setProperty('cache-dir', cacheDir.path);
+    } on Object catch (_) {
+      await native.setProperty('cache-on-disk', 'no');
+    }
+
     const properties = {
       'cache': 'yes',
-      'cache-secs': '120',
-      'demuxer-max-bytes': '134217728',
-      'demuxer-max-back-bytes': '67108864',
-      'demuxer-readahead-secs': '30',
+      'cache-secs': '900',
+      'cache-on-disk': 'yes',
+      'demuxer-max-bytes': '1073741824',
+      'demuxer-max-back-bytes': '268435456',
+      'demuxer-readahead-secs': '600',
+      'demuxer-hysteresis-secs': '60',
       'network-timeout': '30',
       'stream-lavf-o':
           'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
       'keep-open': 'yes',
       'hr-seek': 'yes',
+      'force-seekable': 'yes',
+      'vd-lavc-threads': '0',
+      'hwdec': 'auto-safe',
     };
 
     for (final entry in properties.entries) {

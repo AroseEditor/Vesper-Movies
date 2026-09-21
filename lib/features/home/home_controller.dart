@@ -28,7 +28,10 @@ class HomeFeed {
 
 class HomeFeedNotifier extends AsyncNotifier<HomeFeed> {
   @override
-  Future<HomeFeed> build() => _load();
+  Future<HomeFeed> build() {
+    ref.keepAlive();
+    return _load();
+  }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();

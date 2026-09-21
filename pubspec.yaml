@@ -36,6 +36,7 @@ dependencies:
   cached_network_image: ^4.0.0
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

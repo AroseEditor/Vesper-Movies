@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
+import '../../core/memo_cache.dart';
 import '../../metadata/cinemeta.dart';
 import '../../models/media.dart';
 import '../../models/provider_kind.dart';
@@ -38,18 +39,23 @@ class TitleDetails {
   String get sourceLabel {
     final names = <String>[
       for (final match in matches) match.kind.label,
-      if (hasAddons) addonCount == 1 ? '1 addon' : '\$addonCount addons',
+      if (hasAddons) addonCount == 1 ? '1 addon' : '$addonCount addons',
     ];
     if (names.isEmpty) return 'No source found';
     if (names.length <= 2) return names.join(' and ');
-    return '\${names.first} and \${names.length - 1} more';
+    return '${names.first} and ${names.length - 1} more';
   }
 }
+
+final _detailsCache = MemoCache<String, TitleDetails>(ttl: const Duration(hours: 6));
 
 final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, CatalogItem>((
   ref,
   item,
 ) async {
+  final cached = _detailsCache.peek(item.id.toString());
+  if (cached != null) return cached;
+
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
 
@@ -64,13 +70,18 @@ final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, Cat
   final meta = results[0] as MediaDetails?;
   final matches = results[1] as List<SourceMatch>;
 
-  return TitleDetails(
+  final resolved = TitleDetails(
     item: item,
     details: meta ?? _fallbackDetails(item),
     matches: matches,
     addonCount: ref.read(enabledAddonsProvider).length,
   );
+
+  _detailsCache.put(item.id.toString(), resolved);
+  return resolved;
 });
+
+void invalidateDetailsCache() => _detailsCache.clear();
 
 MediaDetails _fallbackDetails(CatalogItem item) {
   return MediaDetails(
@@ -107,10 +118,16 @@ class EpisodeRef {
   int get hashCode => Object.hash(_key, item.id, season, episode);
 }
 
+final _releasesCache = MemoCache<String, List<Release>>(ttl: const Duration(minutes: 20));
+
 final releasesProvider = FutureProvider.autoDispose.family<List<Release>, EpisodeRef>((
   ref,
   target,
 ) async {
+  final cacheKey = '${target.item.id}:${target.season}:${target.episode}';
+  final cached = _releasesCache.peek(cacheKey);
+  if (cached != null) return cached;
+
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
 
@@ -154,7 +171,10 @@ final releasesProvider = FutureProvider.autoDispose.family<List<Release>, Episod
   }
 
   if (combined.isEmpty) throw const Unavailable();
-  return sortReleases(combined);
+
+  final sorted = sortReleases(combined);
+  _releasesCache.put(cacheKey, sorted);
+  return sorted;
 });
 
 Future<List<Release>> _safeReleases(
