@@ -52,7 +52,7 @@ class MovieBoxSource extends BaseContentSource {
         final seasons = await _client.get(MovieBoxEndpoints.seasonInfo(id), cancel: cancel);
         payload['seasons'] = seasons;
       } on SourceError catch (_) {
-        // details without season info is still usable
+        return detailsJsonToMediaDetails(payload, id);
       }
     }
 

@@ -86,16 +86,15 @@ JwtClaims parseJwtClaims(String token) {
 
 String? _decodeSegment(String segment) {
   final padded = segment.padRight(segment.length + ((4 - segment.length % 4) % 4), '=');
+  final decoders = <List<int> Function(String)>[base64Url.decode, base64.decode];
+
   for (final candidate in [segment, padded]) {
-    try {
-      return utf8.decode(base64Url.decode(candidate));
-    } on Object catch (_) {
-      // fall through to the next encoding
-    }
-    try {
-      return utf8.decode(base64.decode(candidate));
-    } on Object catch (_) {
-      // fall through to the next candidate
+    for (final decode in decoders) {
+      try {
+        return utf8.decode(decode(candidate));
+      } on Object catch (_) {
+        continue;
+      }
     }
   }
   return null;
