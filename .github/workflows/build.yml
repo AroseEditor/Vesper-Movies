@@ -16,6 +16,8 @@ jobs:
     name: Android and TV
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +33,7 @@ jobs:
           cache: true
 
       - name: Restore signing key
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |

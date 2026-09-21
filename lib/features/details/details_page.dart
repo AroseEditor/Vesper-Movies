@@ -11,6 +11,7 @@ import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
+import '../../storage/library_controller.dart';
 import 'details_controller.dart';
 import 'widgets/episode_tile.dart';
 import 'widgets/release_sheet.dart';
@@ -100,6 +101,7 @@ class _DetailsBody extends ConsumerWidget {
       slivers: [
         SliverToBoxAdapter(
           child: _Backdrop(
+            item: data.item,
             details: details,
             mode: mode,
             playable: data.isPlayable,
@@ -153,6 +155,7 @@ class _DetailsBody extends ConsumerWidget {
 
 class _Backdrop extends StatelessWidget {
   const _Backdrop({
+    required this.item,
     required this.details,
     required this.mode,
     required this.playable,
@@ -161,6 +164,7 @@ class _Backdrop extends StatelessWidget {
     required this.onBack,
   });
 
+  final CatalogItem item;
   final MediaDetails details;
   final InputMode mode;
   final bool playable;
@@ -214,6 +218,7 @@ class _Backdrop extends StatelessWidget {
             right: mode.gutter,
             bottom: 24,
             child: _TitleBlock(
+              item: item,
               details: details,
               mode: mode,
               playable: playable,
@@ -229,6 +234,7 @@ class _Backdrop extends StatelessWidget {
 
 class _TitleBlock extends StatelessWidget {
   const _TitleBlock({
+    required this.item,
     required this.details,
     required this.mode,
     required this.playable,
@@ -236,6 +242,7 @@ class _TitleBlock extends StatelessWidget {
     required this.onPlay,
   });
 
+  final CatalogItem item;
   final MediaDetails details;
   final InputMode mode;
   final bool playable;
@@ -273,6 +280,8 @@ class _TitleBlock extends StatelessWidget {
         Row(
           children: [
             _PlayButton(enabled: playable, onTap: onPlay),
+            const SizedBox(width: 12),
+            _ListButton(item: item),
             const SizedBox(width: 12),
             if (matchLabel != null)
               _SourceBadge(label: matchLabel!)
@@ -630,6 +639,46 @@ class _DetailsError extends StatelessWidget {
                 ),
                 child: const Text('Go back', style: VesperType.button),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ListButton extends ConsumerWidget {
+  const _ListButton({required this.item});
+
+  final CatalogItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(libraryProvider).value?.isFavourite(item.id.value) ?? false;
+
+    return FocusableItem(
+      onActivate: () => ref.read(libraryProvider.notifier).toggleFavourite(item),
+      borderRadius: 6,
+      scaleOnFocus: false,
+      semanticLabel: saved ? 'Remove from My List' : 'Add to My List',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: VesperColors.surface.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              saved ? VesperIcons.check : VesperIcons.add,
+              size: 21,
+              color: saved ? VesperColors.accent : VesperColors.textPrimary,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              saved ? 'In List' : 'My List',
+              style: VesperType.button.copyWith(color: VesperColors.textPrimary),
             ),
           ],
         ),

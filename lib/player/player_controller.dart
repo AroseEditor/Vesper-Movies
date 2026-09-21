@@ -31,18 +31,25 @@ class PlayerState {
   const PlayerState({
     this.target,
     this.subtitleStyle = SubtitleStyle.defaults,
+    this.externalSubtitles = const [],
+    this.activeExternal,
     this.isReady = false,
     this.error,
   });
 
   final PlaybackTarget? target;
   final SubtitleStyle subtitleStyle;
+  final List<SubtitleOption> externalSubtitles;
+  final String? activeExternal;
   final bool isReady;
   final String? error;
 
   PlayerState copyWith({
     PlaybackTarget? target,
     SubtitleStyle? subtitleStyle,
+    List<SubtitleOption>? externalSubtitles,
+    String? activeExternal,
+    bool clearActiveExternal = false,
     bool? isReady,
     String? error,
     bool clearError = false,
@@ -50,6 +57,8 @@ class PlayerState {
     return PlayerState(
       target: target ?? this.target,
       subtitleStyle: subtitleStyle ?? this.subtitleStyle,
+      externalSubtitles: externalSubtitles ?? this.externalSubtitles,
+      activeExternal: clearActiveExternal ? null : (activeExternal ?? this.activeExternal),
       isReady: isReady ?? this.isReady,
       error: clearError ? null : (error ?? this.error),
     );
@@ -79,11 +88,19 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> load(PlaybackTarget target) async {
-    state = state.copyWith(target: target, isReady: false, clearError: true);
+    state = state.copyWith(
+      target: target,
+      externalSubtitles: target.source.subtitles,
+      isReady: false,
+      clearError: true,
+      clearActiveExternal: true,
+    );
 
     _errorSubscription ??= player.stream.error.listen((message) {
       state = state.copyWith(error: message, isReady: false);
     });
+
+    await _applyNetworkTuning();
 
     await player.open(
       Media(target.source.url, httpHeaders: target.source.headers, start: target.startAt),
@@ -94,11 +111,49 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     final external = target.subtitle ?? target.source.subtitle;
     if (external != null && external.isNotEmpty) {
-      await player.setSubtitleTrack(SubtitleTrack.uri(external));
+      await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
     }
 
     state = state.copyWith(isReady: true);
   }
+
+  Future<void> _applyNetworkTuning() async {
+    final native = player.platform;
+    if (native is! NativePlayer) return;
+
+    const properties = {
+      'cache': 'yes',
+      'cache-secs': '120',
+      'demuxer-max-bytes': '134217728',
+      'demuxer-max-back-bytes': '67108864',
+      'demuxer-readahead-secs': '30',
+      'network-timeout': '30',
+      'stream-lavf-o':
+          'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
+      'keep-open': 'yes',
+      'hr-seek': 'yes',
+    };
+
+    for (final entry in properties.entries) {
+      try {
+        await native.setProperty(entry.key, entry.value);
+      } on Object catch (_) {
+        continue;
+      }
+    }
+  }
+
+  Future<void> selectExternalSubtitle(SubtitleOption option) async {
+    await player.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
+    state = state.copyWith(activeExternal: option.url);
+  }
+
+  Future<void> clearSubtitles() async {
+    await player.setSubtitleTrack(SubtitleTrack.no());
+    state = state.copyWith(clearActiveExternal: true);
+  }
+
+  Tracks get tracks => player.state.tracks;
 
   Future<void> applySubtitleStyle(SubtitleStyle style) async {
     state = state.copyWith(subtitleStyle: style);
@@ -140,7 +195,10 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
   Future<void> selectAudio(AudioTrack track) => player.setAudioTrack(track);
 
-  Future<void> selectSubtitle(SubtitleTrack track) => player.setSubtitleTrack(track);
+  Future<void> selectSubtitle(SubtitleTrack track) async {
+    await player.setSubtitleTrack(track);
+    state = state.copyWith(clearActiveExternal: true);
+  }
 
   Future<void> selectVideo(VideoTrack track) => player.setVideoTrack(track);
 
@@ -174,5 +232,13 @@ final playerBufferingProvider = StreamProvider.autoDispose<bool>((ref) {
 });
 
 final playerTracksProvider = StreamProvider.autoDispose<Tracks>((ref) {
-  return ref.watch(playerControllerProvider.notifier).player.stream.tracks;
+  final notifier = ref.watch(playerControllerProvider.notifier);
+  return notifier.player.stream.tracks.startWith(notifier.tracks);
 });
+
+extension _SeedStream<T> on Stream<T> {
+  Stream<T> startWith(T value) async* {
+    yield value;
+    yield* this;
+  }
+}

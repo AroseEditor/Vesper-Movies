@@ -221,7 +221,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         _showControls();
                       },
                     ),
-                    if (state.error != null) _PlayerError(message: state.error!, onExit: _exit),
                     AnimatedOpacity(
                       opacity: _controlsVisible ? 1 : 0,
                       duration: VesperMotion.normal,
@@ -245,6 +244,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         onClose: _closePanel,
                         onPanelChanged: (panel) => setState(() => _panel = panel),
                       ),
+                    if (state.error != null) _PlayerError(message: state.error!, onExit: _exit),
                   ],
                 ),
               ),

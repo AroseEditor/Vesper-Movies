@@ -196,34 +196,32 @@ class _PanelBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(playerControllerProvider.notifier);
-    final tracks = ref.watch(playerTracksProvider).value;
+    final tracks = ref.watch(playerTracksProvider).value ?? controller.tracks;
     final player = controller.player;
 
     return switch (panel) {
       PlayerPanel.audio => _TrackList(
         items: [
-          for (final track in tracks?.audio ?? const <AudioTrack>[])
+          for (final track in tracks.audio)
             _TrackEntry(
               label: describeAudioTrack(track),
               selected: track == player.state.track.audio,
               onSelect: () => controller.selectAudio(track),
             ),
         ],
-        emptyMessage: 'No audio tracks reported yet.',
+        emptyMessage: 'This stream reports a single built in audio track.',
       ),
-      PlayerPanel.subtitles => _SubtitleSection(
-        tracks: tracks?.subtitle ?? const <SubtitleTrack>[],
-      ),
+      PlayerPanel.subtitles => _SubtitleSection(tracks: tracks.subtitle),
       PlayerPanel.quality => _TrackList(
         items: [
-          for (final track in tracks?.video ?? const <VideoTrack>[])
+          for (final track in tracks.video)
             _TrackEntry(
               label: describeVideoTrack(track),
               selected: track == player.state.track.video,
               onSelect: () => controller.selectVideo(track),
             ),
         ],
-        emptyMessage: 'No video tracks reported yet.',
+        emptyMessage: 'Quality is chosen automatically for this stream.',
       ),
       PlayerPanel.speed => _SpeedList(controller: controller, current: player.state.rate),
       PlayerPanel.none => const SizedBox.shrink(),
@@ -322,13 +320,39 @@ class _SubtitleSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(playerControllerProvider.notifier);
-    final style = ref.watch(playerControllerProvider).subtitleStyle;
+    final playerState = ref.watch(playerControllerProvider);
+    final style = playerState.subtitleStyle;
+    final external = playerState.externalSubtitles;
+    final activeExternal = playerState.activeExternal;
     final selected = controller.player.state.track.subtitle;
 
     return ListView(
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 24),
       children: [
+        if (external.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(10, 4, 10, 6),
+            child: Text('From this source', style: VesperType.label),
+          ),
+          for (final option in external)
+            _SubtitleRow(
+              label: option.name,
+              selected: activeExternal == option.url,
+              onSelect: () => controller.selectExternalSubtitle(option),
+            ),
+          _SubtitleRow(
+            label: 'Off',
+            selected: activeExternal == null && selected.id == 'no',
+            onSelect: controller.clearSubtitles,
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: VesperColors.divider),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(10, 12, 10, 6),
+            child: Text('Embedded in the file', style: VesperType.label),
+          ),
+        ],
         for (final track in tracks)
           FocusableItem(
             onActivate: () => controller.selectSubtitle(track),
@@ -474,6 +498,42 @@ class _Stepper extends StatelessWidget {
         height: 30,
         decoration: const BoxDecoration(color: VesperColors.surface, shape: BoxShape.circle),
         child: Icon(icon, size: 18, color: VesperColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _SubtitleRow extends StatelessWidget {
+  const _SubtitleRow({required this.label, required this.selected, required this.onSelect});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableItem(
+      onActivate: onSelect,
+      borderRadius: 10,
+      scaleOnFocus: false,
+      semanticLabel: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: VesperType.bodyStrong.copyWith(
+                  color: selected ? VesperColors.accent : VesperColors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (selected) const Icon(VesperIcons.check, size: 19, color: VesperColors.accent),
+          ],
+        ),
       ),
     );
   }
