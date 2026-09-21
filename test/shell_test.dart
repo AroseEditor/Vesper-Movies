@@ -103,8 +103,8 @@ void main() {
   });
 
   testWidgets('poster shows the title and meta below the image', (tester) async {
-    final item = CatalogItem(
-      id: const MediaId(ProviderKind.moviebox, 'tt1'),
+    const item = CatalogItem(
+      id: MediaId(ProviderKind.moviebox, 'tt1'),
       title: 'Harbour Lights',
       mediaType: MediaType.movie,
       year: '2025',
@@ -123,8 +123,8 @@ void main() {
   });
 
   testWidgets('poster hides the title when the label is turned off', (tester) async {
-    final item = CatalogItem(
-      id: const MediaId(ProviderKind.moviebox, 'tt2'),
+    const item = CatalogItem(
+      id: MediaId(ProviderKind.moviebox, 'tt2'),
       title: 'Quiet Frequency',
       mediaType: MediaType.series,
     );
