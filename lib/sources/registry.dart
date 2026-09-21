@@ -8,6 +8,7 @@ import 'bdix/circleftp_source.dart';
 import 'bdix/dhakaflix_source.dart';
 import 'content_source.dart';
 import 'dramachi/dramachi_source.dart';
+import 'fourkhdhub/fourkhdhub_source.dart';
 import 'moviebox/moviebox_source.dart';
 
 typedef SourceOutcome = ({ProviderKind kind, List<CatalogItem> items, SourceError? error});
@@ -16,6 +17,7 @@ final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((ref) 
   return {
     ProviderKind.moviebox: MovieBoxSource(),
     ProviderKind.dramachi: DramachiSource(),
+    ProviderKind.fourkhdhub: FourKHdHubSource(),
     ProviderKind.circleftp: CircleFtpSource(),
     ProviderKind.dhakaflix: DhakaFlixSource(),
   };
