@@ -32,23 +32,31 @@ One codebase. The same APK serves both phone and TV.
 - Live TV from any M3U playlist
 - Full D-pad support on TV
 
-## Current state
+## Sources
 
-Working today:
+| Source | What it gives you |
+|---|---|
+| MovieBox | Films and series, signed DASH streams, subtitles in many languages |
+| 4KHDHub | High bitrate releases up to 2160p |
+| Dramachi | Asian drama series |
+| CircleFTP | BDIX intranet library, only reachable on a Bangladeshi ISP |
+| DhakaFlix | BDIX intranet library, only reachable on a Bangladeshi ISP |
+| Stremio addons | Anything you add yourself, from Settings |
 
-- Discover, Categories and Search, all backed by live catalogue data
-- Details pages with cast, genres, runtime and per-episode titles and thumbnails
-- MovieBox playback, including its Edge-Cache signed DASH manifests
-- Subtitle tracks pulled from the source, deduplicated by language
-- Continue Watching and My List, saved between sessions
-- Live TV from any M3U playlist
+Search fans out across all of them at once. A source that is unreachable shows as a dimmed chip
+rather than an error, so the results that did arrive still appear.
 
-Not finished yet:
+Add Stremio addons from Settings, reachable from the side rail on desktop and TV or from the
+Downloads screen on a phone. Any addon that serves the standard stream resource works.
 
-- Only MovieBox resolves streams. 4KHDHub, Dramachi, CircleFTP, DhakaFlix and Stremio addons are
-  designed for but not yet implemented
-- Downloads is still a placeholder screen
-- The DASH header probe has only been run on Windows, not Linux or Android
+## Known limits
+
+- The two BDIX sources only respond on a Bangladeshi ISP intranet. Off that network they time out,
+  which is expected rather than broken.
+- Some 4KHDHub releases point at a redirector page rather than a direct file. Those are labelled
+  `(redirect)` and sorted below the direct ones, which play immediately.
+- Downloads save direct files. Adaptive streams (DASH and HLS) are streamed but not yet saved.
+- The DASH header probe has only been run on Windows, not Linux or Android.
 
 ## Controls
 

@@ -166,6 +166,12 @@ void main() {
       expect(isPlayableMirror('https://cdn.example/login.php'), isFalse);
     });
 
+    test('separate direct files from redirector pages', () {
+      expect(isDirectMirror('https://pixeldrain.dev/api/file/x'), isTrue);
+      expect(isDirectMirror('https://cdn.workers.dev/x.mkv'), isTrue);
+      expect(isDirectMirror('https://greenmotors.club/watch/x'), isFalse);
+    });
+
     test('label mirrors by host', () {
       expect(mirrorLabel('https://pixeldrain.dev/api/file/x'), 'Pixeldrain');
       expect(mirrorLabel('https://cdn.example.com/x'), 'Example');

@@ -231,15 +231,22 @@ List<Release> parseReleases(
           episode: episode == 0 ? null : episode,
           mirrors: [
             SourceMirror(
-              label: mirrorLabel(href),
+              label: isDirectMirror(href) ? mirrorLabel(href) : '${mirrorLabel(href)} (redirect)',
               url: href,
               headers: const {'Referer': fourKHdHubBase, 'User-Agent': browserUserAgent},
+              directFile: isDirectMirror(href),
             ),
           ],
         ),
       );
     }
   }
+
+  releases.sort((a, b) {
+    final aDirect = a.mirrors.first.directFile ? 0 : 1;
+    final bDirect = b.mirrors.first.directFile ? 0 : 1;
+    return aDirect.compareTo(bDirect);
+  });
 
   return releases;
 }
@@ -267,6 +274,19 @@ bool isPlayableMirror(String url) {
   if (path.endsWith('.zip') || path.endsWith('.rar') || path.contains('login.php')) return false;
 
   return true;
+}
+
+const Set<String> directMirrorHosts = {
+  'pixeldrain.dev',
+  'pixeldrain.com',
+  'workers.dev',
+  'googleusercontent.com',
+  'r2.dev',
+};
+
+bool isDirectMirror(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  return directMirrorHosts.any((known) => host == known || host.endsWith('.$known'));
 }
 
 String mirrorLabel(String url) {
