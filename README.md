@@ -143,8 +143,20 @@ start ms-settings:developers
 
 Optional. Without it the app uses Cinemeta, which needs no key.
 
+The key never lives in the repository. Add it once as a GitHub Actions secret named
+`TMDB_API_KEY` under Settings, Secrets and variables, Actions. The release workflow reads it from
+there and compiles it into the Windows build only. Android and Linux ship keyless and fall back to
+Cinemeta, so a widely sideloaded APK carries nothing to extract.
+
+For a local build, keep the key in `tmdb.json`, which is gitignored:
+
+```json
+{ "TMDB_API_KEY": "your_key_here" }
+```
+
 ```bash
-flutter build apk --release --dart-define=TMDB_API_KEY=your_key_here
+flutter run -d windows --dart-define-from-file=tmdb.json
+flutter build windows --release --dart-define-from-file=tmdb.json
 ```
 
 A key compiled into a release binary can be extracted from that binary, so use one you do not mind
