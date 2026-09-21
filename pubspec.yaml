@@ -37,6 +37,8 @@ dependencies:
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1
   window_manager: ^0.5.2
+  file_picker: ^13.1.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
