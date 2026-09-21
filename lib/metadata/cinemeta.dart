@@ -121,6 +121,47 @@ class CinemetaSource implements MetadataSource {
     );
   }
 
+  static final _searchCache = MemoCache<String, List<CatalogItem>>(
+    ttl: const Duration(minutes: 30),
+  );
+
+  Future<List<CatalogItem>> search(String query, {CancelToken? cancel}) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return Future.value(const []);
+
+    return _searchCache.resolve(trimmed.toLowerCase(), () async {
+      final encoded = Uri.encodeComponent(trimmed);
+      final pages = await Future.wait([
+        for (final type in const ['movie', 'series'])
+          _fetch('$cinemetaBase/catalog/$type/top/search=$encoded.json', cancel),
+      ]);
+
+      final seen = <String>{};
+      final ranked = <(int, int, CatalogItem)>[];
+      var order = 0;
+      for (var i = 0; i < pages.length; i++) {
+        final type = i == 0 ? 'movie' : 'series';
+        for (final entry in readList(pages[i], const ['metas'])) {
+          final item = metaToCatalogItem(entry, type);
+          if (item == null || !seen.add(item.id.value)) continue;
+          final score = scoreCandidate(
+            wantedTitle: trimmed,
+            wantedYear: null,
+            wantedSeries: item.isSeries,
+            candidate: item,
+          );
+          ranked.add((score, order++, item));
+        }
+      }
+
+      ranked.sort((a, b) {
+        final byScore = b.$1.compareTo(a.$1);
+        return byScore != 0 ? byScore : a.$2.compareTo(b.$2);
+      });
+      return [for (final entry in ranked) entry.$3];
+    });
+  }
+
   Future<String?> findImdbId(CatalogItem item, {CancelToken? cancel}) async {
     final type = item.isSeries ? 'series' : 'movie';
     final query = Uri.encodeComponent(item.title);

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,8 +9,9 @@ import '../../design/icons.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
+import '../../models/media.dart';
 import '../../shell/input_mode.dart';
-import '../../sources/registry.dart';
+import '../details/details_controller.dart';
 import '../details/details_page.dart';
 
 class SearchTextNotifier extends Notifier<String> {
@@ -164,6 +166,18 @@ class _SearchIdle extends StatelessWidget {
   }
 }
 
+final titleSearchProvider = FutureProvider.autoDispose.family<List<CatalogItem>, String>((
+  ref,
+  query,
+) async {
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
+  return ref
+      .read(cinemetaProvider)
+      .search(query, cancel: cancel)
+      .timeout(const Duration(seconds: 20));
+});
+
 class _SearchResults extends ConsumerWidget {
   const _SearchResults({required this.query, required this.mode});
 
@@ -172,37 +186,21 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final results = ref.watch(searchResultsProvider(SearchQuery(query)));
+    final results = ref.watch(titleSearchProvider(query.trim()));
 
     return results.when(
       loading: () => _ResultsSkeleton(mode: mode),
       error: (error, stack) => const _ResultsEmpty(
         title: 'Search failed',
-        message: 'No source answered. Check your connection.',
+        message: 'The catalogue did not answer. Check your connection.',
       ),
-      data: (outcomes) {
-        final items = flattenOutcomes(outcomes);
-        final failed = outcomes.where((o) => o.error != null).toList();
-
+      data: (items) {
         if (items.isEmpty) {
-          return _ResultsEmpty(
-            title: 'Nothing found',
-            message: failed.length == outcomes.length
-                ? 'Every source is unreachable right now.'
-                : 'No match for that title.',
-            chips: failed,
-          );
+          return const _ResultsEmpty(title: 'Nothing found', message: 'No match for that title.');
         }
 
         return CustomScrollView(
           slivers: [
-            if (failed.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(mode.gutter, 0, mode.gutter, 10),
-                  child: _SourceChips(outcomes: failed),
-                ),
-              ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(mode.gutter, 4, mode.gutter, mode.isTouch ? 108 : 32),
               sliver: SliverGrid.builder(
@@ -230,41 +228,6 @@ class _SearchResults extends ConsumerWidget {
   }
 }
 
-class _SourceChips extends StatelessWidget {
-  const _SourceChips({required this.outcomes});
-
-  final List<SourceOutcome> outcomes;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        for (final outcome in outcomes)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: VesperColors.surface,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(VesperIcons.source, size: 13, color: VesperColors.textTertiary),
-                const SizedBox(width: 6),
-                Text(
-                  outcome.kind.label,
-                  style: VesperType.label.copyWith(color: VesperColors.textTertiary),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class _ResultsSkeleton extends StatelessWidget {
   const _ResultsSkeleton({required this.mode});
 
@@ -288,11 +251,10 @@ class _ResultsSkeleton extends StatelessWidget {
 }
 
 class _ResultsEmpty extends StatelessWidget {
-  const _ResultsEmpty({required this.title, required this.message, this.chips = const []});
+  const _ResultsEmpty({required this.title, required this.message});
 
   final String title;
   final String message;
-  final List<SourceOutcome> chips;
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +269,6 @@ class _ResultsEmpty extends StatelessWidget {
             Text(title, style: VesperType.sectionTitle),
             const SizedBox(height: 6),
             Text(message, style: VesperType.body, textAlign: TextAlign.center),
-            if (chips.isNotEmpty) ...[const SizedBox(height: 18), _SourceChips(outcomes: chips)],
           ],
         ),
       ),
