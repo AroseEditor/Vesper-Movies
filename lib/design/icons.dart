@@ -31,6 +31,7 @@ abstract final class VesperIcons {
   static const close = Icons.close_rounded;
   static const back = Icons.arrow_back_rounded;
   static const chevronRight = Icons.chevron_right_rounded;
+  static const expand = Icons.expand_more_rounded;
   static const chevronLeft = Icons.chevron_left_rounded;
   static const info = Icons.info_outline_rounded;
   static const settings = Icons.settings_rounded;

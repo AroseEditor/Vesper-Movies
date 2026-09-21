@@ -569,55 +569,81 @@ class _SeasonPicker extends StatelessWidget {
   final InputMode mode;
   final ValueChanged<int> onChanged;
 
+  static String _count(int episodes) => episodes == 1 ? '1 episode' : '$episodes episodes';
+
   @override
   Widget build(BuildContext context) {
-    if (seasons.length <= 1) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(mode.gutter, 18, mode.gutter, 8),
-        child: const Text('Episodes', style: VesperType.sectionTitle),
-      );
+    Season? current;
+    for (final season in seasons) {
+      if (season.number == active) current = season;
     }
+    current ??= seasons.isEmpty ? null : seasons.first;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(mode.gutter, 18, mode.gutter, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(mode.gutter, 18, mode.gutter, 10),
+      child: Row(
         children: [
           const Text('Episodes', style: VesperType.sectionTitle),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 38,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: seasons.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final season = seasons[index];
-                final selected = season.number == active;
-
-                return FocusableItem(
-                  onActivate: () => onChanged(season.number),
-                  borderRadius: 16,
-                  scaleOnFocus: false,
-                  semanticLabel: 'Season ${season.number}',
-                  child: AnimatedContainer(
-                    duration: VesperMotion.fast,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: selected ? VesperColors.accent : VesperColors.surface,
-                      borderRadius: BorderRadius.circular(16),
+          const Spacer(),
+          if (seasons.length > 1)
+            MenuAnchor(
+              style: MenuStyle(
+                backgroundColor: const WidgetStatePropertyAll(VesperColors.surfaceRaised),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                maximumSize: const WidgetStatePropertyAll(Size(280, 420)),
+              ),
+              alignmentOffset: const Offset(0, 6),
+              menuChildren: [
+                for (final season in seasons)
+                  MenuItemButton(
+                    onPressed: () => onChanged(season.number),
+                    leadingIcon: SizedBox(
+                      width: 20,
+                      child: season.number == current?.number
+                          ? const Icon(VesperIcons.check, size: 18, color: VesperColors.accent)
+                          : null,
                     ),
-                    child: Text(
-                      'Season ${season.number}',
-                      style: VesperType.label.copyWith(
-                        color: selected ? VesperColors.canvas : VesperColors.textSecondary,
+                    trailingIcon: Text(_count(season.episodes.length), style: VesperType.meta),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Text(
+                        'Season ${season.number}',
+                        style: VesperType.label.copyWith(
+                          color: season.number == current?.number
+                              ? VesperColors.textPrimary
+                              : VesperColors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
+              ],
+              builder: (context, controller, child) => FocusableItem(
+                onActivate: () => controller.isOpen ? controller.close() : controller.open(),
+                borderRadius: 6,
+                scaleOnFocus: false,
+                semanticLabel: 'Choose season',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: VesperColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: VesperColors.surfaceHover),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Season ${current?.number ?? 1}', style: VesperType.label),
+                      const SizedBox(width: 6),
+                      const Icon(VesperIcons.expand, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (current != null)
+            Text(_count(current.episodes.length), style: VesperType.meta),
         ],
       ),
     );
