@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/update_check.dart';
 import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
@@ -9,6 +11,7 @@ import '../../player/subtitle_style.dart';
 import '../../shell/input_mode.dart';
 import '../../sources/addons/addon_client.dart';
 import '../../sources/addons/addons_store.dart';
+import '../../storage/backup.dart';
 import '../../storage/library_controller.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -148,6 +151,43 @@ class SettingsPage extends ConsumerWidget {
               label: 'Clear history',
               onTap: () => ref.read(libraryProvider.notifier).clearHistory(),
             ),
+            const SizedBox(height: 32),
+            const _SectionHeader(
+              title: 'Backup',
+              subtitle: 'Save My List, watch history and addons to a file, or restore them after a reinstall.',
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                _ActionButton(
+                  icon: VesperIcons.backup,
+                  label: 'Back up to a file',
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final message = await exportBackup(ref);
+                    messenger.showSnackBar(SnackBar(content: Text(message)));
+                  },
+                ),
+                _ActionButton(
+                  icon: VesperIcons.restore,
+                  label: 'Restore from a file',
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final message = await importBackup(ref);
+                    messenger.showSnackBar(SnackBar(content: Text(message)));
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            const _SectionHeader(
+              title: 'Updates',
+              subtitle: 'Checks the public release list on GitHub. Nothing about you is sent.',
+            ),
+            const SizedBox(height: 12),
+            const _UpdateStatus(),
             const SizedBox(height: 32),
             const _SectionHeader(
               title: 'Privacy',
@@ -378,6 +418,7 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
+      widthFactor: 1,
       child: FocusableItem(
         onActivate: onTap,
         borderRadius: 6,
@@ -399,6 +440,52 @@ class _ActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _UpdateStatus extends ConsumerWidget {
+  const _UpdateStatus();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final check = ref.watch(updateCheckProvider);
+    final info = check.value;
+
+    final String status;
+    if (check.isLoading) {
+      status = 'Checking for updates';
+    } else if (info == null) {
+      status = 'Could not reach GitHub right now.';
+    } else if (info.isNewer) {
+      status = 'Version ${info.latest} is available. You have ${info.current}.';
+    } else {
+      status = 'You are on the latest version, ${info.current}.';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(status, style: VesperType.body),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          children: [
+            if (info != null && info.isNewer)
+              _ActionButton(
+                icon: VesperIcons.update,
+                label: 'Get version ${info.latest}',
+                onTap: () => launchUrl(Uri.parse(info.url), mode: LaunchMode.externalApplication),
+              ),
+            _ActionButton(
+              icon: VesperIcons.refresh,
+              label: 'Check again',
+              onTap: () => ref.invalidate(updateCheckProvider),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
