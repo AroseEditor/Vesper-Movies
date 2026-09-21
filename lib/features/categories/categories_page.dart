@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/memo_cache.dart';
 import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/motion.dart';
@@ -49,10 +50,15 @@ class BrowseQuery {
   int get hashCode => Object.hash(type, genre);
 }
 
+final _browseCache = MemoCache<BrowseQuery, List<CatalogItem>>(ttl: const Duration(hours: 3));
+
 final browseProvider = FutureProvider.autoDispose.family<List<CatalogItem>, BrowseQuery>((
   ref,
   query,
 ) async {
+  final cached = _browseCache.peek(query);
+  if (cached != null) return cached;
+
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
 
@@ -78,8 +84,22 @@ final browseProvider = FutureProvider.autoDispose.family<List<CatalogItem>, Brow
     final item = metaToCatalogItem(entry, query.type);
     if (item != null) items.add(item);
   }
+  _browseCache.put(query, items);
   return items;
 });
+
+List<CatalogItem> sortBrowse(List<CatalogItem> items, String sort) {
+  if (sort == 'popular') return items;
+  final sorted = [...items];
+  if (sort == 'rating') {
+    sorted.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
+  } else {
+    sorted.sort(
+      (a, b) => (int.tryParse(b.year ?? '') ?? 0).compareTo(int.tryParse(a.year ?? '') ?? 0),
+    );
+  }
+  return sorted;
+}
 
 class CategoriesPage extends ConsumerStatefulWidget {
   const CategoriesPage({super.key});
@@ -90,6 +110,7 @@ class CategoriesPage extends ConsumerStatefulWidget {
 
 class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   String _type = 'movie';
+  String _sort = 'popular';
   String _genre = browseGenres.first;
 
   @override
@@ -107,7 +128,21 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               children: [
                 const Text('Categories', style: VesperType.sectionTitle),
                 const Spacer(),
-                _TypeToggle(type: _type, onChanged: (value) => setState(() => _type = value)),
+                _Toggle(
+                  options: const [
+                    ('popular', 'Popular'),
+                    ('rating', 'Top rated'),
+                    ('new', 'Newest'),
+                  ],
+                  value: _sort,
+                  onChanged: (value) => setState(() => _sort = value),
+                ),
+                const SizedBox(width: 14),
+                _Toggle(
+                  options: const [('movie', 'Films'), ('series', 'Series')],
+                  value: _type,
+                  onChanged: (value) => setState(() => _type = value),
+                ),
               ],
             ),
           ),
@@ -152,10 +187,11 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               error: (error, stack) => const _BrowseEmpty(
                 message: 'That category would not load. Check your connection.',
               ),
-              data: (items) {
-                if (items.isEmpty) {
+              data: (loaded) {
+                if (loaded.isEmpty) {
                   return const _BrowseEmpty(message: 'Nothing in this category right now.');
                 }
+                final items = sortBrowse(loaded, _sort);
 
                 return GridView.builder(
                   padding: EdgeInsets.fromLTRB(
@@ -191,10 +227,11 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   }
 }
 
-class _TypeToggle extends StatelessWidget {
-  const _TypeToggle({required this.type, required this.onChanged});
+class _Toggle extends StatelessWidget {
+  const _Toggle({required this.options, required this.value, required this.onChanged});
 
-  final String type;
+  final List<(String, String)> options;
+  final String value;
   final ValueChanged<String> onChanged;
 
   @override
@@ -202,7 +239,7 @@ class _TypeToggle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final option in const [('movie', 'Films'), ('series', 'Series')])
+        for (final option in options)
           Padding(
             padding: const EdgeInsets.only(left: 8),
             child: FocusableItem(
@@ -214,16 +251,18 @@ class _TypeToggle extends StatelessWidget {
                 duration: VesperMotion.fast,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: type == option.$1 ? VesperColors.surfaceRaised : Colors.transparent,
+                  color: value == option.$1 ? VesperColors.surfaceRaised : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: type == option.$1 ? VesperColors.accent : VesperColors.divider,
+                    color: value == option.$1 ? VesperColors.accent : VesperColors.divider,
                   ),
                 ),
                 child: Text(
                   option.$2,
                   style: VesperType.label.copyWith(
-                    color: type == option.$1 ? VesperColors.textPrimary : VesperColors.textTertiary,
+                    color: value == option.$1
+                        ? VesperColors.textPrimary
+                        : VesperColors.textTertiary,
                   ),
                 ),
               ),
