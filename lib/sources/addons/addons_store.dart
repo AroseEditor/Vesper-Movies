@@ -73,6 +73,20 @@ class AddonsNotifier extends AsyncNotifier<List<InstalledAddon>> {
     }
   }
 
+  Future<int> restore(List<InstalledAddon> incoming) async {
+    final current = state.value ?? const <InstalledAddon>[];
+    final known = current.map((e) => e.manifestUrl).toSet();
+    final added = [
+      for (final addon in incoming)
+        if (known.add(addon.manifestUrl)) addon,
+    ];
+    if (added.isEmpty) return 0;
+    final next = [...current, ...added];
+    state = AsyncValue.data(next);
+    await const AddonsStore().save(next);
+    return added.length;
+  }
+
   Future<void> remove(InstalledAddon addon) async {
     final current = state.value ?? const <InstalledAddon>[];
     final next = current.where((e) => e.manifestUrl != addon.manifestUrl).toList();

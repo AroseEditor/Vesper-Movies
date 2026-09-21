@@ -112,6 +112,26 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
     _apply(LibraryData(history: history, favourites: data.favourites), immediate: true);
   }
 
+  Future<void> restore(LibraryData incoming) async {
+    final data = _current;
+
+    final byKey = <String, WatchEntry>{for (final entry in data.history) entry.key: entry};
+    for (final entry in incoming.history) {
+      final existing = byKey[entry.key];
+      if (existing == null || entry.updatedAt > existing.updatedAt) byKey[entry.key] = entry;
+    }
+    final history = byKey.values.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    final favouriteIds = data.favourites.map((e) => e.id.value).toSet();
+    final favourites = [
+      ...data.favourites,
+      for (final item in incoming.favourites)
+        if (favouriteIds.add(item.id.value)) item,
+    ];
+
+    _apply(LibraryData(history: history, favourites: favourites), immediate: true);
+  }
+
   Future<void> forget(WatchEntry entry) async {
     final data = _current;
     final history = data.history.where((e) => e.key != entry.key).toList();

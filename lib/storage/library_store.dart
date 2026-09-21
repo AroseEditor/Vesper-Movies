@@ -183,28 +183,7 @@ class LibraryStore {
       final raw = await file.readAsString();
       if (raw.trim().isEmpty) return const LibraryData();
 
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) return const LibraryData();
-
-      final history = <WatchEntry>[];
-      final rawHistory = decoded['history'];
-      if (rawHistory is List) {
-        for (final entry in rawHistory) {
-          final parsed = WatchEntry.fromJson(entry);
-          if (parsed != null) history.add(parsed);
-        }
-      }
-
-      final favourites = <CatalogItem>[];
-      final rawFavourites = decoded['favourites'];
-      if (rawFavourites is List) {
-        for (final entry in rawFavourites) {
-          final parsed = catalogFromJson(entry);
-          if (parsed != null) favourites.add(parsed);
-        }
-      }
-
-      return LibraryData(history: history, favourites: favourites);
+      return libraryFromJson(jsonDecode(raw));
     } on Object catch (error) {
       log.warn('library load failed: ${describeCause(error)}');
       return const LibraryData();
@@ -214,10 +193,7 @@ class LibraryStore {
   Future<void> save(LibraryData data) async {
     try {
       final file = await _resolveFile();
-      final payload = jsonEncode({
-        'history': data.history.take(maxHistory).map((e) => e.toJson()).toList(),
-        'favourites': data.favourites.map(catalogToJson).toList(),
-      });
+      final payload = jsonEncode(libraryToJson(data));
 
       final temp = File('${file.path}.tmp');
       await temp.writeAsString(payload, flush: true);
@@ -226,4 +202,33 @@ class LibraryStore {
       log.warn('library save failed: ${describeCause(error)}');
     }
   }
+}
+
+Map<String, Object?> libraryToJson(LibraryData data) => {
+  'history': data.history.take(LibraryStore.maxHistory).map((e) => e.toJson()).toList(),
+  'favourites': data.favourites.map(catalogToJson).toList(),
+};
+
+LibraryData libraryFromJson(Object? decoded) {
+  if (decoded is! Map) return const LibraryData();
+
+  final history = <WatchEntry>[];
+  final rawHistory = decoded['history'];
+  if (rawHistory is List) {
+    for (final entry in rawHistory) {
+      final parsed = WatchEntry.fromJson(entry);
+      if (parsed != null) history.add(parsed);
+    }
+  }
+
+  final favourites = <CatalogItem>[];
+  final rawFavourites = decoded['favourites'];
+  if (rawFavourites is List) {
+    for (final entry in rawFavourites) {
+      final parsed = catalogFromJson(entry);
+      if (parsed != null) favourites.add(parsed);
+    }
+  }
+
+  return LibraryData(history: history, favourites: favourites);
 }
