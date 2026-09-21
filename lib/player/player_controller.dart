@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../core/secure_dns.dart';
 import '../models/release.dart';
 import 'language_prefs.dart';
 import 'subtitle_style.dart';
@@ -273,6 +274,15 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
         await native.setProperty(entry.key, entry.value);
       } on Object catch (_) {
         continue;
+      }
+    }
+
+    final tunnel = StreamTunnel.running;
+    if (tunnel != null) {
+      try {
+        await native.setProperty('http-proxy', tunnel.proxyUrl);
+      } on Object catch (_) {
+        return;
       }
     }
   }
