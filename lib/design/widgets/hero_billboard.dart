@@ -34,11 +34,13 @@ class HeroBillboard extends StatelessWidget {
 
   double _height(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return switch (mode) {
+    final preferred = switch (mode) {
       InputMode.touch => size.height * 0.62,
       InputMode.desktop => size.height * 0.68,
       InputMode.tv => size.height * 0.72,
     };
+    final peek = mode.posterWidth * 0.62 + mode.rowGap;
+    return preferred.clamp(size.height * 0.34, (size.height - peek).clamp(220.0, size.height));
   }
 
   @override

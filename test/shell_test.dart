@@ -102,6 +102,40 @@ void main() {
     expect(find.text('Harbour Lights'), findsOneWidget);
   });
 
+  testWidgets('poster shows the title and meta below the image', (tester) async {
+    final item = CatalogItem(
+      id: const MediaId(ProviderKind.moviebox, 'tt1'),
+      title: 'Harbour Lights',
+      mediaType: MediaType.movie,
+      year: '2025',
+      rating: 7.4,
+    );
+
+    await tester.pumpWidget(_host(PosterCard(item: item, width: 140)));
+    await tester.pump();
+
+    expect(find.text('Harbour Lights'), findsOneWidget);
+    expect(find.text('2025  Film  7.4'), findsOneWidget);
+
+    final art = tester.getRect(find.byType(PosterFallback));
+    final label = tester.getRect(find.text('Harbour Lights'));
+    expect(label.top, greaterThan(art.bottom - 1));
+  });
+
+  testWidgets('poster hides the title when the label is turned off', (tester) async {
+    final item = CatalogItem(
+      id: const MediaId(ProviderKind.moviebox, 'tt2'),
+      title: 'Quiet Frequency',
+      mediaType: MediaType.series,
+    );
+
+    await tester.pumpWidget(_host(PosterCard(item: item, width: 140, showLabel: false)));
+    await tester.pump();
+
+    expect(find.text('Quiet Frequency'), findsOneWidget);
+    expect(find.text('Series'), findsNothing);
+  });
+
   test('input mode drives layout affordances', () {
     expect(InputMode.touch.usesRail, isFalse);
     expect(InputMode.tv.usesRail, isTrue);

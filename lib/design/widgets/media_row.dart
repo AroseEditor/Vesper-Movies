@@ -57,7 +57,7 @@ class _MediaRowState extends State<MediaRow> {
   @override
   Widget build(BuildContext context) {
     final posterWidth = widget.mode.posterWidth;
-    final rowHeight = posterWidth * 1.5 + 20;
+    final rowHeight = posterWidth * 1.5 + PosterCard.labelHeight(true) + 20;
 
     return Padding(
       padding: EdgeInsets.only(bottom: widget.mode.rowGap),
@@ -108,7 +108,15 @@ class _MediaRowState extends State<MediaRow> {
       separatorBuilder: (context, index) => const SizedBox(width: 12),
       itemBuilder: (context, index) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Shimmer(width: posterWidth, height: posterWidth * 1.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Shimmer(width: posterWidth, height: posterWidth * 1.5),
+            const SizedBox(height: 8),
+            Shimmer(width: posterWidth * 0.75, height: 12, borderRadius: 3),
+          ],
+        ),
       ),
     );
   }
