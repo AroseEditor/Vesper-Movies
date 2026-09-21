@@ -96,7 +96,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   VideoController? _videoController;
   StreamSubscription<String>? _errorSubscription;
   Timer? _preloadDeadline;
-  bool _preloadObserved = false;
+  Timer? _preloadPoll;
+  int _session = 0;
 
   Player get player => _player ??= Player(
     configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 256 * 1024 * 1024),
@@ -108,6 +109,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   PlayerState build() {
     ref.onDispose(() {
       _preloadDeadline?.cancel();
+      _preloadPoll?.cancel();
       unawaited(_errorSubscription?.cancel());
       unawaited(_player?.dispose());
       _player = null;
@@ -116,7 +118,19 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     return const PlayerState();
   }
 
+  void beginOpening() {
+    _session++;
+    _stopPreloadTimers();
+    state = PlayerState(subtitleStyle: state.subtitleStyle);
+  }
+
+  void fail(String message) {
+    state = state.copyWith(error: message, isReady: false, preload: Preload.idle);
+  }
+
   Future<void> load(PlaybackTarget target) async {
+    final session = ++_session;
+    _stopPreloadTimers();
     state = state.copyWith(
       target: target,
       externalSubtitles: target.source.subtitles,
@@ -143,55 +157,69 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
     }
 
+    if (session != _session) return;
     state = state.copyWith(isReady: true);
-    await _gatePreload();
+    _gatePreload(session);
   }
 
-  Future<void> _gatePreload() async {
+  void _gatePreload(int session) {
     final native = player.platform;
     if (native is! NativePlayer) {
-      await player.play();
+      unawaited(player.play());
       return;
     }
 
     state = state.copyWith(preload: const Preload(active: true, target: preloadWindow));
 
-    _preloadDeadline?.cancel();
     _preloadDeadline = Timer(preloadDeadline, () => unawaited(_releasePreload()));
+    _preloadPoll = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (session != _session) {
+        _stopPreloadTimers();
+        return;
+      }
+      unawaited(_pollPreload(native));
+    });
+  }
 
-    if (!_preloadObserved) {
-      _preloadObserved = true;
-      await native.observeProperty('demuxer-cache-duration', _onCacheDuration);
-      await native.observeProperty('demuxer-cache-idle', _onCacheIdle);
+  bool _polling = false;
+
+  Future<void> _pollPreload(NativePlayer native) async {
+    if (_polling || !state.preload.active) return;
+    _polling = true;
+    try {
+      final idle = await native.getProperty('demuxer-cache-idle');
+      final raw = await native.getProperty('demuxer-cache-duration');
+      final seconds = double.tryParse(raw) ?? 0;
+
+      final buffered = Duration(milliseconds: (seconds * 1000).round());
+      final remaining = player.state.duration - player.state.position;
+      final goal = remaining > Duration.zero && remaining < preloadWindow
+          ? remaining
+          : preloadWindow;
+
+      if (!state.preload.active) return;
+      state = state.copyWith(
+        preload: Preload(active: true, buffered: buffered, target: goal),
+      );
+
+      final full = idle == 'yes' && buffered > const Duration(seconds: 5);
+      if (buffered >= goal || full) await _releasePreload();
+    } on Object {
+      return;
+    } finally {
+      _polling = false;
     }
   }
 
-  Future<void> _onCacheDuration(String value) async {
-    if (!state.preload.active) return;
-
-    final seconds = double.tryParse(value);
-    if (seconds == null || seconds.isNaN || seconds.isNegative) return;
-
-    final buffered = Duration(milliseconds: (seconds * 1000).round());
-    final remaining = player.state.duration - player.state.position;
-    final goal = remaining > Duration.zero && remaining < preloadWindow ? remaining : preloadWindow;
-
-    state = state.copyWith(
-      preload: Preload(active: true, buffered: buffered, target: goal),
-    );
-
-    if (buffered >= goal) await _releasePreload();
-  }
-
-  Future<void> _onCacheIdle(String value) async {
-    if (state.preload.active && (value == 'yes' || value == 'true')) {
-      await _releasePreload();
-    }
+  void _stopPreloadTimers() {
+    _preloadDeadline?.cancel();
+    _preloadPoll?.cancel();
+    _preloadDeadline = null;
+    _preloadPoll = null;
   }
 
   Future<void> _releasePreload() async {
-    _preloadDeadline?.cancel();
-    _preloadDeadline = null;
+    _stopPreloadTimers();
     if (!state.preload.active) return;
 
     state = state.copyWith(preload: Preload.idle);
@@ -309,8 +337,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       applySubtitleStyle(state.subtitleStyle.nudgeDelay(deltaMs));
 
   Future<void> stop() async {
-    _preloadDeadline?.cancel();
-    _preloadDeadline = null;
+    _session++;
+    _stopPreloadTimers();
     await player.stop();
     state = const PlayerState();
   }
