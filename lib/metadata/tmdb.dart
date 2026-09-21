@@ -104,6 +104,16 @@ class TmdbSource implements MetadataSource {
     );
   }
 
+  Future<String?> imdbIdFor(String tmdbKey, {CancelToken? cancel}) async {
+    if (!isConfigured) return null;
+    final parts = tmdbKey.split(':');
+    if (parts.length != 3 || parts[0] != 'tmdb') return null;
+
+    final payload = await _fetch('/${parts[1]}/${parts[2]}/external_ids', cancel);
+    final imdb = readString(payload, const ['imdb_id']);
+    return imdb != null && imdb.startsWith('tt') ? imdb : null;
+  }
+
   Future<Map<String, dynamic>?> _findByTitle(
     String title,
     String? year,
@@ -143,7 +153,7 @@ class TmdbSource implements MetadataSource {
     if (id == null || title == null) return null;
 
     return CatalogItem(
-      id: MediaId(ProviderKind.moviebox, '$id'),
+      id: MediaId(ProviderKind.addons, 'tmdb:${isSeries ? 'tv' : 'movie'}:$id'),
       title: title,
       mediaType: isSeries ? MediaType.series : MediaType.movie,
       year: extractYear(readString(source, const ['release_date', 'first_air_date'])),

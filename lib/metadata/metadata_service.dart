@@ -18,6 +18,9 @@ class MetadataService {
 
   List<MetadataSource> get _chain => _tmdb.isConfigured ? [_tmdb, _cinemeta] : [_cinemeta];
 
+  Future<String?> imdbIdFor(String tmdbKey, {CancelToken? cancel}) =>
+      _tmdb.imdbIdFor(tmdbKey, cancel: cancel);
+
   Future<List<CatalogItem>> shelf(CatalogShelf shelf, {CancelToken? cancel}) async {
     for (final source in _chain) {
       try {

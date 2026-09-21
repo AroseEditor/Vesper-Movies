@@ -43,9 +43,15 @@ class CatalogItem {
 
   bool get isSeries => mediaType == MediaType.series;
 
-  CatalogItem copyWith({String? posterUrl, String? backdropUrl, String? logoUrl, double? rating}) {
+  CatalogItem copyWith({
+    MediaId? id,
+    String? posterUrl,
+    String? backdropUrl,
+    String? logoUrl,
+    double? rating,
+  }) {
     return CatalogItem(
-      id: id,
+      id: id ?? this.id,
       title: title,
       mediaType: mediaType,
       year: year,

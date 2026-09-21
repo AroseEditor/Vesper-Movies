@@ -14,6 +14,7 @@ import '../../sources/content_source.dart';
 import '../../sources/moviebox/adapt.dart';
 import '../../sources/registry.dart';
 import '../../sources/source_matcher.dart';
+import '../home/home_controller.dart';
 
 final cinemetaProvider = Provider<CinemetaSource>((ref) => CinemetaSource());
 
@@ -64,20 +65,45 @@ class TitleDetails {
 final _detailsCache = MemoCache<String, MediaDetails>(ttl: const Duration(hours: 6));
 final _matchesCache = MemoCache<String, List<SourceMatch>>(ttl: const Duration(hours: 1));
 
+final _imdbIds = MemoCache<String, String>(
+  ttl: const Duration(days: 90),
+  maxEntries: 2048,
+  name: 'imdb-ids',
+  encode: (value) => value,
+  decode: (raw) => '$raw',
+);
+
+Future<CatalogItem> _canonical(Ref ref, CatalogItem item, CancelToken cancel) async {
+  final raw = item.id.value;
+  if (!raw.startsWith('tmdb:')) return item;
+
+  final imdb =
+      _imdbIds.peek(raw) ??
+      await ref
+          .read(metadataServiceProvider)
+          .imdbIdFor(raw, cancel: cancel)
+          .timeout(const Duration(seconds: 10), onTimeout: () => null);
+  if (imdb == null) return item;
+
+  _imdbIds.put(raw, imdb);
+  return item.copyWith(id: MediaId(ProviderKind.addons, imdb));
+}
+
 final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, CatalogItem>((
   ref,
-  item,
+  original,
 ) async {
   final addonCount = ref.read(enabledAddonsProvider).length;
+  final cancel = CancelToken();
+  ref.onDispose(cancel.cancel);
+
+  final item = await _canonical(ref, original, cancel);
   final key = item.id.toString();
 
   final cached = _detailsCache.peek(key);
   if (cached != null) {
     return TitleDetails(item: item, details: cached, addonCount: addonCount);
   }
-
-  final cancel = CancelToken();
-  ref.onDispose(cancel.cancel);
 
   final meta = await ref
       .read(cinemetaProvider)
