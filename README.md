@@ -143,10 +143,9 @@ start ms-settings:developers
 
 Optional. Without it the app uses Cinemeta, which needs no key.
 
-The key never lives in the repository. Add it once as a GitHub Actions secret named
-`TMDB_API_KEY` under Settings, Secrets and variables, Actions. The release workflow reads it from
-there and compiles it into the Windows build only. Android and Linux ship keyless and fall back to
-Cinemeta, so a widely sideloaded APK carries nothing to extract.
+The key never lives in the repository. Create an environment named `main` under Settings,
+Environments, and add a secret named `TMDB_API_KEY` to it. The release workflow runs its Android,
+Windows and Linux jobs in that environment and compiles the key into every build.
 
 For a local build, keep the key in `tmdb.json`, which is gitignored:
 
