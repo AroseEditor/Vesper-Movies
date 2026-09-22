@@ -37,6 +37,7 @@ abstract class PlaybackEngine {
   Stream<bool> get playingStream;
   Stream<bool> get bufferingStream;
   Stream<mk.Tracks> get tracksStream;
+  Stream<mk.Track> get trackStream;
   Stream<String> get errorStream;
 
   bool get rendersSubtitles;
@@ -126,6 +127,9 @@ class MpvEngine implements PlaybackEngine {
 
   @override
   Stream<mk.Tracks> get tracksStream => _player.stream.tracks;
+
+  @override
+  Stream<mk.Track> get trackStream => _player.stream.track;
 
   @override
   Stream<String> get errorStream => _player.stream.error;
@@ -325,6 +329,7 @@ class ExoEngine implements PlaybackEngine {
   final _playing = StreamController<bool>.broadcast();
   final _buffering = StreamController<bool>.broadcast();
   final _tracks = StreamController<mk.Tracks>.broadcast();
+  final _track = StreamController<mk.Track>.broadcast();
   final _errors = StreamController<String>.broadcast();
   final _cues = StreamController<String>.broadcast();
 
@@ -471,6 +476,7 @@ class ExoEngine implements PlaybackEngine {
       ),
     );
     _tracks.add(tracks);
+    _track.add(_state.track);
   }
 
   @override
@@ -493,6 +499,9 @@ class ExoEngine implements PlaybackEngine {
 
   @override
   Stream<mk.Tracks> get tracksStream => _tracks.stream;
+
+  @override
+  Stream<mk.Track> get trackStream => _track.stream;
 
   @override
   Stream<String> get errorStream => _errors.stream;
@@ -625,6 +634,7 @@ class ExoEngine implements PlaybackEngine {
       _playing,
       _buffering,
       _tracks,
+      _track,
       _errors,
       _cues,
     ]) {

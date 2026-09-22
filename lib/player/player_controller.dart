@@ -451,6 +451,11 @@ final playerTracksProvider = StreamProvider.autoDispose<Tracks>((ref) {
   return notifier.engine.tracksStream.startWith(notifier.tracks);
 });
 
+final playerTrackProvider = StreamProvider.autoDispose<Track>((ref) {
+  final engine = ref.watch(playerControllerProvider.notifier).engine;
+  return engine.trackStream.startWith(engine.state.track);
+});
+
 final playerCuesProvider = StreamProvider.autoDispose<String>((ref) {
   return ref.watch(playerControllerProvider.notifier).engine.cueStream;
 });

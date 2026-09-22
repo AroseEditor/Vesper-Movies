@@ -200,6 +200,7 @@ class _PanelBody extends ConsumerWidget {
     final controller = ref.read(playerControllerProvider.notifier);
     final tracks = ref.watch(playerTracksProvider).value ?? controller.tracks;
     final player = controller.engine;
+    final current = ref.watch(playerTrackProvider).value ?? player.state.track;
 
     return switch (panel) {
       PlayerPanel.audio => _TrackList(
@@ -207,7 +208,7 @@ class _PanelBody extends ConsumerWidget {
           for (final track in tracks.audio)
             _TrackEntry(
               label: describeAudioTrack(track),
-              selected: track == player.state.track.audio,
+              selected: track == current.audio,
               onSelect: () => controller.selectAudio(track),
             ),
         ],
@@ -221,7 +222,7 @@ class _PanelBody extends ConsumerWidget {
             for (final track in tracks.video)
               _TrackEntry(
                 label: describeVideoTrack(track),
-                selected: track == player.state.track.video,
+                selected: track == current.video,
                 onSelect: () => controller.selectVideo(track),
               ),
         ],
@@ -363,7 +364,8 @@ class _SubtitleSection extends ConsumerWidget {
     final style = playerState.subtitleStyle;
     final external = playerState.externalSubtitles;
     final activeExternal = playerState.activeExternal;
-    final selected = controller.engine.state.track.subtitle;
+    final selected =
+        (ref.watch(playerTrackProvider).value ?? controller.engine.state.track).subtitle;
 
     return ListView(
       shrinkWrap: true,
