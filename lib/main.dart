@@ -16,6 +16,7 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
 
   await MemoCache.openDisk();
+  await StreamTunnel.loadPreference();
   await StreamTunnel.start();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/secure_dns.dart';
 import '../../core/update_check.dart';
 import '../../design/colors.dart';
 import '../../design/icons.dart';
@@ -181,6 +182,15 @@ class SettingsPage extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 32),
+            const _SectionHeader(
+              title: 'Network',
+              subtitle:
+                  'Vesper looks up servers over encrypted DNS so carrier blocks do not stop it. '
+                  'Turn the playback route off if videos will not start on your connection.',
+            ),
+            const SizedBox(height: 12),
+            const _PlaybackRouteToggle(),
             const SizedBox(height: 32),
             const _SectionHeader(
               title: 'Updates',
@@ -486,6 +496,49 @@ class _UpdateStatus extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _PlaybackRouteToggle extends StatefulWidget {
+  const _PlaybackRouteToggle();
+
+  @override
+  State<_PlaybackRouteToggle> createState() => _PlaybackRouteToggleState();
+}
+
+class _PlaybackRouteToggleState extends State<_PlaybackRouteToggle> {
+  bool _on = StreamTunnel.routePlayback;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableItem(
+      onActivate: () {
+        final next = !_on;
+        setState(() => _on = next);
+        StreamTunnel.setRoutePlayback(next);
+      },
+      borderRadius: 6,
+      scaleOnFocus: false,
+      semanticLabel: 'Route playback through encrypted DNS',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text('Route playback through encrypted DNS', style: VesperType.body),
+            ),
+            Switch(
+              value: _on,
+              activeThumbColor: VesperColors.accent,
+              onChanged: (value) {
+                setState(() => _on = value);
+                StreamTunnel.setRoutePlayback(value);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
