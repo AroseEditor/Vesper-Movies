@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 const _dohEndpoints = [
   'https://1.1.1.1/dns-query',
   'https://8.8.8.8/resolve',
@@ -14,6 +16,8 @@ const _maxCacheTtl = Duration(minutes: 30);
 const _minCacheTtl = Duration(minutes: 2);
 const _failureTtl = Duration(seconds: 45);
 const _connectTimeout = Duration(seconds: 15);
+const _dohBudget = Duration(milliseconds: 2500);
+const _dohTimeout = Duration(seconds: 6);
 
 class _Cached {
   _Cached(this.addresses, this.expiresAt);
@@ -36,7 +40,7 @@ class SecureDns {
   HttpClient? _client;
 
   HttpClient get _http => _client ??= HttpClient()
-    ..connectionTimeout = const Duration(seconds: 6)
+    ..connectionTimeout = const Duration(seconds: 4)
     ..idleTimeout = const Duration(seconds: 30);
 
   Future<List<InternetAddress>> resolve(String host) {
@@ -57,16 +61,45 @@ class SecureDns {
   }
 
   Future<List<InternetAddress>> _lookup(String host) async {
+    final doh = Completer<List<InternetAddress>?>();
+    var remaining = _dohEndpoints.length;
     for (final endpoint in _dohEndpoints) {
-      try {
-        final result = await _query(endpoint, host).timeout(const Duration(seconds: 7));
-        if (result == null) continue;
-        _cache[host] = _Cached(result.$1, DateTime.now().add(result.$2));
-        return result.$1;
-      } on Object {
-        continue;
-      }
+      unawaited(
+        _query(endpoint, host)
+            .timeout(_dohTimeout)
+            .then<void>((result) {
+              if (result != null && !doh.isCompleted) {
+                _cache[host] = _Cached(result.$1, DateTime.now().add(result.$2));
+                doh.complete(result.$1);
+              }
+            })
+            .catchError((Object _) {})
+            .whenComplete(() {
+              remaining--;
+              if (remaining == 0 && !doh.isCompleted) doh.complete(null);
+            }),
+      );
     }
+
+    final system = InternetAddress.lookup(
+      host,
+      type: InternetAddressType.IPv4,
+    ).timeout(_dohTimeout).then<List<InternetAddress>?>((v) => v).catchError((Object _) => null);
+
+    final fast = await doh.future.timeout(_dohBudget, onTimeout: () => null);
+    if (fast != null && fast.isNotEmpty) return fast;
+
+    final systemResult = await system;
+    if (systemResult != null && systemResult.isNotEmpty) {
+      if (!doh.isCompleted) {
+        unawaited(doh.future.catchError((Object _) => null));
+      }
+      return systemResult;
+    }
+
+    final late = await doh.future;
+    if (late != null && late.isNotEmpty) return late;
+
     _cache[host] = _Cached(const [], DateTime.now().add(_failureTtl));
     return const [];
   }
@@ -176,6 +209,29 @@ class StreamTunnel {
 
   static StreamTunnel? get running => _instance;
 
+  static bool routePlayback = true;
+
+  static const _routeKey = 'net.route_playback';
+
+  static Future<void> loadPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      routePlayback = prefs.getBool(_routeKey) ?? true;
+    } on Object {
+      routePlayback = true;
+    }
+  }
+
+  static Future<void> setRoutePlayback(bool value) async {
+    routePlayback = value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_routeKey, value);
+    } on Object {
+      return;
+    }
+  }
+
   void _handle(Socket client) {
     final buffer = BytesBuilder(copy: false);
     late final StreamSubscription<Uint8List> subscription;
@@ -243,7 +299,7 @@ class StreamTunnel {
       }
       host = uri.host;
       port = uri.hasPort ? uri.port : 80;
-      forward = head;
+      forward = _originForm(header, method, uri, head.sublist(headerEnd));
     }
 
     if (host.startsWith('[') && host.endsWith(']')) host = host.substring(1, host.length - 1);
@@ -262,28 +318,54 @@ class StreamTunnel {
     }
     if (forward.isNotEmpty) upstream.add(forward);
 
-    incoming.onData((data) {
-      try {
-        upstream.add(data);
-      } on Object {
-        client.destroy();
-      }
-    });
-    incoming.onDone(() => upstream.destroy());
-    incoming.onError((Object _) => upstream.destroy());
-    incoming.resume();
+    _relay(incoming, upstream, client);
+    _relay(upstream.listen(null), client, upstream);
+  }
 
-    upstream.listen(
-      (data) {
-        try {
-          client.add(data);
-        } on Object {
-          upstream.destroy();
-        }
-      },
-      onDone: () => client.destroy(),
-      onError: (Object _) => client.destroy(),
-      cancelOnError: true,
-    );
+  static Uint8List _originForm(String header, String method, Uri uri, Uint8List body) {
+    final lines = header.split('\r\n');
+    final version = lines.first.split(' ').last;
+    final path = uri.hasQuery
+        ? '${uri.path.isEmpty ? '/' : uri.path}?${uri.query}'
+        : (uri.path.isEmpty ? '/' : uri.path);
+    final kept = <String>['$method $path $version'];
+    var hasHost = false;
+    for (final line in lines.skip(1)) {
+      if (line.isEmpty) continue;
+      final name = line.split(':').first.trim().toLowerCase();
+      if (name == 'proxy-connection' || name == 'connection' || name == 'proxy-authorization') {
+        continue;
+      }
+      if (name == 'host') hasHost = true;
+      kept.add(line);
+    }
+    if (!hasHost) kept.add('Host: ${uri.hasPort ? '${uri.host}:${uri.port}' : uri.host}');
+    kept.add('Connection: close');
+    final rewritten = latin1.encode('${kept.join('\r\n')}\r\n\r\n');
+    return Uint8List.fromList([...rewritten, ...body]);
+  }
+
+  static void _relay(StreamSubscription<Uint8List> from, Socket to, Socket other) {
+    var closed = false;
+    void shut() {
+      if (closed) return;
+      closed = true;
+      to.destroy();
+      other.destroy();
+    }
+
+    from.onData((data) {
+      try {
+        to.add(data);
+      } on Object {
+        shut();
+        return;
+      }
+      from.pause();
+      to.flush().then((_) => from.resume(), onError: (Object _) => shut());
+    });
+    from.onDone(shut);
+    from.onError((Object _) => shut());
+    if (from.isPaused) from.resume();
   }
 }

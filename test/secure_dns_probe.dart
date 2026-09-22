@@ -44,5 +44,20 @@ void main() {
       debugPrint('PROBE curl via tunnel $url -> ${result.stdout}');
       expect('${result.stdout}', '200');
     }
+
+    final big = await Process.run('curl', [
+      '-s',
+      '-o',
+      'NUL',
+      '-w',
+      '%{http_code} %{size_download} %{speed_download}',
+      '-x',
+      tunnel.proxyUrl,
+      'https://speed.cloudflare.com/__down?bytes=60000000',
+    ]);
+    debugPrint('PROBE big download via tunnel -> ${big.stdout}');
+    final parts = '${big.stdout}'.split(' ');
+    expect(parts.first, '200');
+    expect(int.parse(parts[1]), 60000000);
   }, timeout: const Timeout(Duration(seconds: 90)));
 }
