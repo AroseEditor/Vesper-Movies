@@ -33,5 +33,6 @@ linux/flutter/ephemeral/
 .DS_Store
 
 .claude/
+.claude/skills
 
 tmdb.json
