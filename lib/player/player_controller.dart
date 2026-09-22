@@ -2,19 +2,40 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../core/redact.dart';
 import '../core/secure_dns.dart';
 import '../models/release.dart';
 import 'language_prefs.dart';
 import 'subtitle_style.dart';
 
-const Duration preloadWindow = Duration(minutes: 10);
-const Duration preloadDeadline = Duration(seconds: 100);
+const Duration preloadWindow = Duration(seconds: 20);
+const Duration preloadDeadline = Duration(seconds: 15);
+
+final bool _isAndroid = Platform.isAndroid;
+
+const _fatalMarkers = [
+  'failed to open',
+  'failed to recognize file format',
+  'no video or audio streams',
+  'errors when loading file',
+];
+
+bool isFatalPlaybackError(String text) {
+  final lower = text.toLowerCase();
+  if (lower.contains('external file') || lower.contains('subtitle')) return false;
+  return _fatalMarkers.any(lower.contains);
+}
+
+final _urlPattern = RegExp(r'[a-z][a-z0-9+.-]*://[^\s"<>]+', caseSensitive: false);
+
+String _redactLog(String text) => text.replaceAllMapped(_urlPattern, (m) => redactUrl(m[0]!));
 
 class PlaybackTarget {
   const PlaybackTarget({
@@ -105,13 +126,39 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Player? _player;
   VideoController? _videoController;
   StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<PlayerLog>? _logSubscription;
+  StreamSubscription<Duration>? _startSubscription;
   Timer? _preloadDeadline;
   Timer? _preloadPoll;
   int _session = 0;
 
-  Player get player => _player ??= Player(
-    configuration: const PlayerConfiguration(title: 'Vesper Movies', bufferSize: 256 * 1024 * 1024),
-  );
+  Player get player => _player ??= _createPlayer();
+
+  Player _createPlayer() {
+    final created = Player(
+      configuration: PlayerConfiguration(
+        title: 'Vesper Movies',
+        bufferSize: (_isAndroid ? 96 : 256) * 1024 * 1024,
+        logLevel: MPVLogLevel.warn,
+        protocolWhitelist: const [
+          'udp',
+          'rtp',
+          'tcp',
+          'tls',
+          'data',
+          'file',
+          'http',
+          'https',
+          'crypto',
+          'httpproxy',
+        ],
+      ),
+    );
+    _logSubscription = created.stream.log.listen((entry) {
+      debugPrint('mpv [${entry.prefix}] ${entry.level}: ${_redactLog(entry.text)}');
+    });
+    return created;
+  }
 
   VideoController get videoController => _videoController ??= VideoController(player);
 
@@ -121,6 +168,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       _preloadDeadline?.cancel();
       _preloadPoll?.cancel();
       unawaited(_errorSubscription?.cancel());
+      unawaited(_logSubscription?.cancel());
+      unawaited(_startSubscription?.cancel());
       unawaited(_player?.dispose());
       _player = null;
       _videoController = null;
@@ -150,10 +199,14 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     );
 
     _errorSubscription ??= player.stream.error.listen((message) {
+      debugPrint('playback error: ${_redactLog(message)}');
+      if (!isFatalPlaybackError(message)) return;
+      if (player.state.duration > Duration.zero) return;
       state = state.copyWith(error: message, isReady: false);
     });
 
     await _applyNetworkTuning();
+    debugPrint('playback open ${redactUrl(target.source.url)} at ${target.startAt.inSeconds}s');
 
     await player.open(
       Media(target.source.url, httpHeaders: target.source.headers, start: target.startAt),
@@ -162,14 +215,35 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     await applySubtitleStyle(state.subtitleStyle);
 
-    final external = target.subtitle ?? target.source.subtitle;
-    if (external != null && external.isNotEmpty) {
-      await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
-    }
+    await _startSubscription?.cancel();
+    _startSubscription = player.stream.duration.where((d) => d > Duration.zero).take(1).listen((_) {
+      if (session != _session) return;
+      unawaited(_afterStart(target, session));
+    });
 
     if (session != _session) return;
     state = state.copyWith(isReady: true);
     _gatePreload(session);
+  }
+
+  Future<void> _afterStart(PlaybackTarget target, int session) async {
+    final external = target.subtitle ?? target.source.subtitle;
+    if (external != null && external.isNotEmpty) {
+      try {
+        await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
+      } on Object catch (error) {
+        debugPrint('external subtitle failed: $error');
+      }
+    }
+
+    final resume = target.startAt;
+    if (resume <= const Duration(seconds: 5)) return;
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (session != _session) return;
+    if (player.state.position < const Duration(seconds: 3)) {
+      debugPrint('playback resume re-seek to ${resume.inSeconds}s');
+      await player.seek(resume);
+    }
   }
 
   void _gatePreload(int session) {
@@ -242,22 +316,24 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     final native = player.platform;
     if (native is! NativePlayer) return;
 
+    var diskCache = false;
     try {
       final dir = await getTemporaryDirectory();
       final cacheDir = Directory(p.join(dir.path, 'stream-cache'));
       if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
       await native.setProperty('cache-dir', cacheDir.path);
-    } on Object catch (_) {
-      await native.setProperty('cache-on-disk', 'no');
+      diskCache = true;
+    } on Object catch (error) {
+      debugPrint('stream cache dir unavailable: $error');
     }
 
-    const properties = {
+    final properties = {
       'cache': 'yes',
-      'cache-secs': '900',
-      'cache-on-disk': 'yes',
-      'demuxer-max-bytes': '1073741824',
-      'demuxer-max-back-bytes': '268435456',
-      'demuxer-readahead-secs': '600',
+      'cache-secs': _isAndroid ? '300' : '900',
+      'cache-on-disk': diskCache ? 'yes' : 'no',
+      'demuxer-max-bytes': _isAndroid ? '201326592' : '1073741824',
+      'demuxer-max-back-bytes': _isAndroid ? '50331648' : '268435456',
+      'demuxer-readahead-secs': _isAndroid ? '300' : '600',
       'demuxer-hysteresis-secs': '60',
       'network-timeout': '30',
       'stream-lavf-o':
@@ -278,13 +354,13 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
 
     final tunnel = StreamTunnel.running;
-    if (tunnel != null) {
-      try {
-        await native.setProperty('http-proxy', tunnel.proxyUrl);
-      } on Object catch (_) {
-        return;
-      }
+    final useTunnel = tunnel != null && StreamTunnel.routePlayback;
+    try {
+      await native.setProperty('http-proxy', useTunnel ? tunnel.proxyUrl : '');
+    } on Object catch (error) {
+      debugPrint('http-proxy not applied: $error');
     }
+    debugPrint('playback tunnel ${useTunnel ? 'on' : 'off'}');
   }
 
   Future<void> selectExternalSubtitle(SubtitleOption option, {bool remember = false}) async {
@@ -310,8 +386,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       player.stream.duration.listen((value) {
         if (value > Duration.zero && !completer.isCompleted) completer.complete(true);
       }),
-      player.stream.error.listen((_) {
-        if (!completer.isCompleted) completer.complete(false);
+      player.stream.error.listen((message) {
+        if (isFatalPlaybackError(message) && !completer.isCompleted) completer.complete(false);
       }),
     ];
 
