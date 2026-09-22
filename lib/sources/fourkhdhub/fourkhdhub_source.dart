@@ -8,6 +8,8 @@ import '../../models/provider_kind.dart';
 import '../../models/release.dart';
 import '../bdix/circleftp_source.dart';
 import '../content_source.dart';
+import '../links/hosts.dart';
+import '../links/web.dart';
 import '../moviebox/adapt.dart';
 
 const String fourKHdHubBase = 'https://4khdhub.one';
@@ -44,6 +46,7 @@ class FourKHdHubSource extends BaseContentSource {
 
   final Dio _dio;
   final String _base;
+  final HostResolver _hosts = HostResolver(Web());
 
   @override
   ProviderKind get kind => ProviderKind.fourkhdhub;
@@ -79,6 +82,21 @@ class FourKHdHubSource extends BaseContentSource {
 
     if (releases.isEmpty) throw const Unavailable();
     return sortReleases(releases);
+  }
+
+  @override
+  Future<PlaybackSource> resolve(Release release, {CancelToken? cancel}) async {
+    final mirror = release.mirrors.first;
+    if (mirror.directFile) return super.resolve(release, cancel: cancel);
+    final files = await _hosts.resolve(mirror.url, referer: fourKHdHubBase, cancel: cancel);
+    if (files.isEmpty) throw const Unavailable();
+    final file = files.first;
+    return PlaybackSource(
+      kind: kind,
+      url: file.url,
+      headers: {'User-Agent': webUserAgent, ...file.headers},
+      sourceLabel: '4KHDHub ${file.server}',
+    );
   }
 
   String _absolute(String path) {
