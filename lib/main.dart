@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/memo_cache.dart';
 import 'core/secure_dns.dart';
+import 'sources/links/site_domains.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
 
   await MemoCache.openDisk();
+  await SiteDomains.load();
   await StreamTunnel.loadPreference();
   await StreamTunnel.start();
 
