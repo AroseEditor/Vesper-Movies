@@ -22,13 +22,17 @@ One codebase. The same APK serves both phone and TV.
 ## Features
 
 - Discover page with a spotlight banner and rows, from TMDB or keyless Cinemeta
-- Search across every enabled source at once
-- Built-in player using libmpv
-- Every audio, video and subtitle track listed and switchable during playback
+- Latest Bollywood, Tamil, Telugu and Malayalam films and Indian shows on Home when a TMDB key is set
+- Search real titles from TMDB, with Cinemeta as a fallback
+- Built-in player: libmpv on Windows and Linux, ExoPlayer on Android
+- Or open any title in VLC, from Settings
+- Plays the best stream automatically, with a cloud menu to switch source and a quality menu to
+  switch resolution without losing your place
+- Every audio and subtitle track listed and switchable during playback
 - Subtitle styling: size, colour, outline, background, position, timing offset
-- Continue watching with resume position
-- My List
-- Downloads with pause and resume
+- Continue watching with resume position, per episode progress, mark watched
+- My List, backup and restore to a file
+- Downloads saved as files you can keep, in a Vesper Movies folder
 - Live TV from any M3U playlist
 - Full D-pad support on TV
 
@@ -37,26 +41,36 @@ One codebase. The same APK serves both phone and TV.
 | Source | What it gives you |
 |---|---|
 | MovieBox | Films and series, signed DASH streams, subtitles in many languages |
+| HDHub4u | Large Indian and dubbed catalogue, fastest new releases including CAM prints |
+| VegaMovies | Hindi dubbed Hollywood and web series |
+| MoviesDrive | New Indian and Hollywood releases |
+| Movies4u | Multi audio films and web series, direct streams |
+| HDMovie2 | Instant streams for Indian serials and new films |
+| SkyMoviesHD | Early theatrical prints |
+| FilmyCab | Early theatrical prints, HDTC and CAM |
+| Bollyflix | Bollywood and Hindi dubbed |
+| UHDMovies | 4K, HDR and remux releases |
+| TopMovies | Broad catalogue up to 4K |
 | 4KHDHub | High bitrate releases up to 2160p |
+| NF Mirror | Netflix, Prime Video and Hotstar titles with multiple audio tracks |
 | Dramachi | Asian drama series |
-| CircleFTP | BDIX intranet library, only reachable on a Bangladeshi ISP |
-| DhakaFlix | BDIX intranet library, only reachable on a Bangladeshi ISP |
+| CircleFTP, DhakaFlix | BDIX intranet libraries, only reachable on a Bangladeshi ISP |
 | Stremio addons | Anything you add yourself, from Settings |
 
-Search fans out across all of them at once. A source that is unreachable shows as a dimmed chip
-rather than an error, so the results that did arrive still appear.
+Every source is asked in parallel when you press Play. Streams are labelled with quality, size,
+language and release type (WEB-DL, BluRay, HDTC, CAM). Real releases rank above CAM prints, and
+Hindi or dual audio ranks first unless you turn that off in Settings.
 
-Add Stremio addons from Settings, reachable from the side rail on desktop and TV or from the
-Downloads screen on a phone. Any addon that serves the standard stream resource works.
+These sites move to new domains often. Vesper reads a public list of current domains at startup, so
+a move does not break the source.
 
 ## Known limits
 
-- The two BDIX sources only respond on a Bangladeshi ISP intranet. Off that network they time out,
-  which is expected rather than broken.
-- Some 4KHDHub releases point at a redirector page rather than a direct file. Those are labelled
-  `(redirect)` and sorted below the direct ones, which play immediately.
-- Downloads save direct files. Adaptive streams (DASH and HLS) are streamed but not yet saved.
-- The DASH header probe has only been run on Windows, not Linux or Android.
+- The two BDIX sources only respond on a Bangladeshi ISP intranet.
+- Some Bollyflix and GDFlix links sit behind a Cloudflare check that may block them on some
+  networks. Other sources for the same title still play.
+- Streaming playlists (HLS and DASH) play but cannot be downloaded. Pick a file download instead.
+- VLC on Android cannot receive request headers, so Vesper hands it direct file streams only.
 
 ## Controls
 
