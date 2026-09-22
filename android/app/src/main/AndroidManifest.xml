@@ -43,6 +43,7 @@
             android:value="2" />
     </application>
     <queries>
+        <package android:name="org.videolan.vlc"/>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
