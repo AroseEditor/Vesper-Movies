@@ -7,10 +7,12 @@ import '../../../design/icons.dart';
 import '../../../design/motion.dart';
 import '../../../design/typography.dart';
 import '../../../design/widgets/focusable_item.dart';
+import '../../../models/release.dart';
 import '../../../player/player_controller.dart';
 import '../../../player/player_intents.dart';
 import '../../../player/subtitle_style.dart';
 import '../../../shell/input_mode.dart';
+import '../../details/playback_session.dart';
 
 String describeAudioTrack(AudioTrack track) {
   if (track.id == 'no') return 'Off';
@@ -214,19 +216,56 @@ class _PanelBody extends ConsumerWidget {
       PlayerPanel.subtitles => _SubtitleSection(tracks: tracks.subtitle),
       PlayerPanel.quality => _TrackList(
         items: [
-          for (final track in tracks.video)
-            _TrackEntry(
-              label: describeVideoTrack(track),
-              selected: track == player.state.track.video,
-              onSelect: () => controller.selectVideo(track),
-            ),
+          ..._qualityStreams(ref),
+          if (tracks.video.where((t) => t.id != 'auto' && t.id != 'no').length > 1)
+            for (final track in tracks.video)
+              _TrackEntry(
+                label: describeVideoTrack(track),
+                selected: track == player.state.track.video,
+                onSelect: () => controller.selectVideo(track),
+              ),
         ],
-        emptyMessage: 'Quality is chosen automatically for this stream.',
+        emptyMessage: 'Only one quality was found for this title.',
       ),
       PlayerPanel.speed => _SpeedList(controller: controller, current: player.state.rate),
       PlayerPanel.none => const SizedBox.shrink(),
     };
   }
+}
+
+List<_TrackEntry> _qualityStreams(WidgetRef ref) {
+  final session = ref.watch(playbackSessionProvider);
+  if (session == null || session.releases.isEmpty) return const [];
+  final current = session.current;
+
+  final best = <int, Release>{};
+  for (final release in session.releases) {
+    final height = release.resolution;
+    final existing = best[height];
+    if (existing == null) {
+      best[height] = release;
+      continue;
+    }
+    final sameSite = current != null && release.kind == current.kind;
+    final existingSameSite = current != null && existing.kind == current.kind;
+    if (release == current || (sameSite && !existingSameSite)) best[height] = release;
+  }
+
+  final heights = best.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [
+    for (final height in heights)
+      _TrackEntry(
+        label: [
+          best[height]!.quality ?? '${height}p',
+          best[height]!.kind.label,
+          if (best[height]!.sizeLabel.isNotEmpty) best[height]!.sizeLabel,
+          ?best[height]!.language,
+          ?best[height]!.rip,
+        ].join('  '),
+        selected: current != null && current.resolution == height,
+        onSelect: () => ref.read(playbackSessionProvider.notifier).switchTo(best[height]!),
+      ),
+  ];
 }
 
 class _TrackEntry {
