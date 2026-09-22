@@ -8,6 +8,7 @@ import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../player/external_player.dart';
 import '../../player/quality_cap.dart';
 import '../../player/subtitle_style.dart';
 import '../../shell/input_mode.dart';
@@ -137,10 +138,16 @@ class SettingsPage extends ConsumerWidget {
             const _SectionHeader(
               title: 'Playback',
               subtitle:
-                  'Cap the stream quality on slow connections. Auto picks the best stream, '
-                  'preferring 1080p on phones.',
+                  'Choose the player, and cap the stream quality on slow connections. Auto picks '
+                  'the best stream, preferring 1080p on phones. VLC opens the best direct stream.',
             ),
             const SizedBox(height: 10),
+            _SettingRow(
+              label: 'Play with',
+              value: ref.watch(playerChoiceProvider).label,
+              onPrevious: () => ref.read(playerChoiceProvider.notifier).cycle(),
+              onNext: () => ref.read(playerChoiceProvider.notifier).cycle(),
+            ),
             _SettingRow(
               label: 'Maximum quality',
               value: ref.watch(qualityCapProvider).label,

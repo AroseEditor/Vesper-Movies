@@ -228,6 +228,73 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     return saved != null && saved.isInProgress ? saved.resumeAt : Duration.zero;
   }
 
+  Future<(PlaybackSource, Duration)?> resolveForExternal({
+    required CatalogItem item,
+    required String title,
+    required List<SourceMatch> matches,
+    int season = 0,
+    int episode = 0,
+    Release? preferred,
+    required bool Function(PlaybackSource source) accept,
+  }) async {
+    state = PlaybackSession(
+      item: item,
+      title: title,
+      matches: matches,
+      season: season,
+      episode: episode,
+    );
+    final resume = _resumePoint();
+
+    List<Release> releases;
+    try {
+      releases = await gatherReleases(
+        ref,
+        EpisodeRef(matches, item, season: season, episode: episode),
+      );
+    } on Object {
+      releases = const [];
+    }
+    final ranked = rankForDevice(
+      releases,
+      cap: ref.read(qualityCapProvider).maxHeight,
+      phone: Platform.isAndroid,
+    );
+    final ordered = [
+      ?preferred,
+      for (final release in ranked)
+        if (release != preferred) release,
+    ];
+
+    for (final release in ordered.take(8)) {
+      SourceMatch? match;
+      for (final candidate in matches) {
+        if (candidate.kind == release.kind) match = candidate;
+      }
+      try {
+        final target = await resolvePlayback(
+          ref.read(sourceRegistryProvider),
+          links: ref.read(linkSourcesProvider),
+          PlaybackRequest(
+            release: release,
+            match: match,
+            title: title,
+            season: season,
+            episode: episode,
+          ),
+        );
+        if (accept(target.source)) {
+          state = null;
+          return (target.source, resume);
+        }
+      } on Object catch (error) {
+        debugPrint('external resolve ${release.kind.id} failed: ${error.runtimeType}');
+      }
+    }
+    state = null;
+    return null;
+  }
+
   Future<void> _openEpisode(int generation, {Release? preferred, Duration? startAt}) async {
     final session = state;
     if (session == null) return;
