@@ -149,6 +149,12 @@ class SettingsPage extends ConsumerWidget {
               onNext: () => ref.read(playerChoiceProvider.notifier).cycle(),
             ),
             _SettingRow(
+              label: 'Prefer Hindi audio',
+              value: ref.watch(preferHindiProvider) ? 'On' : 'Off',
+              onPrevious: () => ref.read(preferHindiProvider.notifier).toggle(),
+              onNext: () => ref.read(preferHindiProvider.notifier).toggle(),
+            ),
+            _SettingRow(
               label: 'Maximum quality',
               value: ref.watch(qualityCapProvider).label,
               onPrevious: () => ref.read(qualityCapProvider.notifier).cycle(-1),

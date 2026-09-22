@@ -10,6 +10,7 @@ import '../../models/release.dart';
 import '../../player/player_controller.dart';
 import '../../player/quality_cap.dart';
 import '../../player/subtitle_style.dart';
+import '../../sources/links/release_tags.dart';
 import '../../sources/registry.dart';
 import '../../sources/source_matcher.dart';
 import '../../storage/library_controller.dart';
@@ -116,16 +117,28 @@ int _capRank(Release release, int cap) {
   return height <= cap ? 0 : 2;
 }
 
-List<Release> rankForDevice(List<Release> releases, {required int cap, required bool phone}) {
+List<Release> rankForDevice(
+  List<Release> releases, {
+  required int cap,
+  required bool phone,
+  bool preferHindi = false,
+}) {
   final indexed = [for (var i = 0; i < releases.length; i++) (i, releases[i])];
-  int rank(Release release) {
-    if (cap > 0) return _capRank(release, cap);
-    return phone ? _phoneRank(release) : 0;
-  }
+  List<int> rank(Release release) => [
+    if (cap > 0) _capRank(release, cap),
+    release.isCam ? 1 : 0,
+    if (preferHindi) hasHindi(release.language) ? 0 : 1,
+    if (cap <= 0 && phone) _phoneRank(release),
+  ];
 
   indexed.sort((a, b) {
-    final byRank = rank(a.$2).compareTo(rank(b.$2));
-    return byRank != 0 ? byRank : a.$1.compareTo(b.$1);
+    final left = rank(a.$2);
+    final right = rank(b.$2);
+    for (var i = 0; i < left.length; i++) {
+      final byRank = left[i].compareTo(right[i]);
+      if (byRank != 0) return byRank;
+    }
+    return a.$1.compareTo(b.$1);
   });
   return [for (final entry in indexed) entry.$2];
 }
@@ -259,6 +272,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       releases,
       cap: ref.read(qualityCapProvider).maxHeight,
       phone: Platform.isAndroid,
+      preferHindi: ref.read(preferHindiProvider),
     );
     final ordered = [
       ?preferred,
@@ -316,6 +330,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       releases,
       cap: ref.read(qualityCapProvider).maxHeight,
       phone: Platform.isAndroid,
+      preferHindi: ref.read(preferHindiProvider),
     );
     final ordered = [
       ?preferred,

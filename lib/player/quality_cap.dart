@@ -53,3 +53,34 @@ class QualityCapNotifier extends Notifier<QualityCap> {
 }
 
 final qualityCapProvider = NotifierProvider<QualityCapNotifier, QualityCap>(QualityCapNotifier.new);
+
+const _hindiKey = 'pref.prefer_hindi';
+
+class PreferHindiNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    unawaited(_load());
+    return true;
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      state = prefs.getBool(_hindiKey) ?? true;
+    } on Object {
+      return;
+    }
+  }
+
+  Future<void> toggle() async {
+    state = !state;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_hindiKey, state);
+    } on Object {
+      return;
+    }
+  }
+}
+
+final preferHindiProvider = NotifierProvider<PreferHindiNotifier, bool>(PreferHindiNotifier.new);
