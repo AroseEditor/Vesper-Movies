@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
@@ -13,7 +14,7 @@ import '../../storage/library_controller.dart';
 import 'details_controller.dart';
 
 const _maxAttempts = 5;
-const _playableTimeout = Duration(seconds: 25);
+const _playableTimeout = Duration(seconds: 50);
 
 class PlaybackSession {
   const PlaybackSession({
@@ -199,9 +200,11 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
         ref,
         EpisodeRef(session.matches, session.item, season: session.season, episode: session.episode),
       );
-    } on Object {
+    } on Object catch (error) {
+      debugPrint('gathering streams failed: $error');
       releases = const [];
     }
+    debugPrint('streams found: ${releases.length}');
     if (generation != _generation) return;
 
     final ordered = [
@@ -266,14 +269,17 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       }
 
       final playable = await _player.waitUntilPlayable(_playableTimeout);
+      debugPrint('stream attempt ${release.kind.id} ${playable ? 'playing' : 'did not start'}');
       if (!playable || generation != _generation) return false;
 
       state = state?.copyWith(current: release);
       unawaited(_player.applyPreferredTracks());
       return true;
-    } on SourceError {
+    } on SourceError catch (error) {
+      debugPrint('stream attempt ${release.kind.id} source error: $error');
       return false;
-    } on Object {
+    } on Object catch (error) {
+      debugPrint('stream attempt ${release.kind.id} failed: ${error.runtimeType}');
       return false;
     }
   }
