@@ -10,11 +10,14 @@ import 'package:vesper_movies/sources/links/web.dart';
 const _queries = [
   LinkQuery(title: 'War 2', imdbId: 'tt27425164', year: '2025'),
   LinkQuery(title: 'Panchayat', imdbId: 'tt12004706', year: '2020', season: 1, episode: 2),
+  LinkQuery(title: 'Cats & Dogs 3: Paws Unite', imdbId: 'tt12745164', year: '2020'),
+  LinkQuery(title: 'Batwara 1947', year: '2026'),
+  LinkQuery(title: 'Beast of War', year: '2025'),
 ];
 
 void main() {
   test('each link source finds and resolves releases', () async {
-    final only = const String.fromEnvironment('SITE');
+    const only = String.fromEnvironment('SITE');
     final web = Web();
     for (final source in buildLinkSources(web).values) {
       if (only.isNotEmpty && source.kind.id != only) continue;

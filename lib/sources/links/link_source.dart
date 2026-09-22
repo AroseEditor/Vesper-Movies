@@ -116,9 +116,12 @@ bool isHostLink(String href) {
     'driveseed',
     'm4ulinks',
     'filescab',
+    'nexdrive',
+    'leechpro',
     'molop',
     'm4uplay',
     'hdstream4u',
+    '/play?v=',
     '?sid=',
   ];
   return hosts.any(lower.contains);
@@ -132,7 +135,9 @@ String headingBefore(Element element) {
       final tag = sibling.localName ?? '';
       final text = cleanText(sibling.text);
       final isHeading = RegExp(r'^h[1-6]$').hasMatch(tag) || tag == 'strong' || tag == 'b';
+      final short = text.length <= 140;
       if (text.isNotEmpty &&
+          short &&
           (isHeading || RegExp(r'\d{3,4}p|4k', caseSensitive: false).hasMatch(text))) {
         return text;
       }
@@ -151,6 +156,26 @@ bool sameTitle(String wanted, String found, {String? year, bool series = false})
         candidate: candidateFor(found, series),
       ) >=
       SourceMatcher.minimumScore;
+}
+
+bool strictTitle(String wanted, String found, {String? year}) {
+  final a = normaliseTitle(wanted);
+  final full = normaliseTitle(
+    found.replaceFirst(RegExp(r'^\s*Download\s+', caseSensitive: false), ''),
+  );
+  if (a.isEmpty || !(full == a || full.startsWith('$a '))) return false;
+
+  final rest = full.substring(a.length).trim();
+  final next = rest.split(' ').first;
+  final boundary = RegExp(
+    r'^((19|20)\d{2}|s\d+|season|\d{3,4}p|4k|hindi|dual|multi|english|tamil|telugu|malayalam|kannada|web|hd|hq|org|full|movie|complete|uncut|extended|bluray|camrip|hdtc|hdts|predvd|nf|amzn)$',
+  );
+  if (rest.isNotEmpty && !boundary.hasMatch(next)) return false;
+
+  final wantedYear = int.tryParse(year ?? '');
+  final foundYear = int.tryParse(RegExp(r'\b(19|20)\d{2}\b').firstMatch(rest)?.group(0) ?? '');
+  if (wantedYear == null || foundYear == null) return true;
+  return (wantedYear - foundYear).abs() <= 1;
 }
 
 CatalogItem candidateFor(String raw, bool series) {

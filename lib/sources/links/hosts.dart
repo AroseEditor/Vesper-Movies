@@ -135,6 +135,7 @@ class HostResolver {
         return await _linkPage(url, cancel, depth, 'div#primary a, .entry-content a');
       }
       if (lower.contains('hubdrive')) return await _hubdrive(url, cancel, depth);
+      if (lower.contains('search-recover')) return await _hubcloudSearch(url, cancel, depth);
       if (lower.contains('hubcloud') || lower.contains('vcloud')) {
         return await _hubcloud(url, cancel);
       }
@@ -150,12 +151,17 @@ class HostResolver {
         final target = await _gate(url, cancel);
         return target == null ? const [] : await _resolve(target, cancel: cancel, depth: depth + 1);
       }
-      if (lower.contains('m4ulinks') || lower.contains('filescab') || lower.contains('linksmod')) {
+      if (lower.contains('m4ulinks') ||
+          lower.contains('filescab') ||
+          lower.contains('linksmod') ||
+          lower.contains('nexdrive')) {
         return await _linkPage(url, cancel, depth, 'a');
       }
       if (lower.contains('molop') || lower.contains('/watch?v=')) {
         return await _molop(url, referer, cancel);
       }
+      if (lower.contains('/play?v=')) return await _streamUrlPlayer(url, referer, cancel);
+      if (lower.contains('leechpro')) return await _sidPage(url, cancel, depth);
       return await _packedEmbed(url, referer, cancel);
     } on Object catch (error) {
       debugPrint('host resolve failed for ${originOf(url)}: ${error.runtimeType}');
@@ -274,6 +280,32 @@ class HostResolver {
     final host = Uri.tryParse(origin)?.host ?? '';
     if (!host.contains(key)) return url;
     return url.replaceFirst(origin, latest);
+  }
+
+  Future<List<HostFile>> _hubcloudSearch(String url, CancelToken? cancel, int depth) async {
+    final uri = Uri.parse(url);
+    final token = uri.queryParameters['from_ac'];
+    final encoded = uri.queryParameters['q'];
+    if (token == null || encoded == null) return const [];
+    final query = _b64(encoded);
+    final api = uri.replace(
+      queryParameters: {'api': 'search', 'q': query, 'page': '1', 'from_ac': token},
+    );
+    final data = await web.json(
+      api.toString(),
+      headers: const {'Accept': 'application/json'},
+      cancel: cancel,
+    );
+    final hits = data is Map ? data['hits'] : null;
+    if (hits is! List) return const [];
+    for (final hit in hits.take(3)) {
+      if (hit is! Map) continue;
+      final link = '${hit['url'] ?? ''}';
+      if (!link.startsWith('http') || link.contains('search-recover')) continue;
+      final files = await _resolve(link, cancel: cancel, depth: depth + 1);
+      if (files.isNotEmpty) return files;
+    }
+    return const [];
   }
 
   Future<List<HostFile>> _hubcloud(String url, CancelToken? cancel) async {
@@ -529,6 +561,34 @@ class HostResolver {
         headers: {'Referer': '$origin/', 'Origin': origin, 'User-Agent': webUserAgent},
       ),
     ];
+  }
+
+  Future<List<HostFile>> _streamUrlPlayer(String url, String? referer, CancelToken? cancel) async {
+    final page = await web.get(url, referer: referer, cancel: cancel);
+    final stream = page.document.querySelector('[data-stream-url]')?.attributes['data-stream-url'];
+    if (stream == null || stream.isEmpty) return const [];
+    final origin = page.origin;
+    return [
+      HostFile(
+        url: absoluteUrl(stream, page.url),
+        server: 'HLS',
+        isHls: true,
+        name: page.document.querySelector('[data-player-title]')?.attributes['data-player-title'],
+        headers: {'Referer': page.url, 'Origin': origin, 'User-Agent': webUserAgent},
+      ),
+    ];
+  }
+
+  Future<List<HostFile>> _sidPage(String url, CancelToken? cancel, int depth) async {
+    final page = await web.get(url, cancel: cancel);
+    for (final anchor in page.document.querySelectorAll('a')) {
+      final href = anchor.attributes['href'] ?? '';
+      if (href.contains('?sid=') || href.contains('driveseed') || href.contains('driveleech')) {
+        final files = await _resolve(href, cancel: cancel, depth: depth + 1);
+        if (files.isNotEmpty) return files;
+      }
+    }
+    return const [];
   }
 
   Future<List<HostFile>> _packedEmbed(String url, String? referer, CancelToken? cancel) async {
