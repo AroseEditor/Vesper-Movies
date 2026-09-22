@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Vesper Movies
+Copyright (c) 2026 ayush.ue5 and the Vesper Movies contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,58 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+IMPORTANT NOTICE: READ THE DISCLAIMER
+
+Before you download, build, run, modify or distribute this Software, read
+DISCLAIMER.md in the root of this repository:
+
+  https://github.com/AroseEditor/Vesper-Movies/blob/main/DISCLAIMER.md
+
+The disclaimer explains, among other things, that:
+
+  - The Software hosts, stores and distributes no media of any kind. It is a
+    client that plays content from independent third party websites that the
+    authors do not own, operate, control or endorse.
+  - You alone are responsible for what you access with the Software and for
+    making sure your use is lawful where you live.
+  - The authors accept no liability for your use of the Software or of any
+    third party service reached through it.
+
+If you do not agree with the disclaimer, do not use the Software.
+
+--------------------------------------------------------------------------------
+
+SCOPE OF THIS LICENSE
+
+  - This license covers the source code and documentation in this repository
+    only.
+  - It grants no rights of any kind to any film, series, episode, channel,
+    subtitle, artwork, metadata or other content that the Software may be able
+    to display or play. That content belongs to its respective owners.
+  - It grants no rights to the names, trademarks or logos of any third party
+    website, service, studio or broadcaster mentioned in the code or the
+    documentation. Those names appear only to describe what the Software can
+    read.
+  - The name "Vesper Movies" and the Vesper Movies icon identify this project.
+    Forks and redistributions are welcome under the license above, but should
+    not present themselves as the official Vesper Movies project.
+
+--------------------------------------------------------------------------------
+
+THIRD PARTY COMPONENTS
+
+Builds of the Software include third party components that are licensed under
+their own terms, which continue to apply to those components:
+
+  - Flutter and the Dart SDK, BSD 3-Clause License
+  - media_kit, MIT License
+  - libmpv and FFmpeg as distributed with media_kit, GNU LGPL 2.1 or later
+  - AndroidX Media3 (ExoPlayer), Apache License 2.0
+  - OkHttp, Apache License 2.0
+  - Other Dart and Flutter packages listed in pubspec.lock, each under its own
+    license as published on pub.dev
+
+Nothing in this license changes the terms of those components.

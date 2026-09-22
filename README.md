@@ -493,4 +493,5 @@ Read the full [disclaimer](DISCLAIMER.md) before use.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE). The licence covers the source code only, not any third party content.
+MIT. See [LICENSE](LICENSE). The licence covers the source code only, not any third party content,
+and asks everyone to read the [disclaimer](DISCLAIMER.md) before using the software.
