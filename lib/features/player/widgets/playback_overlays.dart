@@ -25,6 +25,7 @@ String releaseMeta(Release release) {
     if (release.quality != null) release.quality!,
     if (release.codec != null) release.codec!,
     if (release.language != null) release.language!,
+    if (release.rip != null) release.rip!,
     if (release.sizeLabel.isNotEmpty) release.sizeLabel,
   ].join('  ');
 }
@@ -74,7 +75,7 @@ class CloudSourceButton extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${release.kind.label}  ${release.sourceLabel}',
+                    '${release.kind.label}  ${release.filename}',
                     style: VesperType.label.copyWith(
                       color: release == current
                           ? VesperColors.textPrimary
