@@ -8,6 +8,7 @@ import '../../core/errors.dart';
 import '../../models/media.dart';
 import '../../models/release.dart';
 import '../../player/player_controller.dart';
+import '../../player/quality_cap.dart';
 import '../../player/subtitle_style.dart';
 import '../../sources/registry.dart';
 import '../../sources/source_matcher.dart';
@@ -95,25 +96,41 @@ class PlaybackSession {
   }
 }
 
-int _phoneRank(Release release) {
+int? releaseHeight(Release release) {
   final quality = (release.quality ?? '').toLowerCase();
-  final height = int.tryParse(RegExp(r'(\d{3,4})p').firstMatch(quality)?.group(1) ?? '');
-  if (quality.contains('4k') || quality.contains('uhd') || (height != null && height > 1080)) {
-    return 3;
-  }
+  if (quality.contains('4k') || quality.contains('uhd')) return 2160;
+  return int.tryParse(RegExp(r'(\d{3,4})p').firstMatch(quality)?.group(1) ?? '');
+}
+
+int _phoneRank(Release release) {
+  final height = releaseHeight(release);
+  if (height != null && height > 1080) return 3;
   if (height == 1080) return 0;
   if (height == 720) return 1;
   return 2;
 }
 
-List<Release> rankForPhone(List<Release> releases) {
+int _capRank(Release release, int cap) {
+  final height = releaseHeight(release);
+  if (height == null) return 1;
+  return height <= cap ? 0 : 2;
+}
+
+List<Release> rankForDevice(List<Release> releases, {required int cap, required bool phone}) {
   final indexed = [for (var i = 0; i < releases.length; i++) (i, releases[i])];
+  int rank(Release release) {
+    if (cap > 0) return _capRank(release, cap);
+    return phone ? _phoneRank(release) : 0;
+  }
+
   indexed.sort((a, b) {
-    final byRank = _phoneRank(a.$2).compareTo(_phoneRank(b.$2));
+    final byRank = rank(a.$2).compareTo(rank(b.$2));
     return byRank != 0 ? byRank : a.$1.compareTo(b.$1);
   });
   return [for (final entry in indexed) entry.$2];
 }
+
+List<Release> rankForPhone(List<Release> releases) => rankForDevice(releases, cap: 0, phone: true);
 
 class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
   int _generation = 0;
@@ -170,7 +187,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     if (session == null || release == session.current) return;
 
     final generation = ++_generation;
-    final position = _player.player.state.position;
+    final position = _player.engine.state.position;
     state = session.copyWith(switching: true);
 
     final ok = await _tryRelease(generation, release, position);
@@ -228,7 +245,11 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     debugPrint('streams found: ${releases.length}');
     if (generation != _generation) return;
 
-    final ranked = Platform.isAndroid ? rankForPhone(releases) : releases;
+    final ranked = rankForDevice(
+      releases,
+      cap: ref.read(qualityCapProvider).maxHeight,
+      phone: Platform.isAndroid,
+    );
     final ordered = [
       ?preferred,
       for (final release in ranked)

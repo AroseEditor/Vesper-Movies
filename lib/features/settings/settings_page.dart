@@ -8,6 +8,7 @@ import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../player/quality_cap.dart';
 import '../../player/subtitle_style.dart';
 import '../../shell/input_mode.dart';
 import '../../sources/addons/addon_client.dart';
@@ -131,6 +132,20 @@ class SettingsPage extends ConsumerWidget {
               icon: VesperIcons.add,
               label: 'Add addon',
               onTap: () => _addAddon(context, ref),
+            ),
+            const SizedBox(height: 32),
+            const _SectionHeader(
+              title: 'Playback',
+              subtitle:
+                  'Cap the stream quality on slow connections. Auto picks the best stream, '
+                  'preferring 1080p on phones.',
+            ),
+            const SizedBox(height: 10),
+            _SettingRow(
+              label: 'Maximum quality',
+              value: ref.watch(qualityCapProvider).label,
+              onPrevious: () => ref.read(qualityCapProvider.notifier).cycle(-1),
+              onNext: () => ref.read(qualityCapProvider.notifier).cycle(1),
             ),
             const SizedBox(height: 32),
             const _SectionHeader(
