@@ -249,7 +249,8 @@ class VesperExoPlayer(
 
         val lower = url.lowercase()
         val mime = when {
-            lower.contains(".m3u8") -> MimeTypes.APPLICATION_M3U8
+            lower.contains(".m3u8") || lower.startsWith("data:application/vnd.apple.mpegurl") ->
+                MimeTypes.APPLICATION_M3U8
             lower.contains(".mpd") -> MimeTypes.APPLICATION_MPD
             else -> null
         }
