@@ -18,6 +18,22 @@ class MetadataService {
 
   List<MetadataSource> get _chain => _tmdb.isConfigured ? [_tmdb, _cinemeta] : [_cinemeta];
 
+  bool get hasTmdb => _tmdb.isConfigured;
+
+  Future<List<CatalogItem>> discover(
+    String type,
+    Map<String, dynamic> params, {
+    CancelToken? cancel,
+  }) async {
+    try {
+      return await _tmdb.discover(type, params, cancel: cancel);
+    } on Cancelled {
+      rethrow;
+    } on Object catch (_) {
+      return const [];
+    }
+  }
+
   Future<List<CatalogItem>> search(String query, {CancelToken? cancel}) async {
     if (_tmdb.isConfigured) {
       try {

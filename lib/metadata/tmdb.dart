@@ -104,6 +104,22 @@ class TmdbSource implements MetadataSource {
     );
   }
 
+  Future<List<CatalogItem>> discover(
+    String type,
+    Map<String, dynamic> params, {
+    CancelToken? cancel,
+  }) async {
+    if (!isConfigured) return const [];
+    final payload = await _fetch('/discover/$type', cancel, query: params);
+    if (payload == null) return const [];
+    final items = <CatalogItem>[];
+    for (final entry in readList(payload, const ['results'])) {
+      final item = _toCatalogItem(entry, type == 'tv');
+      if (item != null && item.posterUrl != null) items.add(item);
+    }
+    return items;
+  }
+
   Future<List<CatalogItem>> search(String query, {CancelToken? cancel}) async {
     if (!isConfigured || query.trim().isEmpty) return const [];
 

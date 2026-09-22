@@ -154,3 +154,47 @@ class HomeFeedNotifier extends AsyncNotifier<HomeFeed> {
 }
 
 final homeFeedProvider = AsyncNotifierProvider<HomeFeedNotifier, HomeFeed>(HomeFeedNotifier.new);
+
+class IndianRow {
+  const IndianRow(this.title, this.type, this.params);
+
+  final String title;
+  final String type;
+  final Map<String, dynamic> params;
+}
+
+String _today() => DateTime.now().toIso8601String().substring(0, 10);
+
+List<IndianRow> indianRows() {
+  final today = _today();
+  Map<String, dynamic> movies(String language) => {
+    'with_original_language': language,
+    'sort_by': 'primary_release_date.desc',
+    'primary_release_date.lte': today,
+    'vote_count.gte': '2',
+    'include_adult': 'false',
+  };
+  return [
+    IndianRow('Latest Bollywood', 'movie', movies('hi')),
+    IndianRow('Latest Indian Shows', 'tv', {
+      'with_origin_country': 'IN',
+      'sort_by': 'first_air_date.desc',
+      'first_air_date.lte': today,
+      'vote_count.gte': '1',
+    }),
+    IndianRow('Latest Tamil', 'movie', movies('ta')),
+    IndianRow('Latest Telugu', 'movie', movies('te')),
+    IndianRow('Latest Malayalam', 'movie', movies('ml')),
+    const IndianRow('Popular Indian Shows', 'tv', {
+      'with_origin_country': 'IN',
+      'sort_by': 'popularity.desc',
+    }),
+  ];
+}
+
+final indianRowProvider = FutureProvider.family<List<CatalogItem>, int>((ref, index) async {
+  final rows = indianRows();
+  if (index < 0 || index >= rows.length) return const [];
+  final row = rows[index];
+  return ref.read(metadataServiceProvider).discover(row.type, row.params);
+});

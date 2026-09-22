@@ -107,6 +107,9 @@ class _HomeContent extends ConsumerWidget {
                   mode: mode,
                   onSelect: (item) => _open(context, item),
                 ),
+              if (ref.read(metadataServiceProvider).hasTmdb)
+                for (var i = 0; i < indianRows().length; i++)
+                  _IndianRow(index: i, mode: mode, onSelect: (item) => _open(context, item)),
               for (final shelf in feed.shelves)
                 MediaRow(
                   title: shelf.title,
@@ -237,5 +240,27 @@ class _GenreRow extends ConsumerWidget {
           ? const SizedBox.shrink()
           : MediaRow(title: title, items: list, mode: mode, onSelect: onSelect),
     );
+  }
+}
+
+class _IndianRow extends ConsumerWidget {
+  const _IndianRow({required this.index, required this.mode, required this.onSelect});
+
+  final int index;
+  final InputMode mode;
+  final void Function(CatalogItem item) onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final title = indianRows()[index].title;
+    return ref
+        .watch(indianRowProvider(index))
+        .when(
+          loading: () => MediaRow(title: title, items: const [], mode: mode, loading: true),
+          error: (error, stack) => const SizedBox.shrink(),
+          data: (items) => items.isEmpty
+              ? const SizedBox.shrink()
+              : MediaRow(title: title, items: items, mode: mode, onSelect: onSelect),
+        );
   }
 }
