@@ -15,8 +15,8 @@ import '../models/release.dart';
 import 'language_prefs.dart';
 import 'subtitle_style.dart';
 
-const Duration preloadWindow = Duration(seconds: 20);
-const Duration preloadDeadline = Duration(seconds: 15);
+const Duration preloadWindow = Duration(seconds: 60);
+const Duration preloadDeadline = Duration(seconds: 30);
 
 final bool _isAndroid = Platform.isAndroid;
 
@@ -329,11 +329,14 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     final properties = {
       'cache': 'yes',
-      'cache-secs': _isAndroid ? '300' : '900',
+      'cache-secs': '900',
       'cache-on-disk': diskCache ? 'yes' : 'no',
-      'demuxer-max-bytes': _isAndroid ? '201326592' : '1073741824',
-      'demuxer-max-back-bytes': _isAndroid ? '50331648' : '268435456',
-      'demuxer-readahead-secs': _isAndroid ? '300' : '600',
+      'demuxer-max-bytes': diskCache || !_isAndroid ? '1073741824' : '201326592',
+      'demuxer-max-back-bytes': diskCache || !_isAndroid ? '268435456' : '50331648',
+      'demuxer-readahead-secs': '900',
+      'cache-pause': 'yes',
+      'cache-pause-initial': 'yes',
+      'cache-pause-wait': '12',
       'demuxer-hysteresis-secs': '60',
       'network-timeout': '30',
       'stream-lavf-o':
