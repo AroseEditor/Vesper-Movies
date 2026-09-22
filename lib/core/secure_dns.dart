@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -184,24 +185,40 @@ class SecureDnsHttpOverrides extends HttpOverrides {
 }
 
 class StreamTunnel {
-  StreamTunnel._(this._server);
+  StreamTunnel._(this.port);
 
   static StreamTunnel? _instance;
 
-  final ServerSocket _server;
-
-  int get port => _server.port;
+  final int port;
 
   String get proxyUrl => 'http://127.0.0.1:$port';
 
   static Future<StreamTunnel?> start() async {
     final existing = _instance;
     if (existing != null) return existing;
+
+    try {
+      final ready = ReceivePort();
+      await Isolate.spawn(_serve, ready.sendPort, debugName: 'stream-tunnel');
+      final port = await ready.first.timeout(const Duration(seconds: 5));
+      ready.close();
+      if (port is int && port > 0) return _instance = StreamTunnel._(port);
+    } on Object {
+      final port = await _bind();
+      if (port != null) return _instance = StreamTunnel._(port);
+    }
+    return null;
+  }
+
+  static Future<void> _serve(SendPort ready) async {
+    ready.send(await _bind() ?? 0);
+  }
+
+  static Future<int?> _bind() async {
     try {
       final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-      final tunnel = StreamTunnel._(server);
-      server.listen(tunnel._handle, onError: (Object _) {});
-      return _instance = tunnel;
+      server.listen(_handle, onError: (Object _) {});
+      return server.port;
     } on Object {
       return null;
     }
@@ -232,7 +249,7 @@ class StreamTunnel {
     }
   }
 
-  void _handle(Socket client) {
+  static void _handle(Socket client) {
     final buffer = BytesBuilder(copy: false);
     late final StreamSubscription<Uint8List> subscription;
     var routed = false;
@@ -265,7 +282,7 @@ class StreamTunnel {
     return -1;
   }
 
-  Future<void> _route(
+  static Future<void> _route(
     Socket client,
     StreamSubscription<Uint8List> incoming,
     Uint8List head,
