@@ -197,7 +197,7 @@ class _PanelBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(playerControllerProvider.notifier);
     final tracks = ref.watch(playerTracksProvider).value ?? controller.tracks;
-    final player = controller.player;
+    final player = controller.engine;
 
     return switch (panel) {
       PlayerPanel.audio => _TrackList(
@@ -324,7 +324,7 @@ class _SubtitleSection extends ConsumerWidget {
     final style = playerState.subtitleStyle;
     final external = playerState.externalSubtitles;
     final activeExternal = playerState.activeExternal;
-    final selected = controller.player.state.track.subtitle;
+    final selected = controller.engine.state.track.subtitle;
 
     return ListView(
       shrinkWrap: true,

@@ -1,24 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:media_kit/media_kit.dart' hide PlayerState;
 
 import '../core/redact.dart';
-import '../core/secure_dns.dart';
 import '../models/release.dart';
 import 'language_prefs.dart';
+import 'playback_engine.dart';
+import 'quality_cap.dart';
 import 'subtitle_style.dart';
 
 const Duration preloadWindow = Duration(seconds: 60);
 const Duration preloadDeadline = Duration(seconds: 30);
-
-final bool _isAndroid = Platform.isAndroid;
 
 const _fatalMarkers = [
   'failed to open',
@@ -32,10 +26,6 @@ bool isFatalPlaybackError(String text) {
   if (lower.contains('external file') || lower.contains('subtitle')) return false;
   return _fatalMarkers.any(lower.contains);
 }
-
-final _urlPattern = RegExp(r'[a-z][a-z0-9+.-]*://[^\s"<>]+', caseSensitive: false);
-
-String _redactLog(String text) => text.replaceAllMapped(_urlPattern, (m) => redactUrl(m[0]!));
 
 class PlaybackTarget {
   const PlaybackTarget({
@@ -57,12 +47,7 @@ class PlaybackTarget {
   final String? mediaId;
 }
 
-class Chapter {
-  const Chapter({required this.title, required this.start});
-
-  final String title;
-  final Duration start;
-}
+typedef Chapter = EngineChapter;
 
 class Preload {
   const Preload({this.active = false, this.buffered = Duration.zero, this.target = Duration.zero});
@@ -123,56 +108,24 @@ class PlayerState {
 }
 
 class PlayerControllerNotifier extends Notifier<PlayerState> {
-  Player? _player;
-  VideoController? _videoController;
+  PlaybackEngine? _engine;
   StreamSubscription<String>? _errorSubscription;
-  StreamSubscription<PlayerLog>? _logSubscription;
   StreamSubscription<Duration>? _startSubscription;
   Timer? _preloadDeadline;
   Timer? _preloadPoll;
   int _session = 0;
 
-  Player get player => _player ??= _createPlayer();
-
-  Player _createPlayer() {
-    final created = Player(
-      configuration: PlayerConfiguration(
-        title: 'Vesper Movies',
-        bufferSize: (_isAndroid ? 96 : 256) * 1024 * 1024,
-        logLevel: MPVLogLevel.warn,
-        protocolWhitelist: const [
-          'udp',
-          'rtp',
-          'tcp',
-          'tls',
-          'data',
-          'file',
-          'http',
-          'https',
-          'crypto',
-          'httpproxy',
-        ],
-      ),
-    );
-    _logSubscription = created.stream.log.listen((entry) {
-      debugPrint('mpv [${entry.prefix}] ${entry.level}: ${_redactLog(entry.text)}');
-    });
-    return created;
-  }
-
-  VideoController get videoController => _videoController ??= VideoController(player);
+  PlaybackEngine get engine => _engine ??= PlaybackEngine.create();
 
   @override
   PlayerState build() {
+    ref.listen(qualityCapProvider, (_, cap) => unawaited(_engine?.setMaxHeight(cap.maxHeight)));
     ref.onDispose(() {
-      _preloadDeadline?.cancel();
-      _preloadPoll?.cancel();
+      _stopPreloadTimers();
       unawaited(_errorSubscription?.cancel());
-      unawaited(_logSubscription?.cancel());
       unawaited(_startSubscription?.cancel());
-      unawaited(_player?.dispose());
-      _player = null;
-      _videoController = null;
+      unawaited(_engine?.dispose());
+      _engine = null;
     });
     return const PlayerState();
   }
@@ -187,36 +140,47 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     state = state.copyWith(error: message, isReady: false, preload: Preload.idle);
   }
 
+  List<SubtitleOption> _subtitlesFor(PlaybackTarget target) {
+    final options = [...target.source.subtitles];
+    final fallback = target.subtitle ?? target.source.subtitle;
+    if (fallback != null && fallback.isNotEmpty && options.every((o) => o.url != fallback)) {
+      options.add(SubtitleOption(name: 'Default', url: fallback));
+    }
+    return options;
+  }
+
   Future<void> load(PlaybackTarget target) async {
     final session = ++_session;
     _stopPreloadTimers();
+    final subtitles = _subtitlesFor(target);
     state = state.copyWith(
       target: target,
-      externalSubtitles: target.source.subtitles,
+      externalSubtitles: subtitles,
       isReady: false,
       clearError: true,
       clearActiveExternal: true,
     );
 
-    _errorSubscription ??= player.stream.error.listen((message) {
-      debugPrint('playback error: ${_redactLog(message)}');
+    _errorSubscription ??= engine.errorStream.listen((message) {
+      debugPrint('playback error: ${redactLog(message)}');
       if (!isFatalPlaybackError(message)) return;
-      if (player.state.duration > Duration.zero) return;
+      if (!engine.errorsAreTerminal && engine.state.duration > Duration.zero) return;
       state = state.copyWith(error: message, isReady: false);
     });
 
-    await _applyNetworkTuning();
     debugPrint('playback open ${redactUrl(target.source.url)} at ${target.startAt.inSeconds}s');
-
-    await player.open(
-      Media(target.source.url, httpHeaders: target.source.headers, start: target.startAt),
-      play: false,
+    await engine.open(
+      url: target.source.url,
+      headers: target.source.headers,
+      start: target.startAt,
+      subtitles: subtitles,
+      maxHeight: ref.read(qualityCapProvider).maxHeight,
     );
 
     await applySubtitleStyle(state.subtitleStyle);
 
     await _startSubscription?.cancel();
-    _startSubscription = player.stream.duration.where((d) => d > Duration.zero).take(1).listen((_) {
+    _startSubscription = engine.durationStream.where((d) => d > Duration.zero).take(1).listen((_) {
       if (session != _session) return;
       unawaited(_afterStart(target, session));
     });
@@ -240,16 +204,15 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     if (resume <= const Duration(seconds: 5)) return;
     await Future<void>.delayed(const Duration(seconds: 2));
     if (session != _session) return;
-    if (player.state.position < const Duration(seconds: 3)) {
+    if (engine.state.position < const Duration(seconds: 3)) {
       debugPrint('playback resume re-seek to ${resume.inSeconds}s');
-      await player.seek(resume);
+      await engine.seek(resume);
     }
   }
 
   void _gatePreload(int session) {
-    final native = player.platform;
-    if (native is! NativePlayer) {
-      unawaited(player.play());
+    if (!engine.needsStartBuffer) {
+      unawaited(engine.play());
       return;
     }
 
@@ -261,22 +224,18 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
         _stopPreloadTimers();
         return;
       }
-      unawaited(_pollPreload(native));
+      unawaited(_pollPreload());
     });
   }
 
   bool _polling = false;
 
-  Future<void> _pollPreload(NativePlayer native) async {
+  Future<void> _pollPreload() async {
     if (_polling || !state.preload.active) return;
     _polling = true;
     try {
-      final idle = await native.getProperty('demuxer-cache-idle');
-      final raw = await native.getProperty('demuxer-cache-duration');
-      final seconds = double.tryParse(raw) ?? 0;
-
-      final buffered = Duration(milliseconds: (seconds * 1000).round());
-      final remaining = player.state.duration - player.state.position;
+      final (buffered, idle) = await engine.bufferedAhead();
+      final remaining = engine.state.duration - engine.state.position;
       final goal = remaining > Duration.zero && remaining < preloadWindow
           ? remaining
           : preloadWindow;
@@ -286,7 +245,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
         preload: Preload(active: true, buffered: buffered, target: goal),
       );
 
-      final full = idle == 'yes' && buffered > const Duration(seconds: 5);
+      final full = idle && buffered > const Duration(seconds: 5);
       if (buffered >= goal || full) await _releasePreload();
     } on Object {
       return;
@@ -307,67 +266,13 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     if (!state.preload.active) return;
 
     state = state.copyWith(preload: Preload.idle);
-    await player.play();
+    await engine.play();
   }
 
   Future<void> skipPreload() => _releasePreload();
 
-  Future<void> _applyNetworkTuning() async {
-    final native = player.platform;
-    if (native is! NativePlayer) return;
-
-    var diskCache = false;
-    try {
-      final dir = await getTemporaryDirectory();
-      final cacheDir = Directory(p.join(dir.path, 'stream-cache'));
-      if (!cacheDir.existsSync()) cacheDir.createSync(recursive: true);
-      await native.setProperty('cache-dir', cacheDir.path);
-      diskCache = true;
-    } on Object catch (error) {
-      debugPrint('stream cache dir unavailable: $error');
-    }
-
-    final properties = {
-      'cache': 'yes',
-      'cache-secs': '900',
-      'cache-on-disk': diskCache ? 'yes' : 'no',
-      'demuxer-max-bytes': diskCache || !_isAndroid ? '1073741824' : '201326592',
-      'demuxer-max-back-bytes': diskCache || !_isAndroid ? '268435456' : '50331648',
-      'demuxer-readahead-secs': '900',
-      'cache-pause': 'yes',
-      'cache-pause-initial': 'yes',
-      'cache-pause-wait': '12',
-      'demuxer-hysteresis-secs': '60',
-      'network-timeout': '30',
-      'stream-lavf-o':
-          'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=15',
-      'keep-open': 'yes',
-      'hr-seek': 'yes',
-      'force-seekable': 'yes',
-      'vd-lavc-threads': '0',
-      'hwdec': 'auto-safe',
-    };
-
-    for (final entry in properties.entries) {
-      try {
-        await native.setProperty(entry.key, entry.value);
-      } on Object catch (_) {
-        continue;
-      }
-    }
-
-    final tunnel = StreamTunnel.running;
-    final useTunnel = tunnel != null && StreamTunnel.routePlayback;
-    try {
-      await native.setProperty('http-proxy', useTunnel ? tunnel.proxyUrl : '');
-    } on Object catch (error) {
-      debugPrint('http-proxy not applied: $error');
-    }
-    debugPrint('playback tunnel ${useTunnel ? 'on' : 'off'}');
-  }
-
   Future<void> selectExternalSubtitle(SubtitleOption option, {bool remember = false}) async {
-    await player.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
+    await engine.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
     state = state.copyWith(activeExternal: option.url);
     if (remember) {
       await ref.read(languagePrefsProvider.notifier).rememberSubtitle(languageKey(option.name));
@@ -375,21 +280,21 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> clearSubtitles() async {
-    await player.setSubtitleTrack(SubtitleTrack.no());
+    await engine.setSubtitleTrack(SubtitleTrack.no());
     state = state.copyWith(clearActiveExternal: true);
     await ref.read(languagePrefsProvider.notifier).rememberSubtitle(null);
   }
 
   Future<bool> waitUntilPlayable(Duration timeout) async {
     if (state.error != null) return false;
-    if (player.state.duration > Duration.zero) return true;
+    if (engine.state.duration > Duration.zero) return true;
 
     final completer = Completer<bool>();
     final subs = <StreamSubscription<Object>>[
-      player.stream.duration.listen((value) {
+      engine.durationStream.listen((value) {
         if (value > Duration.zero && !completer.isCompleted) completer.complete(true);
       }),
-      player.stream.error.listen((message) {
+      engine.errorStream.listen((message) {
         if (isFatalPlaybackError(message) && !completer.isCompleted) completer.complete(false);
       }),
     ];
@@ -407,25 +312,25 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     final prefs = ref.read(languagePrefsProvider);
     if (prefs.audio == null && prefs.subtitle == null && !prefs.subtitlesOff) return;
 
-    var tracks = player.state.tracks;
+    var tracks = engine.state.tracks;
     if (tracks.audio.length <= 2 && tracks.subtitle.length <= 2) {
-      tracks = await player.stream.tracks
+      tracks = await engine.tracksStream
           .firstWhere((t) => t.audio.length > 2 || t.subtitle.length > 2)
-          .timeout(const Duration(seconds: 15), onTimeout: () => player.state.tracks);
+          .timeout(const Duration(seconds: 15), onTimeout: () => engine.state.tracks);
     }
 
     final audioPref = prefs.audio;
     if (audioPref != null) {
       for (final track in tracks.audio) {
         if (languageKey(track.language, track.title) == audioPref) {
-          await player.setAudioTrack(track);
+          await engine.setAudioTrack(track);
           break;
         }
       }
     }
 
     if (prefs.subtitlesOff) {
-      await player.setSubtitleTrack(SubtitleTrack.no());
+      await engine.setSubtitleTrack(SubtitleTrack.no());
       state = state.copyWith(clearActiveExternal: true);
       return;
     }
@@ -435,7 +340,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     for (final track in tracks.subtitle) {
       if (languageKey(track.language, track.title) == subPref) {
-        await player.setSubtitleTrack(track);
+        await engine.setSubtitleTrack(track);
         state = state.copyWith(clearActiveExternal: true);
         return;
       }
@@ -449,41 +354,13 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
   }
 
-  Future<List<Chapter>> chapters() async {
-    final native = player.platform;
-    if (native is! NativePlayer) return const [];
-    try {
-      final raw = await native.getProperty('chapter-list');
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return const [];
-      return [
-        for (final entry in decoded)
-          if (entry is Map && entry['time'] is num)
-            Chapter(
-              title: '${entry['title'] ?? ''}',
-              start: Duration(milliseconds: ((entry['time'] as num) * 1000).round()),
-            ),
-      ];
-    } on Object {
-      return const [];
-    }
-  }
+  Future<List<Chapter>> chapters() => engine.chapters();
 
-  Tracks get tracks => player.state.tracks;
+  Tracks get tracks => engine.state.tracks;
 
   Future<void> applySubtitleStyle(SubtitleStyle style) async {
     state = state.copyWith(subtitleStyle: style);
-
-    final native = player.platform;
-    if (native is! NativePlayer) return;
-
-    for (final entry in style.toMpvProperties().entries) {
-      try {
-        await native.setProperty(entry.key, entry.value);
-      } on Object catch (_) {
-        continue;
-      }
-    }
+    await engine.applySubtitleStyle(style);
   }
 
   Future<void> togglePlay() async {
@@ -491,39 +368,39 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       await _releasePreload();
       return;
     }
-    await player.playOrPause();
+    await engine.playOrPause();
   }
 
   Future<void> seekBy(Duration delta) async {
-    final position = player.state.position + delta;
-    final duration = player.state.duration;
+    final position = engine.state.position + delta;
+    final duration = engine.state.duration;
     final clamped = position < Duration.zero
         ? Duration.zero
         : (duration > Duration.zero && position > duration ? duration : position);
-    await player.seek(clamped);
+    await engine.seek(clamped);
   }
 
-  Future<void> seekTo(Duration position) => player.seek(position);
+  Future<void> seekTo(Duration position) => engine.seek(position);
 
-  Future<void> setVolume(double volume) => player.setVolume(volume.clamp(0, 100));
+  Future<void> setVolume(double volume) => engine.setVolume(volume.clamp(0, 100));
 
-  Future<void> nudgeVolume(double delta) => setVolume(player.state.volume + delta);
+  Future<void> nudgeVolume(double delta) => setVolume(engine.state.volume + delta);
 
-  Future<void> toggleMute() => player.setVolume(player.state.volume > 0 ? 0 : 100);
+  Future<void> toggleMute() => engine.setVolume(engine.state.volume > 0 ? 0 : 100);
 
-  Future<void> setSpeed(double rate) => player.setRate(rate.clamp(0.25, 3.0));
+  Future<void> setSpeed(double rate) => engine.setRate(rate.clamp(0.25, 3.0));
 
-  Future<void> nudgeSpeed(double delta) => setSpeed(player.state.rate + delta);
+  Future<void> nudgeSpeed(double delta) => setSpeed(engine.state.rate + delta);
 
   Future<void> selectAudio(AudioTrack track) async {
-    await player.setAudioTrack(track);
+    await engine.setAudioTrack(track);
     await ref
         .read(languagePrefsProvider.notifier)
         .rememberAudio(languageKey(track.language, track.title));
   }
 
   Future<void> selectSubtitle(SubtitleTrack track) async {
-    await player.setSubtitleTrack(track);
+    await engine.setSubtitleTrack(track);
     state = state.copyWith(clearActiveExternal: true);
     final prefs = ref.read(languagePrefsProvider.notifier);
     if (track.id == 'no') {
@@ -534,7 +411,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> selectVideo(VideoTrack track) => player.setVideoTrack(track);
+  Future<void> selectVideo(VideoTrack track) => engine.setVideoTrack(track);
 
   Future<void> nudgeSubtitleDelay(int deltaMs) =>
       applySubtitleStyle(state.subtitleStyle.nudgeDelay(deltaMs));
@@ -542,7 +419,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Future<void> stop() async {
     _session++;
     _stopPreloadTimers();
-    await player.stop();
+    await engine.stop();
     state = const PlayerState();
   }
 }
@@ -552,24 +429,30 @@ final playerControllerProvider = NotifierProvider<PlayerControllerNotifier, Play
 );
 
 final playerPositionProvider = StreamProvider.autoDispose<Duration>((ref) {
-  return ref.watch(playerControllerProvider.notifier).player.stream.position;
+  return ref.watch(playerControllerProvider.notifier).engine.positionStream;
 });
 
 final playerDurationProvider = StreamProvider.autoDispose<Duration>((ref) {
-  return ref.watch(playerControllerProvider.notifier).player.stream.duration;
+  final engine = ref.watch(playerControllerProvider.notifier).engine;
+  return engine.durationStream.startWith(engine.state.duration);
 });
 
 final playerPlayingProvider = StreamProvider.autoDispose<bool>((ref) {
-  return ref.watch(playerControllerProvider.notifier).player.stream.playing;
+  final engine = ref.watch(playerControllerProvider.notifier).engine;
+  return engine.playingStream.startWith(engine.state.playing);
 });
 
 final playerBufferingProvider = StreamProvider.autoDispose<bool>((ref) {
-  return ref.watch(playerControllerProvider.notifier).player.stream.buffering;
+  return ref.watch(playerControllerProvider.notifier).engine.bufferingStream;
 });
 
 final playerTracksProvider = StreamProvider.autoDispose<Tracks>((ref) {
   final notifier = ref.watch(playerControllerProvider.notifier);
-  return notifier.player.stream.tracks.startWith(notifier.tracks);
+  return notifier.engine.tracksStream.startWith(notifier.tracks);
+});
+
+final playerCuesProvider = StreamProvider.autoDispose<String>((ref) {
+  return ref.watch(playerControllerProvider.notifier).engine.cueStream;
 });
 
 extension _SeedStream<T> on Stream<T> {

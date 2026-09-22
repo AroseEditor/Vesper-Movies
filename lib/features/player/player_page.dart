@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../design/colors.dart';
@@ -15,6 +14,7 @@ import '../../design/widgets/focusable_item.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
+import '../../player/subtitle_style.dart';
 import '../../shell/input_mode.dart';
 import 'widgets/playback_overlays.dart';
 import 'widgets/player_scrubber.dart';
@@ -96,7 +96,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final report = widget.onProgress;
     if (report == null) return;
 
-    final player = ref.read(playerControllerProvider.notifier).player;
+    final player = ref.read(playerControllerProvider.notifier).engine;
     final position = player.state.position;
     final duration = player.state.duration;
     if (duration <= Duration.zero) return;
@@ -263,11 +263,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Video(
-                      controller: controller.videoController,
-                      controls: NoVideoControls,
-                      fit: BoxFit.contain,
-                    ),
+                    controller.engine.buildVideo(),
+                    if (!controller.engine.rendersSubtitles) const _CueOverlay(),
                     _GestureLayer(
                       mode: mode,
                       onTap: _toggleControls,
@@ -808,6 +805,61 @@ class _PreloadPanel extends StatelessWidget {
             child: const Text('Play now'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+Color _argb(String hex) => Color(int.parse(hex, radix: 16));
+
+class _CueOverlay extends ConsumerWidget {
+  const _CueOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = ref.watch(playerCuesProvider).value ?? '';
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+
+    final style = ref.watch(playerControllerProvider.select((s) => s.subtitleStyle));
+    final height = MediaQuery.sizeOf(context).height;
+    final fontSize = style.size.fontSize * height / 720;
+    final colour = _argb(style.colour.argb);
+    final background = style.background;
+    final y = (style.position.clamp(50, 100) / 100) * 2 - 1;
+
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment(0, y),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 0, 24, height * 0.04),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: background == SubtitleBackground.box || background == SubtitleBackground.solid
+                  ? _argb(background.argb)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colour,
+                  fontSize: fontSize,
+                  height: 1.25,
+                  fontWeight: FontWeight.w600,
+                  shadows: background == SubtitleBackground.shadow
+                      ? const [
+                          Shadow(color: Colors.black, blurRadius: 3, offset: Offset(1.5, 1.5)),
+                          Shadow(color: Colors.black, blurRadius: 3, offset: Offset(-1.5, -1.5)),
+                        ]
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
