@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,6 +93,26 @@ class PlaybackSession {
       switching: switching ?? this.switching,
     );
   }
+}
+
+int _phoneRank(Release release) {
+  final quality = (release.quality ?? '').toLowerCase();
+  final height = int.tryParse(RegExp(r'(\d{3,4})p').firstMatch(quality)?.group(1) ?? '');
+  if (quality.contains('4k') || quality.contains('uhd') || (height != null && height > 1080)) {
+    return 3;
+  }
+  if (height == 1080) return 0;
+  if (height == 720) return 1;
+  return 2;
+}
+
+List<Release> rankForPhone(List<Release> releases) {
+  final indexed = [for (var i = 0; i < releases.length; i++) (i, releases[i])];
+  indexed.sort((a, b) {
+    final byRank = _phoneRank(a.$2).compareTo(_phoneRank(b.$2));
+    return byRank != 0 ? byRank : a.$1.compareTo(b.$1);
+  });
+  return [for (final entry in indexed) entry.$2];
 }
 
 class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
@@ -207,9 +228,10 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     debugPrint('streams found: ${releases.length}');
     if (generation != _generation) return;
 
+    final ranked = Platform.isAndroid ? rankForPhone(releases) : releases;
     final ordered = [
       ?preferred,
-      for (final release in releases)
+      for (final release in ranked)
         if (release != preferred) release,
     ];
     state = state?.copyWith(releases: ordered);
