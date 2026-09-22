@@ -52,8 +52,17 @@ const _languages = [
 final _sizePattern = RegExp(r'([\d.]+)\s*(TB|GB|MB)\b', caseSensitive: false);
 final _qualityPattern = RegExp(r'\b(2160|1440|1080|720|576|480|360)p\b', caseSensitive: false);
 
+const _decimalMark = '~decimal~';
+
+String _normalise(String raw) {
+  return raw
+      .replaceAllMapped(RegExp(r'(\d)\.(\d)'), (m) => '${m[1]}$_decimalMark${m[2]}')
+      .replaceAll(RegExp(r'[._\[\]()|]+'), ' ')
+      .replaceAll(_decimalMark, '.');
+}
+
 ReleaseTags parseReleaseTags(String raw) {
-  final text = raw.replaceAll(RegExp(r'[._\[\]()|]+'), ' ');
+  final text = _normalise(raw);
   final upper = text.toUpperCase();
 
   String? quality;
@@ -87,7 +96,7 @@ ReleaseTags parseReleaseTags(String raw) {
 
   final found = <String>[];
   for (final language in _languages) {
-    if (RegExp('\b${language.toUpperCase()}\b').hasMatch(upper)) found.add(language);
+    if (RegExp('\\b${language.toUpperCase()}\\b').hasMatch(upper)) found.add(language);
   }
   String? language;
   if (found.length >= 3 || RegExp(r'\bMULTI ?AUDIO\b').hasMatch(upper)) {

@@ -4,6 +4,17 @@ enum ProviderKind {
   dramachi('dramachi', 'Dramachi'),
   circleftp('bdix_circleftp', 'CircleFTP'),
   dhakaflix('bdix_dhakaflix', 'DhakaFlix'),
+  hdhub4u('hdhub4u', 'HDHub4u'),
+  vegamovies('vegamovies', 'VegaMovies'),
+  moviesdrive('moviesdrive', 'MoviesDrive'),
+  bollyflix('bollyflix', 'Bollyflix'),
+  movies4u('movies4u', 'Movies4u'),
+  hdmovie2('hdmovie2', 'HDMovie2'),
+  skymovies('skymovies', 'SkyMoviesHD'),
+  filmycab('filmycab', 'FilmyCab'),
+  uhdmovies('uhdmovies', 'UHDMovies'),
+  topmovies('topmovies', 'TopMovies'),
+  nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),
   m3u('m3u', 'Live TV');
 
