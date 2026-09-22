@@ -131,11 +131,13 @@ class HostResolver {
         return target == null ? const [] : await _resolve(target, cancel: cancel, depth: depth + 1);
       }
       if (lower.contains('hubcdn.')) return await _hubcdn(url, cancel, depth);
-      if (lower.contains('hblinks'))
+      if (lower.contains('hblinks')) {
         return await _linkPage(url, cancel, depth, 'div#primary a, .entry-content a');
+      }
       if (lower.contains('hubdrive')) return await _hubdrive(url, cancel, depth);
-      if (lower.contains('hubcloud') || lower.contains('vcloud'))
+      if (lower.contains('hubcloud') || lower.contains('vcloud')) {
         return await _hubcloud(url, cancel);
+      }
       if (lower.contains('gdflix') || lower.contains('gdlink')) return await _gdflix(url, cancel);
       if (lower.contains('fastdlserver')) {
         final target = await web.location(url, cancel: cancel);
@@ -151,8 +153,9 @@ class HostResolver {
       if (lower.contains('m4ulinks') || lower.contains('filescab') || lower.contains('linksmod')) {
         return await _linkPage(url, cancel, depth, 'a');
       }
-      if (lower.contains('molop') || lower.contains('/watch?v='))
+      if (lower.contains('molop') || lower.contains('/watch?v=')) {
         return await _molop(url, referer, cancel);
+      }
       return await _packedEmbed(url, referer, cancel);
     } on Object catch (error) {
       debugPrint('host resolve failed for ${originOf(url)}: ${error.runtimeType}');
@@ -329,8 +332,9 @@ class HostResolver {
           if (redirect != null && redirect.contains('link=')) {
             redirect = Uri.decodeFull(redirect.split('link=').last);
           }
-          if (redirect != null && redirect.startsWith('http'))
+          if (redirect != null && redirect.startsWith('http')) {
             results.add(file(redirect, '10Gbps'));
+          }
         } on Object {
           continue;
         }
@@ -473,8 +477,9 @@ class HostResolver {
           cancel: cancel,
         );
         final target = _refreshTarget(next.body);
-        if (target == null || target.contains('/4k-movies') || !_looksLikeDrive(target))
+        if (target == null || target.contains('/4k-movies') || !_looksLikeDrive(target)) {
           return null;
+        }
         return target;
       }
 

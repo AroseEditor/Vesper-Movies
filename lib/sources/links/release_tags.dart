@@ -73,8 +73,9 @@ ReleaseTags parseReleaseTags(String raw) {
     codec = 'x264';
   }
   if (RegExp(r'\b10 ?BIT\b').hasMatch(upper)) codec = '${codec ?? 'HEVC'} 10bit';
-  if (RegExp(r'\b(HDR|DV|DOVI|DOLBY VISION)\b').hasMatch(upper))
+  if (RegExp(r'\b(HDR|DV|DOVI|DOLBY VISION)\b').hasMatch(upper)) {
     codec = '${codec ?? ''} HDR'.trim();
+  }
 
   String? rip;
   for (final (needle, label) in _rips) {
