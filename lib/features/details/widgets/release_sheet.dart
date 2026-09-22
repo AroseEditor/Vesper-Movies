@@ -10,6 +10,7 @@ import '../../../design/widgets/focusable_item.dart';
 import '../../../downloads/download_queue.dart';
 import '../../../models/media.dart';
 import '../../../models/release.dart';
+import '../../../sources/registry.dart';
 import '../../../sources/source_matcher.dart';
 import '../details_controller.dart';
 import '../launch_playback.dart';
@@ -80,23 +81,52 @@ class ReleaseSheet extends ConsumerWidget {
 
   Future<void> _download(BuildContext context, WidgetRef ref, Release release) async {
     final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
     Navigator.of(context).pop();
 
-    final mirror = release.mirrors.first;
-    final error = await ref
-        .read(downloadQueueProvider.notifier)
-        .enqueue(
-          item: item,
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Preparing download'),
+        backgroundColor: VesperColors.surfaceRaised,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    String? error;
+    try {
+      SourceMatch? match;
+      for (final candidate in matches) {
+        if (candidate.kind == release.kind) match = candidate;
+      }
+      final target = await resolvePlayback(
+        container.read(sourceRegistryProvider),
+        links: container.read(linkSourcesProvider),
+        PlaybackRequest(
           release: release,
-          headers: mirror.headers,
-          url: mirror.url,
+          match: match,
+          title: title,
           season: season,
           episode: episode,
-        );
+        ),
+      );
+      error = await container
+          .read(downloadQueueProvider.notifier)
+          .enqueue(
+            item: item,
+            release: release,
+            headers: target.source.headers,
+            url: target.source.url,
+            season: season,
+            episode: episode,
+            fileName: release.filename,
+          );
+    } on Object {
+      error = 'That stream could not be prepared for download. Try another one.';
+    }
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(error ?? 'Added to downloads.'),
+        content: Text(error ?? 'Downloading to your Vesper Movies folder.'),
         backgroundColor: VesperColors.surfaceRaised,
       ),
     );
@@ -192,6 +222,7 @@ class _ReleaseRow extends StatelessWidget {
       if (release.quality != null) release.quality!,
       if (release.codec != null) release.codec!,
       if (release.language != null) release.language!,
+      if (release.rip != null) release.rip!,
       if (release.sizeLabel.isNotEmpty) release.sizeLabel,
     ];
 
@@ -213,7 +244,7 @@ class _ReleaseRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    release.sourceLabel,
+                    '${release.kind.label}  ${release.filename}',
                     style: VesperType.bodyStrong,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

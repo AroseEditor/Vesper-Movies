@@ -133,6 +133,29 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
   }
 
   Future<Directory> _downloadsDirectory() async {
+    if (Platform.isAndroid) {
+      for (final candidate in const [
+        '/storage/emulated/0/Download/Vesper Movies',
+        '/sdcard/Download/Vesper Movies',
+      ]) {
+        try {
+          final dir = Directory(candidate);
+          if (!dir.existsSync()) dir.createSync(recursive: true);
+          final probe = File(p.join(dir.path, '.vesper'));
+          probe.writeAsStringSync('ok');
+          probe.deleteSync();
+          return dir;
+        } on Object {
+          continue;
+        }
+      }
+      final external = await getExternalStorageDirectory();
+      if (external != null) {
+        final dir = Directory(p.join(external.path, 'Vesper Movies'));
+        if (!dir.existsSync()) dir.createSync(recursive: true);
+        return dir;
+      }
+    }
     final base = await getDownloadsDirectory() ?? await getApplicationSupportDirectory();
     final dir = Directory(p.join(base.path, 'Vesper Movies'));
     if (!dir.existsSync()) dir.createSync(recursive: true);
@@ -191,9 +214,10 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
     required String url,
     int season = 0,
     int episode = 0,
+    String? fileName,
   }) async {
-    if (url.contains('.mpd') || url.contains('.m3u8')) {
-      return 'Adaptive streams cannot be saved yet. Pick a direct file if one is listed.';
+    if (url.contains('.mpd') || url.contains('.m3u8') || url.startsWith('data:')) {
+      return 'That one is a streaming playlist and cannot be saved. Pick a file download instead.';
     }
 
     final suffix = season > 0 ? ' S${season}E$episode' : '';
@@ -205,7 +229,11 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
     }
 
     final dir = await _downloadsDirectory();
-    final name = '${safeFileName(title)}.${extensionForUrl(url)}';
+    final hinted = fileName == null ? null : extensionForUrl('file:///$fileName', fallback: '');
+    final extension = hinted != null && hinted.isNotEmpty
+        ? hinted
+        : extensionForUrl(url, fallback: 'mkv');
+    final name = '${safeFileName(title)}.$extension';
     final task = DownloadTask(
       id: id,
       title: title,
