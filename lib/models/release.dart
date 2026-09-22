@@ -26,6 +26,7 @@ class Release {
     this.episode,
     this.mirrors = const [],
     this.resourceId,
+    this.rip,
   });
 
   final ProviderKind kind;
@@ -38,6 +39,9 @@ class Release {
   final int? episode;
   final List<SourceMirror> mirrors;
   final String? resourceId;
+  final String? rip;
+
+  bool get isCam => rip == 'CAM' || rip == 'HDTS' || rip == 'HDTC' || rip == 'PreDVD';
 
   bool get isMultiResolution {
     final value = quality?.trim().toLowerCase();
