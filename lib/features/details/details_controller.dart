@@ -11,6 +11,7 @@ import '../../player/player_controller.dart';
 import '../../sources/addons/addon_client.dart';
 import '../../sources/addons/addons_store.dart';
 import '../../sources/content_source.dart';
+import '../../sources/links/link_source.dart';
 import '../../sources/moviebox/adapt.dart';
 import '../../sources/registry.dart';
 import '../../sources/source_matcher.dart';
@@ -211,6 +212,8 @@ Future<List<Release>> gatherReleases(Ref ref, EpisodeRef target, {CancelToken? c
         episode: target.episode,
         cancel: cancel,
       ),
+    for (final link in ref.read(linkSourcesProvider).values)
+      _safeLinkReleases(link, target, cancel),
     if (target.item.id.value.startsWith('tt'))
       for (final addon in addons)
         _safeAddonStreams(
@@ -252,6 +255,30 @@ final releasesProvider = FutureProvider.autoDispose.family<List<Release>, Episod
   ref.onDispose(cancel.cancel);
   return gatherReleases(ref, target, cancel: cancel);
 });
+
+Future<List<Release>> _safeLinkReleases(
+  LinkSource source,
+  EpisodeRef target,
+  CancelToken? cancel,
+) async {
+  final id = target.item.id.value;
+  final query = LinkQuery(
+    title: target.item.title,
+    imdbId: id.startsWith('tt') ? id : null,
+    year: target.item.year,
+    season: target.season,
+    episode: target.episode,
+  );
+  try {
+    return await source
+        .find(query, cancel: cancel)
+        .timeout(const Duration(seconds: 25), onTimeout: () => const <Release>[]);
+  } on Cancelled {
+    rethrow;
+  } on Object catch (_) {
+    return const [];
+  }
+}
 
 Future<List<Release>> _safeReleases(
   ContentSource? source,
@@ -316,8 +343,22 @@ class PlaybackRequest {
 Future<PlaybackTarget> resolvePlayback(
   Map<ProviderKind, ContentSource> sources,
   PlaybackRequest request, {
+  Map<ProviderKind, LinkSource> links = const {},
   CancelToken? cancel,
 }) async {
+  final link = links[request.release.kind];
+  if (link != null) {
+    final playback = await link.resolve(request.release, cancel: cancel);
+    return PlaybackTarget(
+      source: playback,
+      title: request.title,
+      subtitle: request.subtitle,
+      season: request.season == 0 ? null : request.season,
+      episode: request.episode == 0 ? null : request.episode,
+      mediaId: request.release.mirrors.first.url,
+    );
+  }
+
   final source = sources[request.release.kind];
 
   final playback = source == null

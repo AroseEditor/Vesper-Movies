@@ -284,6 +284,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     try {
       final target = await resolvePlayback(
         ref.read(sourceRegistryProvider),
+        links: ref.read(linkSourcesProvider),
         PlaybackRequest(
           release: release,
           match: match,

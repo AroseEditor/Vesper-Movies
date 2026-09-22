@@ -9,6 +9,9 @@ import 'bdix/dhakaflix_source.dart';
 import 'content_source.dart';
 import 'dramachi/dramachi_source.dart';
 import 'fourkhdhub/fourkhdhub_source.dart';
+import 'links/link_source.dart';
+import 'links/sites/all_sites.dart';
+import 'links/web.dart';
 import 'moviebox/moviebox_source.dart';
 
 final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((ref) {
@@ -19,6 +22,10 @@ final sourceRegistryProvider = Provider<Map<ProviderKind, ContentSource>>((ref) 
     ProviderKind.circleftp: CircleFtpSource(),
     ProviderKind.dhakaflix: DhakaFlixSource(),
   };
+});
+
+final linkSourcesProvider = Provider<Map<ProviderKind, LinkSource>>((ref) {
+  return buildLinkSources(Web());
 });
 
 final enabledSourcesProvider = Provider<List<ProviderKind>>((ref) {
