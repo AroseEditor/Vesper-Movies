@@ -9,6 +9,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var exo: VesperExoPlugin? = null
+    private var external: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -17,7 +18,8 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             flutterEngine.renderer,
         )
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/external").setMethodCallHandler { call, result ->
+        external = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/external")
+        external?.setMethodCallHandler { call, result ->
             if (call.method != "openVlc") {
                 result.notImplemented()
                 return@setMethodCallHandler
@@ -33,10 +35,9 @@ class MainActivity : FlutterActivity() {
                 putExtra("title", call.argument<String>("title") ?: "")
                 putExtra("from_start", false)
                 putExtra("position", (call.argument<Number>("positionMs") ?: 0).toLong())
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
-                startActivity(intent)
+                startActivityForResult(intent, VLC_REQUEST)
                 result.success(true)
             } catch (_: ActivityNotFoundException) {
                 try {
@@ -51,9 +52,22 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != VLC_REQUEST || data == null) return
+        val position = data.getLongExtra("extra_position", -1L)
+        val duration = data.getLongExtra("extra_duration", -1L)
+        if (position < 0 || duration <= 0) return
+        external?.invokeMethod("vlcResult", mapOf("position" to position, "duration" to duration))
+    }
+
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         exo?.dispose()
         exo = null
         super.cleanUpFlutterEngine(flutterEngine)
+    }
+
+    private companion object {
+        const val VLC_REQUEST = 4127
     }
 }

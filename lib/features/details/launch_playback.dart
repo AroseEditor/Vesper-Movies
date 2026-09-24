@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +8,7 @@ import '../../models/release.dart';
 import '../../player/external_player.dart';
 import '../../player/player_controller.dart';
 import '../../sources/source_matcher.dart';
+import '../../storage/library_controller.dart';
 import '../player/player_page.dart';
 import 'playback_session.dart';
 
@@ -38,7 +41,23 @@ Future<void> launchPlayback(
       preferred: preferred,
       accept: vlcCanPlay,
     );
-    final opened = found != null && await openInVlc(found.$1, title: label, start: found.$2);
+    final library = container.read(libraryProvider.notifier);
+    final opened =
+        found != null &&
+        await openInVlc(
+          found.$1,
+          title: label,
+          start: found.$2,
+          onProgress: (position, duration) => unawaited(
+            library.recordProgress(
+              item: item,
+              position: position,
+              duration: duration,
+              season: season,
+              episode: episode,
+            ),
+          ),
+        );
     if (opened) return;
     messenger.showSnackBar(
       SnackBar(
