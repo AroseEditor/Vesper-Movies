@@ -399,7 +399,6 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       if (!playable || generation != _generation) return false;
 
       state = state?.copyWith(current: release);
-      unawaited(_player.applyPreferredTracks());
       return true;
     } on SourceError catch (error) {
       debugPrint('stream attempt ${release.kind.id} source error: $error');

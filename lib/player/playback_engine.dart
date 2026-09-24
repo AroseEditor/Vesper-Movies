@@ -135,10 +135,11 @@ class MpvEngine implements PlaybackEngine {
   Stream<String> get errorStream => _player.stream.error;
 
   @override
-  bool get rendersSubtitles => true;
+  bool get rendersSubtitles => false;
 
   @override
-  Stream<String> get cueStream => const Stream.empty();
+  Stream<String> get cueStream =>
+      _player.stream.subtitle.map((lines) => lines.isEmpty ? '' : lines.first);
 
   @override
   bool get needsStartBuffer => true;
@@ -160,6 +161,16 @@ class MpvEngine implements PlaybackEngine {
     required int maxHeight,
   }) async {
     await _tune(maxHeight);
+    final native = _native;
+    if (native != null) {
+      for (final key in const ['sid', 'aid', 'vid']) {
+        try {
+          await native.setProperty(key, 'auto');
+        } on Object catch (_) {
+          continue;
+        }
+      }
+    }
     await _player.open(mk.Media(url, httpHeaders: headers, start: start), play: false);
   }
 
@@ -297,7 +308,12 @@ class MpvEngine implements PlaybackEngine {
   }
 
   @override
-  Widget buildVideo() => Video(controller: _video, controls: NoVideoControls, fit: BoxFit.contain);
+  Widget buildVideo() => Video(
+    controller: _video,
+    controls: NoVideoControls,
+    fit: BoxFit.contain,
+    subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false),
+  );
 
   @override
   Future<void> stop() => _player.stop();

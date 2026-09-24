@@ -231,6 +231,11 @@ class VesperExoPlayer(
         val startMs = (call.argument<Number>("startMs") ?: 0).toLong()
         val secureDns = call.argument<Boolean>("secureDns") ?: true
         val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .clearOverrides()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+            .build()
         applyMaxHeight(call.argument<Number>("maxHeight")?.toInt() ?: 0)
 
         val userAgent = headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value

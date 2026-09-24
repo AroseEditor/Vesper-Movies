@@ -142,7 +142,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
   List<SubtitleOption> _subtitlesFor(PlaybackTarget target) {
     final options = [...target.source.subtitles];
-    final fallback = target.subtitle ?? target.source.subtitle;
+    final fallback = target.source.subtitle;
     if (fallback != null && fallback.isNotEmpty && options.every((o) => o.url != fallback)) {
       options.add(SubtitleOption(name: 'Default', url: fallback));
     }
@@ -191,14 +191,11 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> _afterStart(PlaybackTarget target, int session) async {
-    final external = target.subtitle ?? target.source.subtitle;
-    if (external != null && external.isNotEmpty) {
-      try {
-        await selectExternalSubtitle(SubtitleOption(name: 'Default', url: external));
-      } on Object catch (error) {
-        debugPrint('external subtitle failed: $error');
-      }
-    }
+    unawaited(
+      applyPreferredTracks(session).catchError((Object error) {
+        debugPrint('track preferences failed: $error');
+      }),
+    );
 
     final resume = target.startAt;
     if (resume <= const Duration(seconds: 5)) return;
@@ -308,25 +305,38 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> applyPreferredTracks() async {
+  static bool _isReal(String id) => id != 'auto' && id != 'no';
+
+  Future<void> applyPreferredTracks(int session) async {
     final prefs = ref.read(languagePrefsProvider);
-    if (prefs.audio == null && prefs.subtitle == null && !prefs.subtitlesOff) return;
 
     var tracks = engine.state.tracks;
     if (tracks.audio.length <= 2 && tracks.subtitle.length <= 2) {
       tracks = await engine.tracksStream
           .firstWhere((t) => t.audio.length > 2 || t.subtitle.length > 2)
-          .timeout(const Duration(seconds: 15), onTimeout: () => engine.state.tracks);
+          .timeout(const Duration(seconds: 4), onTimeout: () => engine.state.tracks);
     }
+    if (session != _session) return;
 
+    final realAudio = [
+      for (final t in tracks.audio)
+        if (_isReal(t.id)) t,
+    ];
+    String? audioKey;
     final audioPref = prefs.audio;
     if (audioPref != null) {
-      for (final track in tracks.audio) {
+      for (final track in realAudio) {
         if (languageKey(track.language, track.title) == audioPref) {
           await engine.setAudioTrack(track);
+          audioKey = audioPref;
           break;
         }
       }
+    }
+    if (audioKey == null) {
+      final selected = engine.state.track.audio;
+      final active = _isReal(selected.id) ? selected : realAudio.firstOrNull;
+      if (active != null) audioKey = languageKey(active.language, active.title);
     }
 
     if (prefs.subtitlesOff) {
@@ -335,23 +345,42 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       return;
     }
 
+    final embedded = [
+      for (final t in tracks.subtitle)
+        if (_isReal(t.id)) t,
+    ];
+    final external = state.externalSubtitles;
+
     final subPref = prefs.subtitle;
-    if (subPref == null) return;
-
-    for (final track in tracks.subtitle) {
-      if (languageKey(track.language, track.title) == subPref) {
-        await engine.setSubtitleTrack(track);
-        state = state.copyWith(clearActiveExternal: true);
-        return;
+    if (subPref != null) {
+      for (final track in embedded) {
+        if (languageKey(track.language, track.title) == subPref) {
+          await engine.setSubtitleTrack(track);
+          state = state.copyWith(clearActiveExternal: true);
+          return;
+        }
+      }
+      for (final option in external) {
+        if (languageKey(option.name) == subPref) {
+          await selectExternalSubtitle(option);
+          return;
+        }
       }
     }
 
-    for (final option in state.externalSubtitles) {
-      if (languageKey(option.name) == subPref) {
-        await selectExternalSubtitle(option);
-        return;
-      }
+    if (_isReal(engine.state.track.subtitle.id) || audioKey == 'en') return;
+
+    final embeddedEnglish = embedded.where((t) => languageKey(t.language, t.title) == 'en');
+    final track = embeddedEnglish.firstOrNull ?? embedded.firstOrNull;
+    if (track != null) {
+      await engine.setSubtitleTrack(track);
+      state = state.copyWith(clearActiveExternal: true);
+      return;
     }
+
+    final externalEnglish = external.where((o) => languageKey(o.name) == 'en');
+    final option = externalEnglish.firstOrNull ?? external.firstOrNull;
+    if (option != null) await selectExternalSubtitle(option);
   }
 
   Future<List<Chapter>> chapters() => engine.chapters();
