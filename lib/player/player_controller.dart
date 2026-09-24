@@ -63,7 +63,7 @@ class Preload {
   }
 
   static const idle = Preload();
-} // clean
+}
 
 class PlayerState {
   const PlayerState({
