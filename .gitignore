@@ -36,3 +36,4 @@ linux/flutter/ephemeral/
 .claude/skills
 
 tmdb.json
+test/sherlock_probe.dart
