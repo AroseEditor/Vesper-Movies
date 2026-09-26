@@ -7,6 +7,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/action_menu.dart';
+import '../../design/widgets/choice_dialog.dart';
 import '../../design/widgets/focusable_item.dart';
 import '../../design/widgets/media_row.dart';
 import '../../design/widgets/poster_card.dart';
@@ -689,64 +690,46 @@ class _SeasonPicker extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(mode.gutter, 18, mode.gutter, 10),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Episodes', style: VesperType.sectionTitle),
-          const Spacer(),
+          const SizedBox(height: 12),
           if (seasons.length > 1)
-            MenuAnchor(
-              style: MenuStyle(
-                backgroundColor: const WidgetStatePropertyAll(VesperColors.surfaceRaised),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                maximumSize: const WidgetStatePropertyAll(Size(280, 420)),
-              ),
-              alignmentOffset: const Offset(0, 6),
-              menuChildren: [
-                for (final season in seasons)
-                  MenuItemButton(
-                    onPressed: () => onChanged(season.number),
-                    leadingIcon: SizedBox(
-                      width: 20,
-                      child: season.number == current?.number
-                          ? const Icon(VesperIcons.check, size: 18, color: VesperColors.accent)
-                          : null,
-                    ),
-                    trailingIcon: Text(_count(season.episodes.length), style: VesperType.meta),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: Text(
-                        'Season ${season.number}',
-                        style: VesperType.label.copyWith(
-                          color: season.number == current?.number
-                              ? VesperColors.textPrimary
-                              : VesperColors.textSecondary,
-                        ),
+            FocusableItem(
+              onActivate: () async {
+                final chosen = await showChoiceDialog<int>(
+                  context,
+                  title: 'Choose season',
+                  options: [
+                    for (final season in seasons)
+                      ChoiceOption(
+                        value: season.number,
+                        label: 'Season ${season.number}',
+                        trailing: _count(season.episodes.length),
+                        selected: season.number == current?.number,
                       ),
-                    ),
-                  ),
-              ],
-              builder: (context, controller, child) => FocusableItem(
-                onActivate: () => controller.isOpen ? controller.close() : controller.open(),
-                borderRadius: 6,
-                scaleOnFocus: false,
-                semanticLabel: 'Choose season',
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: VesperColors.surface,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: VesperColors.surfaceHover),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Season ${current?.number ?? 1}', style: VesperType.label),
-                      const SizedBox(width: 6),
-                      const Icon(VesperIcons.expand, size: 20),
-                    ],
-                  ),
+                  ],
+                );
+                if (chosen != null) onChanged(chosen);
+              },
+              borderRadius: 6,
+              scaleOnFocus: false,
+              semanticLabel: 'Choose season',
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: VesperColors.surface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: VesperColors.surfaceHover),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Season ${current?.number ?? 1}', style: VesperType.label),
+                    const SizedBox(width: 6),
+                    const Icon(VesperIcons.expand, size: 20),
+                  ],
                 ),
               ),
             )

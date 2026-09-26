@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../colors.dart';
 import '../icons.dart';
-import '../typography.dart';
+import 'choice_dialog.dart';
 import 'focusable_item.dart';
 
 class MenuAction {
@@ -29,36 +29,27 @@ class ActionMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MenuAnchor(
-      style: MenuStyle(
-        backgroundColor: const WidgetStatePropertyAll(VesperColors.surfaceRaised),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-      menuChildren: [
-        for (final action in actions)
-          MenuItemButton(
-            onPressed: action.onSelected,
-            leadingIcon: Icon(action.icon, size: 19, color: VesperColors.textSecondary),
-            child: Padding(
-              padding: const EdgeInsets.only(right: 18),
-              child: Text(action.label, style: VesperType.label),
-            ),
+    return FocusableItem(
+      onActivate: () async {
+        final index = await showChoiceDialog<int>(
+          context,
+          title: semanticLabel,
+          options: [
+            for (var i = 0; i < actions.length; i++)
+              ChoiceOption(value: i, label: actions[i].label, icon: actions[i].icon),
+          ],
+        );
+        if (index != null) actions[index].onSelected();
+      },
+      borderRadius: 18,
+      scaleOnFocus: false,
+      semanticLabel: semanticLabel,
+      child:
+          child ??
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(VesperIcons.more, size: iconSize, color: VesperColors.textSecondary),
           ),
-      ],
-      builder: (context, controller, _) => FocusableItem(
-        onActivate: () => controller.isOpen ? controller.close() : controller.open(),
-        borderRadius: 18,
-        scaleOnFocus: false,
-        semanticLabel: semanticLabel,
-        child:
-            child ??
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Icon(VesperIcons.more, size: iconSize, color: VesperColors.textSecondary),
-            ),
-      ),
     );
   }
 }
