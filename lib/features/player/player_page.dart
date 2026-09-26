@@ -35,6 +35,8 @@ class PlayerPage extends ConsumerStatefulWidget {
 class _PlayerPageState extends ConsumerState<PlayerPage> {
   final FocusNode _rootFocus = FocusNode(debugLabel: 'player');
   final FocusScopeNode _controlsScope = FocusScopeNode(debugLabel: 'player-controls');
+  final FocusScopeNode _panelScope = FocusScopeNode(debugLabel: 'player-panel');
+  final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
 
   Timer? _hideTimer;
   bool _controlsVisible = true;
@@ -111,6 +113,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _hideTimer?.cancel();
     _rootFocus.dispose();
     _controlsScope.dispose();
+    _panelScope.dispose();
+    _playFocus.dispose();
     if (_fullscreen) unawaited(_applyFullscreen(false));
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -120,13 +124,33 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _hideTimer?.cancel();
     if (_panel != PlayerPanel.none) return;
     _hideTimer = Timer(VesperMotion.osdHideDelay, () {
-      if (mounted) setState(() => _controlsVisible = false);
+      if (!mounted) return;
+      final engine = ref.read(playerControllerProvider.notifier).engine;
+      if (engine.state.duration <= Duration.zero) {
+        _restartHideTimer();
+        return;
+      }
+      setState(() => _controlsVisible = false);
+      if (ref.read(inputModeProvider).isTv) _rootFocus.requestFocus();
     });
   }
 
+  void _focusControls() {
+    if (!mounted) return;
+    if (_playFocus.context != null) {
+      _playFocus.requestFocus();
+    } else {
+      _controlsScope.requestFocus();
+    }
+  }
+
   void _showControls() {
-    if (!_controlsVisible) setState(() => _controlsVisible = true);
+    final wasHidden = !_controlsVisible;
+    if (wasHidden) setState(() => _controlsVisible = true);
     _restartHideTimer();
+    if (wasHidden && ref.read(inputModeProvider).isTv) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusControls());
+    }
   }
 
   void _toggleControls() {
@@ -140,11 +164,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       _controlsVisible = true;
     });
     _hideTimer?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _panelScope.requestFocus();
+    });
   }
 
   void _closePanel() {
     setState(() => _panel = PlayerPanel.none);
     _restartHideTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusControls());
+  }
+
+  Map<ShortcutActivator, Intent> _shortcuts(InputMode mode) {
+    if (_panel != PlayerPanel.none) return playerNavigationShortcuts;
+    if (!mode.isTv) return playerShortcuts;
+    return _controlsVisible ? playerNavigationShortcuts : playerTvIdleShortcuts;
   }
 
   void _exit() {
@@ -248,12 +282,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         if (!didPop) _exit();
       },
       child: Shortcuts(
-        shortcuts: playerShortcuts,
+        shortcuts: _shortcuts(mode),
         child: Actions(
           actions: _actions(controller),
           child: Focus(
             focusNode: _rootFocus,
             autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent && _controlsVisible) _restartHideTimer();
+              return KeyEventResult.ignored;
+            },
             child: Scaffold(
               backgroundColor: VesperColors.player,
               body: MouseRegion(
@@ -273,31 +311,39 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         _showControls();
                       },
                     ),
+                    const _StreamStatus(),
                     AnimatedOpacity(
                       opacity: _controlsVisible ? 1 : 0,
                       duration: VesperMotion.normal,
                       curve: VesperMotion.enter,
                       child: IgnorePointer(
                         ignoring: !_controlsVisible,
-                        child: FocusScope(
-                          node: _controlsScope,
-                          child: _Controls(
-                            mode: mode,
-                            fullscreen: _fullscreen,
-                            onExit: _exit,
-                            onOpenPanel: _openPanel,
-                            onInteract: _showControls,
-                            onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+                        child: ExcludeFocus(
+                          excluding: !_controlsVisible,
+                          child: FocusScope(
+                            node: _controlsScope,
+                            child: _Controls(
+                              mode: mode,
+                              fullscreen: _fullscreen,
+                              playFocus: _playFocus,
+                              onExit: _exit,
+                              onOpenPanel: _openPanel,
+                              onInteract: _showControls,
+                              onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+                            ),
                           ),
                         ),
                       ),
                     ),
                     PlaybackOverlays(onInteract: _showControls),
                     if (_panel != PlayerPanel.none)
-                      TrackPanel(
-                        panel: _panel,
-                        onClose: _closePanel,
-                        onPanelChanged: (panel) => setState(() => _panel = panel),
+                      FocusScope(
+                        node: _panelScope,
+                        child: TrackPanel(
+                          panel: _panel,
+                          onClose: _closePanel,
+                          onPanelChanged: (panel) => setState(() => _panel = panel),
+                        ),
                       ),
                     if (!state.isReady && state.error == null)
                       const ColoredBox(
@@ -354,6 +400,7 @@ class _Controls extends ConsumerWidget {
   const _Controls({
     required this.mode,
     required this.fullscreen,
+    required this.playFocus,
     required this.onExit,
     required this.onOpenPanel,
     required this.onInteract,
@@ -362,6 +409,7 @@ class _Controls extends ConsumerWidget {
 
   final InputMode mode;
   final bool fullscreen;
+  final FocusNode playFocus;
   final VoidCallback onExit;
   final ValueChanged<PlayerPanel> onOpenPanel;
   final VoidCallback onInteract;
@@ -374,7 +422,6 @@ class _Controls extends ConsumerWidget {
     final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
     final playing = ref.watch(playerPlayingProvider).value ?? false;
-    final buffering = ref.watch(playerBufferingProvider).value ?? false;
     final preload = ref.watch(playerControllerProvider.select((s) => s.preload));
 
     return DecoratedBox(
@@ -400,17 +447,9 @@ class _Controls extends ConsumerWidget {
                           onInteract();
                         },
                       )
-                    : buffering
-                    ? const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: CircularProgressIndicator(
-                          color: VesperColors.accent,
-                          strokeWidth: 3,
-                        ),
-                      )
                     : _CentreControls(
                         playing: playing,
+                        playFocus: playFocus,
                         onToggle: () {
                           unawaited(controller.togglePlay());
                           onInteract();
@@ -494,9 +533,15 @@ class _TopBar extends StatelessWidget {
 }
 
 class _CentreControls extends StatelessWidget {
-  const _CentreControls({required this.playing, required this.onToggle, required this.onSeek});
+  const _CentreControls({
+    required this.playing,
+    required this.playFocus,
+    required this.onToggle,
+    required this.onSeek,
+  });
 
   final bool playing;
+  final FocusNode playFocus;
   final VoidCallback onToggle;
   final ValueChanged<Duration> onSeek;
 
@@ -517,6 +562,7 @@ class _CentreControls extends StatelessWidget {
           size: 48,
           filled: true,
           autofocus: true,
+          focusNode: playFocus,
           onTap: onToggle,
           label: playing ? 'Pause' : 'Play',
         ),
@@ -563,6 +609,7 @@ class _BottomBar extends StatelessWidget {
             duration: duration,
             onSeek: onSeek,
             compact: mode.isTouch,
+            focusable: !mode.isTv,
           ),
           const SizedBox(height: 6),
           Row(
@@ -605,6 +652,7 @@ class _RoundButton extends StatelessWidget {
     required this.label,
     this.filled = false,
     this.autofocus = false,
+    this.focusNode,
   });
 
   final IconData icon;
@@ -613,12 +661,14 @@ class _RoundButton extends StatelessWidget {
   final String label;
   final bool filled;
   final bool autofocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     return FocusableItem(
       onActivate: onTap,
       autofocus: autofocus,
+      focusNode: focusNode,
       borderRadius: size,
       semanticLabel: label,
       child: Container(
@@ -859,6 +909,36 @@ class _CueOverlay extends ConsumerWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StreamStatus extends ConsumerWidget {
+  const _StreamStatus();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final buffering = ref.watch(playerBufferingProvider).value ?? false;
+    final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
+    final starting = duration <= Duration.zero;
+    if (!buffering && !starting) return const SizedBox.shrink();
+
+    return IgnorePointer(
+      child: Align(
+        alignment: const Alignment(0, -0.62),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 44,
+              height: 44,
+              child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
+            ),
+            const SizedBox(height: 14),
+            Text(starting ? 'Starting stream' : 'Buffering', style: VesperType.body),
+          ],
         ),
       ),
     );

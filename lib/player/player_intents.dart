@@ -102,5 +102,26 @@ final Map<ShortcutActivator, Intent> playerShortcuts = {
 
   const SingleActivator(LogicalKeyboardKey.escape): const ExitPlayerIntent(),
   const SingleActivator(LogicalKeyboardKey.backspace): const ExitPlayerIntent(),
-  const SingleActivator(LogicalKeyboardKey.goBack): const ExitPlayerIntent(),
+};
+
+bool _isNavigationKey(ShortcutActivator activator) {
+  if (activator is! SingleActivator) return false;
+  final key = activator.trigger;
+  return key == LogicalKeyboardKey.arrowLeft ||
+      key == LogicalKeyboardKey.arrowRight ||
+      key == LogicalKeyboardKey.arrowUp ||
+      key == LogicalKeyboardKey.arrowDown ||
+      key == LogicalKeyboardKey.enter ||
+      key == LogicalKeyboardKey.select;
+}
+
+final Map<ShortcutActivator, Intent> playerNavigationShortcuts = {
+  for (final entry in playerShortcuts.entries)
+    if (!_isNavigationKey(entry.key)) entry.key: entry.value,
+};
+
+final Map<ShortcutActivator, Intent> playerTvIdleShortcuts = {
+  ...playerShortcuts,
+  const SingleActivator(LogicalKeyboardKey.arrowUp): const ShowControlsIntent(),
+  const SingleActivator(LogicalKeyboardKey.arrowDown): const ShowControlsIntent(),
 };

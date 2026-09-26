@@ -24,12 +24,14 @@ class PlayerScrubber extends ConsumerStatefulWidget {
     required this.duration,
     required this.onSeek,
     this.compact = false,
+    this.focusable = true,
   });
 
   final Duration position;
   final Duration duration;
   final ValueChanged<Duration> onSeek;
   final bool compact;
+  final bool focusable;
 
   @override
   ConsumerState<PlayerScrubber> createState() => _PlayerScrubberState();
@@ -94,34 +96,37 @@ class _PlayerScrubberState extends ConsumerState<PlayerScrubber> {
         MouseRegion(
           onHover: (event) => _preview(event.position),
           onExit: (_) => _clearPreview(),
-          child: FocusableActionDetector(
-            onShowFocusHighlight: (value) => setState(() => _focused = value),
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: _focused ? 6 : 4,
-                activeTrackColor: VesperColors.accent,
-                inactiveTrackColor: VesperColors.surfaceHover,
-                secondaryActiveTrackColor: VesperColors.surfaceHover,
-                thumbColor: VesperColors.accent,
-                overlayColor: VesperColors.accent.withValues(alpha: 0.18),
-                thumbShape: RoundSliderThumbShape(enabledThumbRadius: _focused ? 10 : 7),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
-                trackShape: const RoundedRectSliderTrackShape(),
-              ),
-              child: Slider(
-                key: _trackKey,
-                value: _progress,
-                onChanged: (value) {
-                  setState(() => _dragValue = value);
-                  if (widget.duration > Duration.zero) {
-                    ref.read(scrubPreviewProvider.notifier).hover(_at(value));
-                  }
-                },
-                onChangeEnd: (value) {
-                  _commit(value);
-                  _clearPreview();
-                  setState(() => _dragValue = null);
-                },
+          child: ExcludeFocus(
+            excluding: !widget.focusable,
+            child: FocusableActionDetector(
+              onShowFocusHighlight: (value) => setState(() => _focused = value),
+              child: SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: _focused ? 6 : 4,
+                  activeTrackColor: VesperColors.accent,
+                  inactiveTrackColor: VesperColors.surfaceHover,
+                  secondaryActiveTrackColor: VesperColors.surfaceHover,
+                  thumbColor: VesperColors.accent,
+                  overlayColor: VesperColors.accent.withValues(alpha: 0.18),
+                  thumbShape: RoundSliderThumbShape(enabledThumbRadius: _focused ? 10 : 7),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                  trackShape: const RoundedRectSliderTrackShape(),
+                ),
+                child: Slider(
+                  key: _trackKey,
+                  value: _progress,
+                  onChanged: (value) {
+                    setState(() => _dragValue = value);
+                    if (widget.duration > Duration.zero) {
+                      ref.read(scrubPreviewProvider.notifier).hover(_at(value));
+                    }
+                  },
+                  onChangeEnd: (value) {
+                    _commit(value);
+                    _clearPreview();
+                    setState(() => _dragValue = null);
+                  },
+                ),
               ),
             ),
           ),

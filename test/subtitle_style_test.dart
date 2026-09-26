@@ -109,7 +109,7 @@ void main() {
 
       expect(intents.whereType<TogglePlayIntent>().length, greaterThanOrEqualTo(5));
       expect(intents.whereType<SeekIntent>().length, greaterThanOrEqualTo(8));
-      expect(intents.whereType<ExitPlayerIntent>().length, greaterThanOrEqualTo(3));
+      expect(intents.whereType<ExitPlayerIntent>().length, greaterThanOrEqualTo(2));
     });
 
     test('seek both directions by ten and sixty seconds', () {
