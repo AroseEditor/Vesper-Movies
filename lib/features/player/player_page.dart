@@ -324,7 +324,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       child: IgnorePointer(
                         ignoring: !_controlsVisible,
                         child: ExcludeFocus(
-                          excluding: !_controlsVisible,
+                          excluding: !_controlsVisible || state.error != null,
                           child: FocusScope(
                             node: _controlsScope,
                             child: _Controls(
@@ -357,10 +357,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       ),
                     if (state.notice != null && state.error == null) _Notice(text: state.notice!),
                     if (state.error != null)
-                      _PlayerError(
-                        message: state.error!,
-                        onExit: _exit,
-                        onSources: () => unawaited(showSourceDialog(context, ref)),
+                      FocusScope(
+                        autofocus: true,
+                        child: _PlayerError(
+                          message: state.error!,
+                          onExit: _exit,
+                          onSources: () => unawaited(showSourceDialog(context, ref)),
+                        ),
                       ),
                   ],
                 ),
