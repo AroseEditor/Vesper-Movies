@@ -17,6 +17,8 @@ abstract final class TmdbImage {
 
   static String? logo(String? path) => _url(path, 'w500');
 
+  static String? still(String? path) => _url(path, 'w300');
+
   static String? _url(String? path, String size) {
     if (path == null || path.isEmpty) return null;
     return '$tmdbImageBase/$size$path';
@@ -95,13 +97,106 @@ class TmdbSource implements MetadataSource {
 
     final logo = await _logo(readInt(match, const ['id']), details.isSeries, cancel);
 
+    final seasons = details.isSeries
+        ? await _seasons(readInt(match, const ['id']), details.seasons, cancel)
+        : null;
+
     return details.copyWith(
       description: details.description ?? readString(match, const ['overview']),
       backdropUrl:
           details.backdropUrl ?? TmdbImage.backdrop(readString(match, const ['backdrop_path'])),
       logoUrl: details.logoUrl ?? logo,
       rating: details.rating ?? readDouble(match, const ['vote_average'])?.toStringAsFixed(1),
+      seasons: seasons,
     );
+  }
+
+  Future<List<Season>?> completeSeasons(MediaDetails details, {CancelToken? cancel}) async {
+    if (!isConfigured || !details.isSeries) return null;
+    final match = await _findByTitle(details.title, details.year, true, cancel);
+    if (match == null) return null;
+    return _seasons(readInt(match, const ['id']), details.seasons, cancel);
+  }
+
+  Future<List<Season>?> _seasons(int? tvId, List<Season> known, CancelToken? cancel) async {
+    if (tvId == null) return null;
+    final show = await _fetch('/tv/$tvId', cancel);
+    if (show == null) return null;
+
+    final numbers = <int>[
+      for (final entry in readList(show, const ['seasons']))
+        if (entry is Map && (readInt(entry, const ['season_number']) ?? 0) > 0)
+          readInt(entry, const ['season_number'])!,
+    ];
+    if (numbers.isEmpty) return null;
+
+    final now = DateTime.now();
+    final fetched = <int, List<Episode>>{};
+    for (var i = 0; i < numbers.length; i += 15) {
+      final chunk = numbers.skip(i).take(15).toList();
+      final payload = await _fetch(
+        '/tv/$tvId',
+        cancel,
+        query: {
+          'append_to_response': [for (final n in chunk) 'season/$n'].join(','),
+        },
+      );
+      if (payload == null) continue;
+      for (final number in chunk) {
+        final season = payload['season/$number'];
+        if (season is! Map) continue;
+        final episodes = <Episode>[];
+        for (final entry in readList(season, const ['episodes'])) {
+          if (entry is! Map) continue;
+          final episode = readInt(entry, const ['episode_number']);
+          if (episode == null || episode <= 0) continue;
+          final aired = DateTime.tryParse(readString(entry, const ['air_date']) ?? '');
+          if (aired != null && aired.isAfter(now)) continue;
+          episodes.add(
+            Episode(
+              season: number,
+              number: episode,
+              title: readString(entry, const ['name']),
+              overview: readString(entry, const ['overview']),
+              stillUrl: TmdbImage.still(readString(entry, const ['still_path'])),
+            ),
+          );
+        }
+        if (episodes.isNotEmpty) fetched[number] = episodes;
+      }
+    }
+    if (fetched.isEmpty) return null;
+
+    final byNumber = {for (final season in known) season.number: season};
+    final merged = <Season>[];
+    for (final number in {...byNumber.keys, ...fetched.keys}) {
+      final existing = byNumber[number];
+      final remote = fetched[number];
+      if (remote == null) {
+        merged.add(existing!);
+      } else if (existing == null || remote.length >= existing.episodes.length) {
+        final images = {for (final e in existing?.episodes ?? const <Episode>[]) e.number: e};
+        merged.add(
+          Season(
+            number: number,
+            episodes: [
+              for (final e in remote)
+                Episode(
+                  season: e.season,
+                  number: e.number,
+                  title: e.title ?? images[e.number]?.title,
+                  overview: e.overview ?? images[e.number]?.overview,
+                  stillUrl: e.stillUrl ?? images[e.number]?.stillUrl,
+                ),
+            ],
+          ),
+        );
+      } else {
+        merged.add(existing);
+      }
+    }
+    merged.sort((a, b) => a.number.compareTo(b.number));
+    return merged;
   }
 
   Future<List<CatalogItem>> discover(

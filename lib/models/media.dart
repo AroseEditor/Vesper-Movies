@@ -157,6 +157,7 @@ class MediaDetails {
     String? description,
     String? rating,
     List<String>? genres,
+    List<Season>? seasons,
   }) {
     return MediaDetails(
       id: id,
@@ -173,7 +174,7 @@ class MediaDetails {
       logoUrl: logoUrl ?? this.logoUrl,
       duration: duration,
       genres: genres ?? this.genres,
-      seasons: seasons,
+      seasons: seasons ?? this.seasons,
       dubs: dubs,
     );
   }

@@ -120,7 +120,13 @@ final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, Cat
       .fullDetails(item, cancel: cancel)
       .timeout(const Duration(seconds: 15), onTimeout: () => null);
 
-  final details = meta ?? MediaDetails.of(item);
+  var details = meta ?? MediaDetails.of(item);
+  if (details.isSeries) {
+    details = await ref
+        .read(metadataServiceProvider)
+        .withCompleteSeasons(details, cancel: cancel)
+        .timeout(const Duration(seconds: 12), onTimeout: () => details);
+  }
   if (meta != null) _detailsCache.put(key, details);
 
   return TitleDetails(item: item, details: details, addonCount: addonCount);

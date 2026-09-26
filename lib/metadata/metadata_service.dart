@@ -20,6 +20,17 @@ class MetadataService {
 
   bool get hasTmdb => _tmdb.isConfigured;
 
+  Future<MediaDetails> withCompleteSeasons(MediaDetails details, {CancelToken? cancel}) async {
+    try {
+      final seasons = await _tmdb.completeSeasons(details, cancel: cancel);
+      return seasons == null ? details : details.copyWith(seasons: seasons);
+    } on Cancelled {
+      rethrow;
+    } on Object catch (_) {
+      return details;
+    }
+  }
+
   Future<List<CatalogItem>> discover(
     String type,
     Map<String, dynamic> params, {
