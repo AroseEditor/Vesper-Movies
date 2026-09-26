@@ -17,7 +17,7 @@ import '../../storage/library_controller.dart';
 import 'details_controller.dart';
 
 const _maxAttempts = 5;
-const _playableTimeout = Duration(seconds: 50);
+const _playableTimeout = Duration(seconds: 35);
 
 class PlaybackSession {
   const PlaybackSession({
