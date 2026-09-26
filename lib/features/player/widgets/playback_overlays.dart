@@ -13,12 +13,7 @@ import '../../../player/player_controller.dart';
 import '../../details/playback_session.dart';
 
 const _nextLead = Duration(seconds: 20);
-const _fallbackIntroStart = Duration(seconds: 15);
-const _fallbackIntroEnd = Duration(minutes: 4);
-const _fallbackIntroSkip = Duration(seconds: 85);
 
-final _introPattern = RegExp(r'\b(intro|opening|op|theme)\b', caseSensitive: false);
-final _recapPattern = RegExp(r'\b(recap|previously|summary)\b', caseSensitive: false);
 final _creditsPattern = RegExp(r'\b(credits|ending|outro|ed|end)\b', caseSensitive: false);
 
 String releaseMeta(Release release) {
@@ -78,14 +73,6 @@ class CloudSourceButton extends ConsumerWidget {
   }
 }
 
-class _Segment {
-  const _Segment(this.start, this.end, this.label);
-
-  final Duration start;
-  final Duration end;
-  final String label;
-}
-
 class PlaybackOverlays extends ConsumerStatefulWidget {
   const PlaybackOverlays({super.key, required this.onInteract});
 
@@ -97,36 +84,24 @@ class PlaybackOverlays extends ConsumerStatefulWidget {
 
 class _PlaybackOverlaysState extends ConsumerState<PlaybackOverlays> {
   String? _loadedFor;
-  List<_Segment> _skips = const [];
   Duration? _creditsAt;
   final Set<String> _dismissed = {};
   bool _advancing = false;
 
   Future<void> _loadChapters(String key) async {
     _loadedFor = key;
-    _skips = const [];
     _creditsAt = null;
 
     final chapters = await ref.read(playerControllerProvider.notifier).chapters();
     if (!mounted || _loadedFor != key) return;
 
-    final skips = <_Segment>[];
     Duration? credits;
-    for (var i = 0; i < chapters.length; i++) {
-      final chapter = chapters[i];
-      final end = i + 1 < chapters.length ? chapters[i + 1].start : null;
-      if (_recapPattern.hasMatch(chapter.title) && end != null) {
-        skips.add(_Segment(chapter.start, end, 'Skip Recap'));
-      } else if (_introPattern.hasMatch(chapter.title) && end != null) {
-        skips.add(_Segment(chapter.start, end, 'Skip Intro'));
-      } else if (_creditsPattern.hasMatch(chapter.title) && i > 0) {
-        credits ??= chapter.start;
+    for (var i = 1; i < chapters.length; i++) {
+      if (_creditsPattern.hasMatch(chapters[i].title)) {
+        credits ??= chapters[i].start;
       }
     }
-    setState(() {
-      _skips = skips;
-      _creditsAt = credits;
-    });
+    setState(() => _creditsAt = credits);
   }
 
   Future<void> _advance(PlaybackSession session, Duration duration) async {
@@ -156,20 +131,6 @@ class _PlaybackOverlaysState extends ConsumerState<PlaybackOverlays> {
       WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_loadChapters(key)));
     }
 
-    _Segment? skip;
-    for (final segment in _skips) {
-      if (position >= segment.start && position < segment.end - const Duration(seconds: 2)) {
-        skip = segment;
-      }
-    }
-    if (skip == null && _skips.isEmpty && session.isEpisode) {
-      if (position >= _fallbackIntroStart && position < _fallbackIntroEnd) {
-        skip = _Segment(_fallbackIntroStart, position + _fallbackIntroSkip, 'Skip Intro');
-      }
-    }
-    final skipKey = skip == null ? null : '$key:${skip.label}:${skip.start.inSeconds}';
-    if (skipKey != null && _dismissed.contains(skipKey)) skip = null;
-
     final next = session.nextEpisode;
     final nextKey = '$key:next';
     final remaining = duration - position;
@@ -194,19 +155,6 @@ class _PlaybackOverlaysState extends ConsumerState<PlaybackOverlays> {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (skip != null && !showNext)
-            _PillButton(
-              icon: VesperIcons.skip,
-              label: skip.label,
-              autofocus: true,
-              onTap: () {
-                final target = skip!.end;
-                _dismissed.add(skipKey!);
-                unawaited(ref.read(playerControllerProvider.notifier).seekTo(target));
-                widget.onInteract();
-                setState(() {});
-              },
-            ),
           if (showNext)
             _NextCard(
               label: '${next.label}${next.title == null ? '' : '  ${next.title}'}',
