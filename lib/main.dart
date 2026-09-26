@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/memo_cache.dart';
 import 'core/secure_dns.dart';
+import 'shell/input_mode.dart';
 import 'sources/links/site_domains.dart';
 
 Future<void> main() async {
@@ -16,6 +17,7 @@ Future<void> main() async {
   HttpOverrides.global = SecureDnsHttpOverrides();
   MediaKit.ensureInitialized();
 
+  startupInputMode = await detectInputMode();
   await MemoCache.openDisk();
   await SiteDomains.load();
   await StreamTunnel.loadPreference();

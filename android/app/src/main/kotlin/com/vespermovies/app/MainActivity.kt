@@ -1,9 +1,13 @@
 package com.vespermovies.app
 
+import android.app.UiModeManager
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -11,8 +15,27 @@ class MainActivity : FlutterActivity() {
     private var exo: VesperExoPlugin? = null
     private var external: MethodChannel? = null
 
+    private fun isTelevision(): Boolean {
+        val features = packageManager
+        val uiMode = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        return uiMode?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+            features.hasSystemFeature("android.software.leanback") ||
+            features.hasSystemFeature("android.software.leanback_only") ||
+            features.hasSystemFeature("amazon.hardware.fire_tv") ||
+            !features.hasSystemFeature("android.hardware.touchscreen")
+    }
+
+    override fun getFlutterShellArgs(): FlutterShellArgs {
+        val args = super.getFlutterShellArgs()
+        if (isTelevision()) args.add("--enable-impeller=false")
+        return args
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/device").setMethodCallHandler { call, result ->
+            if (call.method == "isTelevision") result.success(isTelevision()) else result.notImplemented()
+        }
         exo = VesperExoPlugin(
             applicationContext,
             flutterEngine.dartExecutor.binaryMessenger,

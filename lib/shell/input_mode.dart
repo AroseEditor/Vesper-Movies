@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,34 +42,33 @@ Future<InputMode> detectInputMode() async {
   }
   if (Platform.isAndroid) {
     try {
+      final native = await const MethodChannel('vesper/device').invokeMethod<bool>('isTelevision');
+      if (native == true) return InputMode.tv;
+      if (native == false) return InputMode.touch;
+    } on Object catch (_) {}
+    try {
       final info = await DeviceInfoPlugin().androidInfo;
-      if (info.systemFeatures.contains('android.software.leanback') ||
-          info.systemFeatures.contains('android.software.leanback_only')) {
-        return InputMode.tv;
-      }
+      final features = info.systemFeatures;
+      final tv =
+          features.contains('android.software.leanback') ||
+          features.contains('android.software.leanback_only') ||
+          features.contains('amazon.hardware.fire_tv');
+      return tv ? InputMode.tv : InputMode.touch;
     } on Object catch (_) {
       return InputMode.touch;
     }
-    return InputMode.touch;
   }
   return InputMode.touch;
 }
+
+InputMode startupInputMode = InputMode.touch;
 
 class InputModeNotifier extends Notifier<InputMode> {
   @override
   InputMode build() {
     if (kIsWeb) return InputMode.desktop;
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return InputMode.desktop;
-    }
-    return InputMode.touch;
+    return startupInputMode;
   }
-
-  void set(InputMode mode) {
-    if (state != mode) state = mode;
-  }
-
-  Future<void> resolve() async => set(await detectInputMode());
 }
 
 final inputModeProvider = NotifierProvider<InputModeNotifier, InputMode>(InputModeNotifier.new);
