@@ -38,12 +38,10 @@ class MediaRow extends StatefulWidget {
 
 class _MediaRowState extends State<MediaRow> {
   final ScrollController _controller = ScrollController();
-  final FocusScopeNode _scope = FocusScopeNode();
 
   @override
   void dispose() {
     _controller.dispose();
-    _scope.dispose();
     super.dispose();
   }
 
@@ -90,13 +88,7 @@ class _MediaRowState extends State<MediaRow> {
           const SizedBox(height: 10),
           SizedBox(
             height: rowHeight,
-            child: FocusScope(
-              node: _scope,
-              child: FocusTraversalGroup(
-                policy: WidgetOrderTraversalPolicy(),
-                child: widget.loading ? _buildSkeleton(posterWidth) : _buildItems(posterWidth),
-              ),
-            ),
+            child: widget.loading ? _buildSkeleton(posterWidth) : _buildItems(posterWidth),
           ),
         ],
       ),
