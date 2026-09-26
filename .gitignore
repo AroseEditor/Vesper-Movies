@@ -37,3 +37,5 @@ linux/flutter/ephemeral/
 
 tmdb.json
 test/sherlock_probe.dart
+test/tmdb_probe.dart
+test/vega_debug_probe.dart

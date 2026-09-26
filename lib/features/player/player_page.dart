@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../design/colors.dart';
@@ -89,6 +90,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void initState() {
     super.initState();
     _player = ref.read(playerControllerProvider.notifier);
+    unawaited(WakelockPlus.enable());
     _tv = ref.read(inputModeProvider).isTv;
     _restartHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -113,6 +115,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void dispose() {
     _progressTimer?.cancel();
+    unawaited(WakelockPlus.disable());
     _hideTimer?.cancel();
     _reportProgress();
     _rootFocus.dispose();
