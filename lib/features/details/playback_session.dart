@@ -12,6 +12,7 @@ import '../../player/player_controller.dart';
 import '../../player/quality_cap.dart';
 import '../../player/source_health.dart';
 import '../../player/subtitle_style.dart';
+import '../../sources/addons/addons_store.dart';
 import '../../sources/links/release_tags.dart';
 import '../../sources/registry.dart';
 import '../../sources/source_matcher.dart';
@@ -121,7 +122,8 @@ int _heavyRank(Release release) {
   return (release.sizeBytes ?? 0) > _heavyBytes ? 1 : 0;
 }
 
-int _sourceRank(Release release) => release.kind == ProviderKind.downloadhub ? 1 : 0;
+int _sourceRank(Release release) =>
+    release.kind == ProviderKind.downloadhub || release.kind == ProviderKind.nfmirror ? 1 : 0;
 
 int _hardwareRank(Release release) {
   final codec = (release.codec ?? '').toLowerCase();
@@ -422,6 +424,40 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     }
   }
 
+  PlaybackSource _withSubtitles(PlaybackSource source, List<SubtitleOption> extra) {
+    return PlaybackSource(
+      kind: source.kind,
+      url: source.url,
+      headers: source.headers,
+      subtitle: source.subtitle,
+      subtitles: [...source.subtitles, ...extra],
+      sourceLabel: source.sourceLabel,
+    );
+  }
+
+  Future<List<SubtitleOption>> _addonSubtitles(PlaybackSession session) async {
+    final id = session.item.id.value;
+    if (!id.startsWith('tt')) return const [];
+    final client = ref.read(addonClientProvider);
+    final jobs = [
+      for (final addon in ref.read(enabledAddonsProvider))
+        if (addon.providesSubtitles)
+          client
+              .subtitles(
+                addon,
+                id,
+                isSeries: session.item.isSeries,
+                season: session.season,
+                episode: session.episode,
+              )
+              .timeout(const Duration(seconds: 8), onTimeout: () => const <SubtitleOption>[])
+              .catchError((Object _) => const <SubtitleOption>[]),
+    ];
+    if (jobs.isEmpty) return const [];
+    final groups = await Future.wait(jobs);
+    return [for (final group in groups) ...group.take(12)];
+  }
+
   bool _isPlaceholder(Release release) {
     if (release.kind != ProviderKind.nfmirror) return false;
     final duration = _player.engine.state.duration;
@@ -452,9 +488,10 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       );
       if (generation != _generation) return false;
 
+      final extra = await _addonSubtitles(session);
       await _player.load(
         PlaybackTarget(
-          source: target.source,
+          source: extra.isEmpty ? target.source : _withSubtitles(target.source, extra),
           title: target.title,
           subtitle: target.subtitle,
           startAt: startAt,
