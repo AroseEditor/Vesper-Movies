@@ -10,6 +10,7 @@ class ChoiceOption<T> {
     required this.label,
     this.icon,
     this.trailing,
+    this.subtitle,
     this.selected = false,
   });
 
@@ -17,6 +18,7 @@ class ChoiceOption<T> {
   final String label;
   final IconData? icon;
   final String? trailing;
+  final String? subtitle;
   final bool selected;
 }
 
@@ -63,7 +65,15 @@ Future<T?> showChoiceDialog<T>(
                               ? null
                               : Icon(options[i].icon, size: 20, color: VesperColors.textSecondary),
                         ),
-                        title: Text(options[i].label, style: VesperType.label),
+                        title: Text(
+                          options[i].label,
+                          style: VesperType.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: options[i].subtitle == null || options[i].subtitle!.isEmpty
+                            ? null
+                            : Text(options[i].subtitle!, style: VesperType.meta),
                         trailing: options[i].trailing == null
                             ? null
                             : Text(options[i].trailing!, style: VesperType.meta),

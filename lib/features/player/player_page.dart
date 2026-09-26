@@ -82,10 +82,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   Timer? _progressTimer;
+  late final PlayerControllerNotifier _player;
+  bool _tv = false;
 
   @override
   void initState() {
     super.initState();
+    _player = ref.read(playerControllerProvider.notifier);
+    _tv = ref.read(inputModeProvider).isTv;
     _restartHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
@@ -98,7 +102,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final report = widget.onProgress;
     if (report == null) return;
 
-    final player = ref.read(playerControllerProvider.notifier).engine;
+    final player = _player.engine;
     final position = player.state.position;
     final duration = player.state.duration;
     if (duration <= Duration.zero) return;
@@ -109,8 +113,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void dispose() {
     _progressTimer?.cancel();
-    _reportProgress();
     _hideTimer?.cancel();
+    _reportProgress();
     _rootFocus.dispose();
     _controlsScope.dispose();
     _panelScope.dispose();
@@ -125,13 +129,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (_panel != PlayerPanel.none) return;
     _hideTimer = Timer(VesperMotion.osdHideDelay, () {
       if (!mounted) return;
-      final engine = ref.read(playerControllerProvider.notifier).engine;
+      final engine = _player.engine;
       if (engine.state.duration <= Duration.zero) {
         _restartHideTimer();
         return;
       }
       setState(() => _controlsVisible = false);
-      if (ref.read(inputModeProvider).isTv) _rootFocus.requestFocus();
+      if (_tv) _rootFocus.requestFocus();
     });
   }
 
@@ -148,7 +152,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final wasHidden = !_controlsVisible;
     if (wasHidden) setState(() => _controlsVisible = true);
     _restartHideTimer();
-    if (wasHidden && ref.read(inputModeProvider).isTv) {
+    if (wasHidden && _tv) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusControls());
     }
   }
@@ -273,7 +277,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(inputModeProvider);
-    final controller = ref.read(playerControllerProvider.notifier);
+    _tv = mode.isTv;
+    final controller = _player;
     final state = ref.watch(playerControllerProvider);
 
     return PopScope(
@@ -350,7 +355,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         color: VesperColors.player,
                         child: Center(child: LoadingNote(label: 'Opening your stream')),
                       ),
-                    if (state.error != null) _PlayerError(message: state.error!, onExit: _exit),
+                    if (state.notice != null && state.error == null) _Notice(text: state.notice!),
+                    if (state.error != null)
+                      _PlayerError(
+                        message: state.error!,
+                        onExit: _exit,
+                        onSources: () => unawaited(showSourceDialog(context, ref)),
+                      ),
                   ],
                 ),
               ),
@@ -721,10 +732,11 @@ class _LabelledButton extends StatelessWidget {
 }
 
 class _PlayerError extends StatelessWidget {
-  const _PlayerError({required this.message, required this.onExit});
+  const _PlayerError({required this.message, required this.onExit, required this.onSources});
 
   final String message;
   final VoidCallback onExit;
+  final VoidCallback onSources;
 
   @override
   Widget build(BuildContext context) {
@@ -749,8 +761,23 @@ class _PlayerError extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               FocusableItem(
-                onActivate: onExit,
+                onActivate: onSources,
                 autofocus: true,
+                borderRadius: 6,
+                scaleOnFocus: false,
+                semanticLabel: 'Choose another source',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: VesperColors.accent,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Text('Choose another source', style: VesperType.button),
+                ),
+              ),
+              const SizedBox(height: 12),
+              FocusableItem(
+                onActivate: onExit,
                 borderRadius: 6,
                 scaleOnFocus: false,
                 semanticLabel: 'Go back',
@@ -939,6 +966,30 @@ class _StreamStatus extends ConsumerWidget {
             const SizedBox(height: 14),
             Text(starting ? 'Starting stream' : 'Buffering', style: VesperType.body),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Align(
+        alignment: const Alignment(0, 0.72),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: VesperColors.surfaceRaised,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(text, style: VesperType.body, textAlign: TextAlign.center),
         ),
       ),
     );

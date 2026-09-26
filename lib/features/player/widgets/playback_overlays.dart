@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design/colors.dart';
 import '../../../design/icons.dart';
 import '../../../design/typography.dart';
+import '../../../design/widgets/choice_dialog.dart';
 import '../../../design/widgets/focusable_item.dart';
 import '../../../models/release.dart';
 import '../../../player/player_controller.dart';
@@ -30,6 +31,26 @@ String releaseMeta(Release release) {
   ].join('  ');
 }
 
+Future<void> showSourceDialog(BuildContext context, WidgetRef ref) async {
+  final session = ref.read(playbackSessionProvider);
+  if (session == null) return;
+  final releases = session.releases;
+  final chosen = await showChoiceDialog<Release>(
+    context,
+    title: releases.isEmpty ? 'Finding sources' : '${releases.length} sources',
+    options: [
+      for (final release in releases)
+        ChoiceOption(
+          value: release,
+          label: '${release.kind.label}  ${release.filename}',
+          subtitle: releaseMeta(release),
+          selected: release == session.current,
+        ),
+    ],
+  );
+  if (chosen != null) unawaited(ref.read(playbackSessionProvider.notifier).switchTo(chosen));
+}
+
 class CloudSourceButton extends ConsumerWidget {
   const CloudSourceButton({super.key});
 
@@ -38,79 +59,20 @@ class CloudSourceButton extends ConsumerWidget {
     final session = ref.watch(playbackSessionProvider);
     if (session == null) return const SizedBox.shrink();
 
-    final releases = session.releases;
-    final current = session.current;
-
-    return MenuAnchor(
-      style: MenuStyle(
-        backgroundColor: const WidgetStatePropertyAll(VesperColors.surfaceRaised),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        maximumSize: const WidgetStatePropertyAll(Size(420, 460)),
-      ),
-      alignmentOffset: const Offset(-300, 6),
-      menuChildren: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Text(
-            releases.isEmpty ? 'Finding sources' : '${releases.length} sources',
-            style: VesperType.meta,
-          ),
-        ),
-        for (final release in releases)
-          MenuItemButton(
-            onPressed: () =>
-                unawaited(ref.read(playbackSessionProvider.notifier).switchTo(release)),
-            leadingIcon: SizedBox(
-              width: 20,
-              child: release == current
-                  ? const Icon(VesperIcons.check, size: 18, color: VesperColors.accent)
-                  : null,
-            ),
-            child: SizedBox(
-              width: 330,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${release.kind.label}  ${release.filename}',
-                    style: VesperType.label.copyWith(
-                      color: release == current
-                          ? VesperColors.textPrimary
-                          : VesperColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (releaseMeta(release).isNotEmpty)
-                    Text(
-                      releaseMeta(release),
-                      style: VesperType.meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-          ),
-      ],
-      builder: (context, controller, _) => FocusableItem(
-        onActivate: () => controller.isOpen ? controller.close() : controller.open(),
-        borderRadius: 22,
-        scaleOnFocus: false,
-        semanticLabel: 'Change source',
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: session.switching
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.4, color: VesperColors.accent),
-                )
-              : const Icon(VesperIcons.cloud, size: 26),
-        ),
+    return FocusableItem(
+      onActivate: () => unawaited(showSourceDialog(context, ref)),
+      borderRadius: 22,
+      scaleOnFocus: false,
+      semanticLabel: 'Change source',
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: session.switching
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.4, color: VesperColors.accent),
+              )
+            : const Icon(VesperIcons.cloud, size: 26),
       ),
     );
   }
