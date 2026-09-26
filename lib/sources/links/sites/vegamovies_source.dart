@@ -18,11 +18,28 @@ class VegaMoviesSource extends LinkSource {
   @override
   Future<List<Release>> find(LinkQuery query, {CancelToken? cancel}) async {
     final imdb = query.imdbId;
-    if (imdb == null) return const [];
-
-    final data = await web.json('$_base/search.php?q=$imdb&page=1', cancel: cancel);
-    final hits = data is Map ? data['hits'] : null;
-    if (hits is! List) return const [];
+    var hits = imdb == null
+        ? const []
+        : [
+            for (final hit in await _search(imdb, cancel))
+              if (hit is Map &&
+                  hit['document'] is Map &&
+                  (hit['document'] as Map)['imdb_id'] == imdb)
+                hit,
+          ];
+    if (hits.isEmpty) {
+      hits = [
+        for (final hit in await _search(query.title, cancel))
+          if (hit is Map &&
+              hit['document'] is Map &&
+              strictTitle(
+                query.title,
+                cleanText('${(hit['document'] as Map)['post_title'] ?? ''}'),
+                year: query.isEpisode ? null : query.year,
+              ))
+            hit,
+      ];
+    }
 
     final releases = <Release>[];
     for (final hit in hits.take(4)) {
@@ -30,11 +47,11 @@ class VegaMoviesSource extends LinkSource {
       final document = hit['document'] as Map;
       final permalink = '${document['permalink'] ?? ''}';
       final listed = '${document['imdb_id'] ?? ''}';
-      if (permalink.isEmpty || (listed.isNotEmpty && listed != imdb)) continue;
+      if (permalink.isEmpty || (imdb != null && listed.isNotEmpty && listed != imdb)) continue;
       try {
         final page = await web.get(absoluteUrl(permalink, _base), cancel: cancel);
         final onPage = RegExp(r'imdb\.com/title/(tt\d+)').firstMatch(page.body)?.group(1);
-        if (onPage != null && onPage != imdb) continue;
+        if (imdb != null && onPage != null && onPage != imdb) continue;
         releases.addAll(
           query.isEpisode
               ? await _episode(page.document, query, cancel)
@@ -45,6 +62,15 @@ class VegaMoviesSource extends LinkSource {
       }
     }
     return dedupeReleases(releases);
+  }
+
+  Future<List<dynamic>> _search(String term, CancelToken? cancel) async {
+    final data = await web.json(
+      '$_base/search.php?q=${Uri.encodeQueryComponent(term)}&page=1',
+      cancel: cancel,
+    );
+    final hits = data is Map ? data['hits'] : null;
+    return hits is List ? hits : const [];
   }
 
   List<Release> _movie(Document document, LinkQuery query) {
@@ -61,15 +87,17 @@ class VegaMoviesSource extends LinkSource {
   Future<List<Release>> _episode(Document document, LinkQuery query, CancelToken? cancel) async {
     final seasonTag = RegExp('Season\\s*0*${query.season}\\b', caseSensitive: false);
     final releases = <Release>[];
-    for (final heading in document.querySelectorAll('h3, h4')) {
+    for (final heading in document.querySelectorAll('h3, h4, h5')) {
       final label = cleanText(heading.text);
       if (!seasonTag.hasMatch(label)) continue;
       final anchors = heading.nextElementSibling?.querySelectorAll('a') ?? const <Element>[];
       for (final anchor in anchors) {
         final text = anchor.text;
-        if (!RegExp('V-Cloud|Single|Episode|G-Direct', caseSensitive: false).hasMatch(text)) {
-          continue;
-        }
+        final labelled = RegExp(
+          'V-Cloud|Single|Episode|G-Direct',
+          caseSensitive: false,
+        ).hasMatch(text);
+        if (!labelled && anchor.querySelector('button.dwd-button') == null) continue;
         final href = anchor.attributes['href'];
         if (href == null || !href.startsWith('http')) continue;
         try {
