@@ -23,9 +23,11 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.util.EventLogger
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -33,6 +35,10 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
 import java.io.File
 import java.net.InetAddress
+import java.net.UnknownHostException
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import okhttp3.Dns
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -41,8 +47,8 @@ import okhttp3.dnsoverhttps.DnsOverHttps
 
 object VesperNet {
     private val bootstrap: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(4, TimeUnit.SECONDS)
-        .callTimeout(6, TimeUnit.SECONDS)
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .callTimeout(4, TimeUnit.SECONDS)
         .build()
 
     private val cloudflare: DnsOverHttps = DnsOverHttps.Builder()
@@ -59,16 +65,30 @@ object VesperNet {
         .includeIPv6(false)
         .build()
 
+    private val resolvers = Executors.newCachedThreadPool()
+
+    private val cachedHosts = ConcurrentHashMap<String, Pair<Long, List<InetAddress>>>()
+
     private val secureDns: Dns = object : Dns {
         override fun lookup(hostname: String): List<InetAddress> {
-            for (resolver in listOf(cloudflare, google)) {
-                try {
+            val now = System.currentTimeMillis()
+            cachedHosts[hostname]?.let { (at, found) ->
+                if (now - at < 600_000L) return found
+            }
+            val tasks = listOf(cloudflare, google).map { resolver ->
+                Callable {
                     val found = resolver.lookup(hostname)
-                    if (found.isNotEmpty()) return found
-                } catch (_: Exception) {
+                    if (found.isEmpty()) throw UnknownHostException(hostname)
+                    found
                 }
             }
-            return Dns.SYSTEM.lookup(hostname)
+            val resolved = try {
+                resolvers.invokeAny(tasks, 5, TimeUnit.SECONDS)
+            } catch (_: Exception) {
+                Dns.SYSTEM.lookup(hostname)
+            }
+            cachedHosts[hostname] = Pair(now, resolved)
+            return resolved
         }
     }
 
@@ -118,7 +138,9 @@ class VesperExoPlayer(
 
     private val trackSelector = DefaultTrackSelector(context)
 
-    private val player: ExoPlayer = ExoPlayer.Builder(context)
+    private val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+
+    private val player: ExoPlayer = ExoPlayer.Builder(context, renderers)
         .setTrackSelector(trackSelector)
         .setLoadControl(
             DefaultLoadControl.Builder()
@@ -159,6 +181,7 @@ class VesperExoPlayer(
         })
         producer.setCallback(this)
         player.addListener(this)
+        player.addAnalyticsListener(EventLogger())
         player.setVideoSurface(producer.surface)
         handler.post(ticker)
     }
