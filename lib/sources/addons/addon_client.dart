@@ -12,6 +12,7 @@ class InstalledAddon {
     this.description,
     this.enabled = true,
     this.providesStream = true,
+    this.providesSubtitles = false,
   });
 
   final String manifestUrl;
@@ -19,6 +20,7 @@ class InstalledAddon {
   final String? description;
   final bool enabled;
   final bool providesStream;
+  final bool providesSubtitles;
 
   String get baseUrl {
     var base = manifestUrl.trim();
@@ -37,6 +39,7 @@ class InstalledAddon {
     description: description,
     enabled: enabled ?? this.enabled,
     providesStream: providesStream,
+    providesSubtitles: providesSubtitles,
   );
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +48,7 @@ class InstalledAddon {
     'description': description,
     'enabled': enabled,
     'providesStream': providesStream,
+    'providesSubtitles': providesSubtitles,
   };
 
   static InstalledAddon? fromJson(Object? source) {
@@ -58,6 +62,7 @@ class InstalledAddon {
       description: source['description'] as String?,
       enabled: source['enabled'] != false,
       providesStream: source['providesStream'] != false,
+      providesSubtitles: source['providesSubtitles'] == true,
     );
   }
 }
@@ -117,6 +122,7 @@ class AddonClient {
       name: readString(payload, const ['name']) ?? 'Addon',
       description: readString(payload, const ['description']),
       providesStream: resources.contains('stream'),
+      providesSubtitles: resources.contains('subtitles'),
     );
   }
 
@@ -148,6 +154,34 @@ class AddonClient {
     }
 
     return releases;
+  }
+
+  Future<List<SubtitleOption>> subtitles(
+    InstalledAddon addon,
+    String imdbId, {
+    required bool isSeries,
+    int season = 0,
+    int episode = 0,
+    CancelToken? cancel,
+  }) async {
+    final type = isSeries ? 'series' : 'movie';
+    final id = isSeries && season > 0 ? '$imdbId:$season:$episode' : imdbId;
+    final payload = await _fetch(
+      '${addon.baseUrl}/subtitles/$type/${Uri.encodeComponent(id)}.json',
+      cancel,
+    );
+    if (payload == null) return const [];
+
+    final found = <SubtitleOption>[];
+    final seen = <String>{};
+    for (final entry in readList(payload, const ['subtitles'])) {
+      if (entry is! Map) continue;
+      final url = readString(entry, const ['url']);
+      if (url == null || !url.startsWith('http') || !seen.add(url)) continue;
+      final language = readString(entry, const ['lang', 'language']) ?? 'Subtitle';
+      found.add(SubtitleOption(name: '$language (${addon.name})', url: url));
+    }
+    return found;
   }
 
   Future<Map<String, dynamic>?> _fetch(String url, CancelToken? cancel) async {

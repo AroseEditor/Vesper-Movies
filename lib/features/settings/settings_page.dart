@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/secure_dns.dart';
 import '../../core/update_check.dart';
+import '../../core/update_dialog.dart';
 import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
@@ -14,6 +15,7 @@ import '../../player/subtitle_style.dart';
 import '../../shell/input_mode.dart';
 import '../../sources/addons/addon_client.dart';
 import '../../sources/addons/addons_store.dart';
+import '../../sources/addons/suggested_addons.dart';
 import '../../storage/backup.dart';
 import '../../storage/library_controller.dart';
 
@@ -22,38 +24,76 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _addAddon(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
+    final installed = {
+      for (final addon in ref.read(addonsProvider).value ?? const <InstalledAddon>[])
+        addon.manifestUrl,
+    };
     final url = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: VesperColors.surface,
-        title: const Text('Add a stream addon', style: VesperType.sectionTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Paste the manifest URL of any Stremio compatible addon.',
-              style: VesperType.body,
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              style: VesperType.body.copyWith(color: VesperColors.textPrimary),
-              cursorColor: VesperColors.accent,
-              decoration: const InputDecoration(
-                hintText: 'https://example.com/manifest.json',
-                hintStyle: VesperType.meta,
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: VesperColors.divider),
+        title: const Text('Add an addon', style: VesperType.sectionTitle),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Paste or type the manifest URL of any Stremio addon, or pick a suggestion below.',
+                  style: VesperType.body,
                 ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: VesperColors.accent),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  style: VesperType.body.copyWith(color: VesperColors.textPrimary),
+                  cursorColor: VesperColors.accent,
+                  decoration: InputDecoration(
+                    hintText: 'https://example.com/manifest.json',
+                    hintStyle: VesperType.meta,
+                    enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: VesperColors.divider),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: VesperColors.accent),
+                    ),
+                    suffixIcon: TextButton(
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        final text = data?.text?.trim();
+                        if (text != null && text.isNotEmpty) controller.text = text;
+                      },
+                      child: Text(
+                        'Paste',
+                        style: VesperType.label.copyWith(color: VesperColors.accent),
+                      ),
+                    ),
+                  ),
+                  onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
                 ),
-              ),
-              onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+                const SizedBox(height: 20),
+                const Text('Suggested', style: VesperType.meta),
+                const SizedBox(height: 6),
+                for (final suggestion in suggestedAddons)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    enabled: !installed.contains(suggestion.url),
+                    focusColor: VesperColors.surfaceHover,
+                    onTap: () => Navigator.of(dialogContext).pop(suggestion.url),
+                    title: Text(suggestion.name, style: VesperType.label),
+                    subtitle: Text(
+                      installed.contains(suggestion.url) ? 'Installed' : suggestion.kind,
+                      style: VesperType.meta,
+                    ),
+                    trailing: installed.contains(suggestion.url)
+                        ? const Icon(VesperIcons.check, size: 18, color: VesperColors.accent)
+                        : const Icon(VesperIcons.add, size: 20, color: VesperColors.accent),
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -113,7 +153,7 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 26),
             const _SectionHeader(
               title: 'Stream addons',
-              subtitle: 'Vesper resolves streams from MovieBox plus any Stremio compatible addon you add.',
+              subtitle: 'Vesper resolves streams and subtitles from any Stremio compatible addon you add.',
             ),
             const SizedBox(height: 10),
             if (addons.isEmpty)
@@ -514,7 +554,7 @@ class _UpdateStatus extends ConsumerWidget {
               _ActionButton(
                 icon: VesperIcons.update,
                 label: 'Get version ${info.latest}',
-                onTap: () => launchUrl(Uri.parse(info.url), mode: LaunchMode.externalApplication),
+                onTap: () => showUpdateDialog(context, info),
               ),
             _ActionButton(
               icon: VesperIcons.refresh,

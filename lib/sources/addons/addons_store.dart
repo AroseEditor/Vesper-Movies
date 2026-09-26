@@ -60,8 +60,8 @@ class AddonsNotifier extends AsyncNotifier<List<InstalledAddon>> {
       if (current.any((e) => e.manifestUrl == addon.manifestUrl)) {
         return 'That addon is already installed.';
       }
-      if (!addon.providesStream) {
-        return 'That addon does not provide streams.';
+      if (!addon.providesStream && !addon.providesSubtitles) {
+        return 'That addon provides neither streams nor subtitles.';
       }
 
       final next = [...current, addon];
