@@ -73,6 +73,7 @@ class PlayerState {
     this.activeExternal,
     this.isReady = false,
     this.error,
+    this.notice,
     this.preload = Preload.idle,
   });
 
@@ -82,6 +83,7 @@ class PlayerState {
   final String? activeExternal;
   final bool isReady;
   final String? error;
+  final String? notice;
   final Preload preload;
 
   PlayerState copyWith({
@@ -93,6 +95,8 @@ class PlayerState {
     bool? isReady,
     String? error,
     bool clearError = false,
+    String? notice,
+    bool clearNotice = false,
     Preload? preload,
   }) {
     return PlayerState(
@@ -102,6 +106,7 @@ class PlayerState {
       activeExternal: clearActiveExternal ? null : (activeExternal ?? this.activeExternal),
       isReady: isReady ?? this.isReady,
       error: clearError ? null : (error ?? this.error),
+      notice: clearNotice ? null : (notice ?? this.notice),
       preload: preload ?? this.preload,
     );
   }
@@ -113,7 +118,9 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   StreamSubscription<Duration>? _startSubscription;
   Timer? _preloadDeadline;
   Timer? _preloadPoll;
+  Timer? _noticeTimer;
   int _session = 0;
+  bool holdErrors = false;
 
   PlaybackEngine get engine => _engine ??= PlaybackEngine.create();
 
@@ -122,6 +129,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     ref.listen(qualityCapProvider, (_, cap) => unawaited(_engine?.setMaxHeight(cap.maxHeight)));
     ref.onDispose(() {
       _stopPreloadTimers();
+      _noticeTimer?.cancel();
       unawaited(_errorSubscription?.cancel());
       unawaited(_startSubscription?.cancel());
       unawaited(_engine?.dispose());
@@ -134,6 +142,14 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     _session++;
     _stopPreloadTimers();
     state = PlayerState(subtitleStyle: state.subtitleStyle);
+  }
+
+  void notify(String message) {
+    state = state.copyWith(notice: message);
+    _noticeTimer?.cancel();
+    _noticeTimer = Timer(const Duration(seconds: 5), () {
+      state = state.copyWith(clearNotice: true);
+    });
   }
 
   void fail(String message) {
@@ -163,7 +179,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     _errorSubscription ??= engine.errorStream.listen((message) {
       debugPrint('playback error: ${redactLog(message)}');
-      if (!isFatalPlaybackError(message)) return;
+      if (holdErrors || !isFatalPlaybackError(message)) return;
       if (!engine.errorsAreTerminal && engine.state.duration > Duration.zero) return;
       state = state.copyWith(error: message, isReady: false);
     });
@@ -280,6 +296,19 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     await engine.setSubtitleTrack(SubtitleTrack.no());
     state = state.copyWith(clearActiveExternal: true);
     await ref.read(languagePrefsProvider.notifier).rememberSubtitle(null);
+  }
+
+  Future<bool> survivesStart(Duration window) async {
+    if (!engine.errorsAreTerminal) return true;
+    final failed = Completer<bool>();
+    final subscription = engine.errorStream.listen((message) {
+      if (isFatalPlaybackError(message) && !failed.isCompleted) failed.complete(true);
+    });
+    try {
+      return !await failed.future.timeout(window, onTimeout: () => false);
+    } finally {
+      await subscription.cancel();
+    }
   }
 
   Future<bool> waitUntilPlayable(Duration timeout) async {

@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
 import '../../models/media.dart';
+import '../../models/provider_kind.dart';
 import '../../models/release.dart';
 import '../../player/player_controller.dart';
 import '../../player/quality_cap.dart';
+import '../../player/source_health.dart';
 import '../../player/subtitle_style.dart';
 import '../../sources/links/release_tags.dart';
 import '../../sources/registry.dart';
@@ -16,7 +18,8 @@ import '../../sources/source_matcher.dart';
 import '../../storage/library_controller.dart';
 import 'details_controller.dart';
 
-const _maxAttempts = 5;
+const _maxAttempts = 8;
+const _placeholderLimit = Duration(minutes: 12);
 const _playableTimeout = Duration(seconds: 35);
 
 class PlaybackSession {
@@ -111,6 +114,20 @@ int _phoneRank(Release release) {
   return 2;
 }
 
+const _heavyBytes = 12 * 1024 * 1024 * 1024;
+
+int _heavyRank(Release release) {
+  if (release.rip == 'Remux') return 1;
+  return (release.sizeBytes ?? 0) > _heavyBytes ? 1 : 0;
+}
+
+int _sourceRank(Release release) => release.kind == ProviderKind.downloadhub ? 1 : 0;
+
+int _hardwareRank(Release release) {
+  final codec = (release.codec ?? '').toLowerCase();
+  return codec.contains('10bit') || codec.contains('hdr') ? 1 : 0;
+}
+
 int _capRank(Release release, int cap) {
   final height = releaseHeight(release);
   if (height == null) return 1;
@@ -122,12 +139,17 @@ List<Release> rankForDevice(
   required int cap,
   required bool phone,
   bool preferHindi = false,
+  Map<String, int> health = const {},
 }) {
   final indexed = [for (var i = 0; i < releases.length; i++) (i, releases[i])];
   List<int> rank(Release release) => [
     if (cap > 0) _capRank(release, cap),
     release.isCam ? 1 : 0,
+    -(health[release.kind.id] ?? 0),
+    _sourceRank(release),
     if (preferHindi) hasHindi(release.language) ? 0 : 1,
+    _heavyRank(release),
+    if (phone) _hardwareRank(release),
     if (cap <= 0 && phone) _phoneRank(release),
   ];
 
@@ -201,12 +223,41 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
 
     final generation = ++_generation;
     final position = _player.engine.state.position;
+    final previous = session.current;
     state = session.copyWith(switching: true);
+    _player.holdErrors = true;
+    try {
+      await _switch(generation, release, previous, position);
+    } finally {
+      if (generation == _generation) _player.holdErrors = false;
+    }
+  }
 
+  Future<void> _switch(
+    int generation,
+    Release release,
+    Release? previous,
+    Duration position,
+  ) async {
     final ok = await _tryRelease(generation, release, position);
     if (generation != _generation) return;
-    state = state?.copyWith(switching: false);
-    if (!ok) _player.fail('That stream would not start. Pick another one from the cloud menu.');
+    if (ok) {
+      state = state?.copyWith(switching: false);
+      return;
+    }
+
+    if (previous != null) {
+      final restored = await _tryRelease(generation, previous, position);
+      if (generation != _generation) return;
+      state = state?.copyWith(switching: false);
+      if (restored) {
+        _player.notify('That source would not start, so playback stayed on the previous one.');
+        return;
+      }
+    } else {
+      state = state?.copyWith(switching: false);
+    }
+    _player.fail('That stream would not start. Pick another one from the cloud menu.');
   }
 
   void recordProgress(Duration position, Duration duration, bool completed) {
@@ -273,6 +324,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       cap: ref.read(qualityCapProvider).maxHeight,
       phone: Platform.isAndroid,
       preferHindi: ref.read(preferHindiProvider),
+      health: ref.read(sourceHealthProvider),
     );
     final ordered = [
       ?preferred,
@@ -310,6 +362,15 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
   }
 
   Future<void> _openEpisode(int generation, {Release? preferred, Duration? startAt}) async {
+    _player.holdErrors = true;
+    try {
+      await _attemptEpisode(generation, preferred: preferred, startAt: startAt);
+    } finally {
+      if (generation == _generation) _player.holdErrors = false;
+    }
+  }
+
+  Future<void> _attemptEpisode(int generation, {Release? preferred, Duration? startAt}) async {
     final session = state;
     if (session == null) return;
 
@@ -331,6 +392,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       cap: ref.read(qualityCapProvider).maxHeight,
       phone: Platform.isAndroid,
       preferHindi: ref.read(preferHindiProvider),
+      health: ref.read(sourceHealthProvider),
     );
     final ordered = [
       ?preferred,
@@ -344,14 +406,26 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       return;
     }
 
-    for (final release in ordered.take(_maxAttempts)) {
+    final failures = <ProviderKind, int>{};
+    var attempts = 0;
+    for (final release in ordered) {
       if (generation != _generation) return;
+      if (attempts >= _maxAttempts) break;
+      if ((failures[release.kind] ?? 0) >= 2) continue;
+      attempts++;
       if (await _tryRelease(generation, release, startAt ?? Duration.zero)) return;
+      failures[release.kind] = (failures[release.kind] ?? 0) + 1;
     }
 
     if (generation == _generation) {
       _player.fail('None of the streams would start. Open the cloud menu to try another source.');
     }
+  }
+
+  bool _isPlaceholder(Release release) {
+    if (release.kind != ProviderKind.nfmirror) return false;
+    final duration = _player.engine.state.duration;
+    return duration > Duration.zero && duration < _placeholderLimit;
   }
 
   Future<bool> _tryRelease(int generation, Release release, Duration startAt) async {
@@ -396,15 +470,32 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
 
       final playable = await _player.waitUntilPlayable(_playableTimeout);
       debugPrint('stream attempt ${release.kind.id} ${playable ? 'playing' : 'did not start'}');
+      if (!playable && generation == _generation) {
+        ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+      }
       if (!playable || generation != _generation) return false;
+      if (!await _player.survivesStart(const Duration(seconds: 3))) {
+        debugPrint('stream attempt ${release.kind.id} failed right after starting');
+        ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+        return false;
+      }
+      if (generation != _generation) return false;
+      if (_isPlaceholder(release)) {
+        debugPrint('stream attempt ${release.kind.id} was a placeholder clip');
+        ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+        return false;
+      }
 
       state = state?.copyWith(current: release);
+      ref.read(sourceHealthProvider.notifier).record(release.kind, ok: true);
       return true;
     } on SourceError catch (error) {
       debugPrint('stream attempt ${release.kind.id} source error: $error');
+      ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
       return false;
     } on Object catch (error) {
       debugPrint('stream attempt ${release.kind.id} failed: ${error.runtimeType}');
+      ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
       return false;
     }
   }
