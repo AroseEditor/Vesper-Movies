@@ -6,11 +6,17 @@ const releasesApi = 'https://api.github.com/repos/AroseEditor/Vesper-Movies/rele
 const releasesPage = 'https://github.com/AroseEditor/Vesper-Movies/releases/latest';
 
 class UpdateInfo {
-  const UpdateInfo({required this.current, required this.latest, required this.url});
+  const UpdateInfo({
+    required this.current,
+    required this.latest,
+    required this.url,
+    this.assets = const {},
+  });
 
   final String current;
   final String latest;
   final String url;
+  final Map<String, String> assets;
 
   bool get isNewer => compareVersions(latest, current) > 0;
 }
@@ -50,10 +56,23 @@ final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
     if (tag is! String || tag.isEmpty) return null;
 
     final url = data?['html_url'];
+    final assets = <String, String>{};
+    final listed = data?['assets'];
+    if (listed is List) {
+      for (final entry in listed) {
+        if (entry is! Map) continue;
+        final name = entry['name'];
+        final link = entry['browser_download_url'];
+        if (name is String && link is String && link.startsWith('https://github.com/')) {
+          assets[name] = link;
+        }
+      }
+    }
     return UpdateInfo(
       current: info.version,
       latest: tag.replaceFirst(RegExp('^[vV]'), ''),
       url: url is String && url.startsWith('https://github.com/') ? url : releasesPage,
+      assets: assets,
     );
   } on Object {
     return null;

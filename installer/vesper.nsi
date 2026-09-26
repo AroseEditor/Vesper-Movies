@@ -82,6 +82,11 @@ Section "Install"
     "NoRepair" 1
 SectionEnd
 
+Function .onInstSuccess
+  IfSilent 0 +2
+  Exec '"$WINDIR\explorer.exe" "$INSTDIR\${APP_EXE}"'
+FunctionEnd
+
 Section "Uninstall"
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"

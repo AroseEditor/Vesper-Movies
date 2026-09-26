@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/update_check.dart';
+import '../core/update_dialog.dart';
 import '../design/colors.dart';
 import 'bottom_dock.dart';
 import 'destinations.dart';
@@ -97,7 +97,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         action: SnackBarAction(
           label: 'Get it',
           textColor: VesperColors.accent,
-          onPressed: () => launchUrl(Uri.parse(info.url), mode: LaunchMode.externalApplication),
+          onPressed: () => showUpdateDialog(context, info),
         ),
       ),
     );
