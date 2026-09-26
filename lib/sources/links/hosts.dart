@@ -161,13 +161,25 @@ class HostResolver {
         return await _molop(url, referer, cancel);
       }
       if (lower.contains('/play?v=')) return await _streamUrlPlayer(url, referer, cancel);
-      if (lower.contains('leechpro')) return await _sidPage(url, cancel, depth);
+      if (lower.contains('leechpro') || lower.contains('modpro.blog')) {
+        return await _sidPage(url, cancel, depth);
+      }
+      if (lower.contains('linkshub.')) return await _hosterList(url, cancel, depth);
+      if (lower.contains('streamtape.') || lower.contains('strtape.')) {
+        return await _streamtape(url, cancel);
+      }
+      if (_doodHost.hasMatch(lower)) return await _dood(url, cancel);
+      if (lower.contains('upstream.to')) return await _upstream(url, cancel);
       return await _packedEmbed(url, referer, cancel);
     } on Object catch (error) {
       debugPrint('host resolve failed for ${originOf(url)}: ${error.runtimeType}');
       return const [];
     }
   }
+
+  static final _doodHost = RegExp(
+    r'(dood[a-z0-9]*\.|ds2play\.|d0o0d\.|d000d\.|do7go\.|myvidplay\.|vidply\.)',
+  );
 
   static bool _isDirectFile(String lower) {
     final path = lower.split('?').first;
@@ -613,5 +625,103 @@ class HostResolver {
         headers: {'Referer': '$origin/', 'Origin': origin, 'User-Agent': webUserAgent},
       ),
     ];
+  }
+
+  Future<List<HostFile>> _hosterList(String url, CancelToken? cancel, int depth) async {
+    const preferred = [
+      'hubcloud',
+      'vcloud',
+      'gdflix',
+      'pixeldrain',
+      'streamtape',
+      'strtape',
+      'dood',
+      'ds2play',
+      'upstream',
+    ];
+    final page = await web.get(url, cancel: cancel);
+    final links = <String>[];
+    for (final anchor in page.document.querySelectorAll('a')) {
+      final href = anchor.attributes['href'] ?? '';
+      final lower = href.toLowerCase();
+      if (!href.startsWith('http') || !preferred.any(lower.contains)) continue;
+      if (!links.contains(href)) links.add(href);
+    }
+    int rank(String link) {
+      final lower = link.toLowerCase();
+      final index = preferred.indexWhere(lower.contains);
+      return index < 0 ? preferred.length : index;
+    }
+
+    links.sort((a, b) => rank(a).compareTo(rank(b)));
+    for (final link in links.take(4)) {
+      final files = await _resolve(link, cancel: cancel, depth: depth + 1);
+      if (files.isNotEmpty) return files;
+    }
+    return const [];
+  }
+
+  Future<List<HostFile>> _streamtape(String url, CancelToken? cancel) async {
+    final id = RegExp(r'/(?:v|e|d)/([A-Za-z0-9]+)').firstMatch(url)?.group(1);
+    if (id == null) return const [];
+    final page = await web.get('https://streamtape.com/e/$id', cancel: cancel);
+
+    final start = page.body.indexOf('get_video?');
+    if (start < 0) return const [];
+    final open = page.body.lastIndexOf(RegExp('[\'"]'), start);
+    final end = page.body.indexOf(';', start);
+    if (open < 0 || end < 0) return const [];
+    final expression = page.body.substring(open, end);
+
+    final built = StringBuffer();
+    final piece = RegExp(r'''\(?\s*(['"])(.*?)\1\s*\)?((?:\.substring\(\d+\))*)''', dotAll: true);
+    for (final match in piece.allMatches(expression)) {
+      var text = match.group(2)!;
+      for (final call in RegExp(r'substring\((\d+)\)').allMatches(match.group(3) ?? '')) {
+        final skip = int.parse(call.group(1)!);
+        text = skip >= text.length ? '' : text.substring(skip);
+      }
+      built.write(text);
+    }
+    var link = built.toString();
+    if (!link.contains('get_video?')) return const [];
+    if (link.startsWith('//')) link = 'https:$link';
+    return [
+      HostFile(
+        url: '$link&stream=1',
+        server: 'Direct',
+        headers: {'Referer': 'https://streamtape.com/', 'User-Agent': webUserAgent},
+      ),
+    ];
+  }
+
+  Future<List<HostFile>> _dood(String url, CancelToken? cancel) async {
+    final id = RegExp(r'/(?:d|e)/([A-Za-z0-9]+)').firstMatch(url)?.group(1);
+    if (id == null) return const [];
+    final page = await web.get('${originOf(url)}/e/$id', referer: url, cancel: cancel);
+    final path = RegExp(r'''/pass_md5/[^'"]+''').firstMatch(page.body)?.group(0);
+    if (path == null) return const [];
+    final token = path.split('/').last;
+    final base = await web.get('${page.origin}$path', referer: page.url, cancel: cancel);
+    final prefix = base.body.trim();
+    if (!prefix.startsWith('http')) return const [];
+    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final seed = DateTime.now().microsecondsSinceEpoch;
+    final random = String.fromCharCodes([
+      for (var i = 0; i < 10; i++) alphabet.codeUnitAt((seed ~/ (i + 3) + i * 7) % alphabet.length),
+    ]);
+    return [
+      HostFile(
+        url: '$prefix$random?token=$token&expiry=${DateTime.now().millisecondsSinceEpoch}',
+        server: 'Direct',
+        headers: {'Referer': '${page.origin}/', 'User-Agent': webUserAgent},
+      ),
+    ];
+  }
+
+  Future<List<HostFile>> _upstream(String url, CancelToken? cancel) async {
+    final id = RegExp(r'upstream\.to/(?:embed-)?([A-Za-z0-9]+)').firstMatch(url)?.group(1);
+    if (id == null) return const [];
+    return _packedEmbed('https://upstream.to/embed-$id.html', url, cancel);
   }
 }

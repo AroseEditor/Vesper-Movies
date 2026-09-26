@@ -50,7 +50,10 @@ const _languages = [
 ];
 
 final _sizePattern = RegExp(r'([\d.]+)\s*(TB|GB|MB)\b', caseSensitive: false);
-final _qualityPattern = RegExp(r'\b(2160|1440|1080|720|576|480|360)p\b', caseSensitive: false);
+final _qualityPattern = RegExp(
+  r'\b(2160|1440|1080|720|576|480|360|240|144)p\b',
+  caseSensitive: false,
+);
 
 const _decimalMark = '~decimal~';
 

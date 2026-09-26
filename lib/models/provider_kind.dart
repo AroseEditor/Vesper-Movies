@@ -14,6 +14,9 @@ enum ProviderKind {
   filmycab('filmycab', 'FilmyCab'),
   uhdmovies('uhdmovies', 'UHDMovies'),
   topmovies('topmovies', 'TopMovies'),
+  moviesmod('moviesmod', 'MoviesMod'),
+  downloadhub('downloadhub', 'DownloadHub'),
+  archive('archive', 'Internet Archive'),
   nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),
   m3u('m3u', 'Live TV');
