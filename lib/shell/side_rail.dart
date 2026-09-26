@@ -15,12 +15,14 @@ class SideRail extends StatefulWidget {
     required this.onSelect,
     required this.mode,
     this.scope,
+    this.itemNodes,
   });
 
   final int currentIndex;
   final ValueChanged<int> onSelect;
   final InputMode mode;
   final FocusScopeNode? scope;
+  final List<FocusNode>? itemNodes;
 
   static double collapsedWidthFor(InputMode mode) => mode.isTv ? 84.0 : 72.0;
 
@@ -86,6 +88,7 @@ class _SideRailState extends State<SideRail> {
                       _RailItem(
                         destination: AppDestination.values[i],
                         selected: i == widget.currentIndex,
+                        focusNode: widget.itemNodes?[i],
                         expanded: _expanded,
                         iconSlot: _collapsedWidth,
                         railWidth: _expandedWidth,
@@ -177,8 +180,10 @@ class _RailItem extends StatefulWidget {
     required this.railWidth,
     required this.tv,
     required this.onSelect,
+    this.focusNode,
   });
 
+  final FocusNode? focusNode;
   final AppDestination destination;
   final bool selected;
   final bool expanded;
@@ -201,6 +206,7 @@ class _RailItemState extends State<_RailItem> {
     final height = widget.tv ? 56.0 : 48.0;
 
     return FocusableActionDetector(
+      focusNode: widget.focusNode,
       onShowFocusHighlight: (value) {
         if (_focused != value) setState(() => _focused = value);
       },

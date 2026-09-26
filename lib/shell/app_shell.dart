@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/update_check.dart';
 import '../design/colors.dart';
 import 'bottom_dock.dart';
+import 'destinations.dart';
 import 'input_mode.dart';
 import 'side_rail.dart';
 
@@ -22,12 +23,27 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   final FocusScopeNode _railScope = FocusScopeNode(debugLabel: 'rail');
   final FocusScopeNode _bodyScope = FocusScopeNode(debugLabel: 'body');
+  final List<FocusNode> _railNodes = [
+    for (final destination in AppDestination.values) FocusNode(debugLabel: destination.label),
+  ];
 
   @override
   void dispose() {
     _railScope.dispose();
     _bodyScope.dispose();
+    for (final node in _railNodes) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  void _focusRail() {
+    final index = widget.navigationShell.currentIndex;
+    if (index >= 0 && index < _railNodes.length) {
+      _railNodes[index].requestFocus();
+    } else {
+      _railScope.requestFocus();
+    }
   }
 
   KeyEventResult _bodyKey(FocusNode node, KeyEvent event) {
@@ -36,7 +52,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
     final focused = FocusManager.instance.primaryFocus;
     if (focused == null || !focused.focusInDirection(TraversalDirection.left)) {
-      _railScope.requestFocus();
+      _focusRail();
     }
     return KeyEventResult.handled;
   }
@@ -51,7 +67,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   void _back(InputMode mode) {
     if (mode.isTv && !_railScope.hasFocus) {
-      _railScope.requestFocus();
+      _focusRail();
       return;
     }
     if (widget.navigationShell.currentIndex != 0) {
@@ -144,6 +160,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                         onSelect: _select,
                         mode: mode,
                         scope: _railScope,
+                        itemNodes: _railNodes,
                       ),
                     ),
                   )
