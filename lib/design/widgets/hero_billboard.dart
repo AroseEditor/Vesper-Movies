@@ -58,6 +58,7 @@ class HeroBillboard extends StatelessWidget {
             CachedNetworkImage(
               imageUrl: backdrop,
               fit: BoxFit.cover,
+              memCacheWidth: 1280,
               alignment: Alignment.topCenter,
               fadeInDuration: const Duration(milliseconds: 320),
               placeholder: (context, _) => const ColoredBox(color: VesperColors.surface),

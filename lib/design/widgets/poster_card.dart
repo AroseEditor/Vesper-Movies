@@ -69,7 +69,11 @@ class _PosterCardState extends State<PosterCard> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  PosterArt(item: widget.item, compactFallback: widget.showLabel),
+                  PosterArt(
+                    item: widget.item,
+                    compactFallback: widget.showLabel,
+                    decodeWidth: widget.width,
+                  ),
                   if (widget.progress != null && widget.progress! > 0)
                     Positioned(
                       left: 0,
@@ -147,11 +151,13 @@ class PosterArt extends StatelessWidget {
     required this.item,
     this.useBackdrop = false,
     this.compactFallback = false,
+    this.decodeWidth,
   });
 
   final CatalogItem item;
   final bool useBackdrop;
   final bool compactFallback;
+  final double? decodeWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +169,9 @@ class PosterArt extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: upgradePosterUrl(raw),
       fit: BoxFit.cover,
+      memCacheWidth: decodeWidth == null
+          ? null
+          : (decodeWidth! * MediaQuery.devicePixelRatioOf(context)).ceil(),
       fadeInDuration: const Duration(milliseconds: 220),
       placeholder: (context, _) => const ColoredBox(color: VesperColors.surface),
       errorWidget: (context, _, error) => PosterFallback(item: item, compact: compactFallback),

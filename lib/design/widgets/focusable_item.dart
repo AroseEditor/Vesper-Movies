@@ -73,6 +73,8 @@ class _FocusableItemState extends State<FocusableItem> {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(widget.borderRadius);
+    final tv = MediaQuery.navigationModeOf(context) == NavigationMode.directional;
+    final glow = widget.glow && !tv;
     final scale = _pressed
         ? VesperMotion.pressScale
         : (_active && widget.scaleOnFocus ? VesperMotion.focusScale : 1.0);
@@ -114,11 +116,15 @@ class _FocusableItemState extends State<FocusableItem> {
                   color: _active ? VesperColors.accent : Colors.transparent,
                   width: 2,
                 ),
-                boxShadow: _active && widget.glow
+                boxShadow: _active && glow
                     ? const [BoxShadow(color: Color(0x593BE8C4), blurRadius: 24, spreadRadius: 1)]
                     : const [],
               ),
-              child: ClipRRect(borderRadius: radius, child: widget.child),
+              child: ClipRRect(
+                borderRadius: radius,
+                clipBehavior: tv ? Clip.hardEdge : Clip.antiAlias,
+                child: widget.child,
+              ),
             ),
           ),
         ),
