@@ -14,27 +14,31 @@ class SideRail extends StatefulWidget {
     required this.currentIndex,
     required this.onSelect,
     required this.mode,
+    this.scope,
   });
 
   final int currentIndex;
   final ValueChanged<int> onSelect;
   final InputMode mode;
+  final FocusScopeNode? scope;
+
+  static double collapsedWidthFor(InputMode mode) => mode.isTv ? 84.0 : 72.0;
 
   @override
   State<SideRail> createState() => _SideRailState();
 }
 
 class _SideRailState extends State<SideRail> {
-  final FocusScopeNode _scope = FocusScopeNode(debugLabel: 'rail');
+  late final FocusScopeNode _scope = widget.scope ?? FocusScopeNode(debugLabel: 'rail');
   bool _expanded = false;
 
-  double get _collapsedWidth => widget.mode.isTv ? 84.0 : 72.0;
+  double get _collapsedWidth => SideRail.collapsedWidthFor(widget.mode);
 
   double get _expandedWidth => widget.mode.isTv ? 268.0 : 232.0;
 
   @override
   void dispose() {
-    _scope.dispose();
+    if (widget.scope == null) _scope.dispose();
     super.dispose();
   }
 

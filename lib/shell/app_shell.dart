@@ -20,12 +20,45 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  final FocusScopeNode _railScope = FocusScopeNode(debugLabel: 'rail');
+  final FocusScopeNode _bodyScope = FocusScopeNode(debugLabel: 'body');
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(inputModeProvider.notifier).resolve();
-    });
+  void dispose() {
+    _railScope.dispose();
+    _bodyScope.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _bodyKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.arrowLeft) {
+      return KeyEventResult.ignored;
+    }
+    final focused = FocusManager.instance.primaryFocus;
+    if (focused == null || !focused.focusInDirection(TraversalDirection.left)) {
+      _railScope.requestFocus();
+    }
+    return KeyEventResult.handled;
+  }
+
+  KeyEventResult _railKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.ignored;
+    }
+    _bodyScope.requestFocus();
+    return KeyEventResult.handled;
+  }
+
+  void _back(InputMode mode) {
+    if (mode.isTv && !_railScope.hasFocus) {
+      _railScope.requestFocus();
+      return;
+    }
+    if (widget.navigationShell.currentIndex != 0) {
+      _select(0);
+      return;
+    }
+    SystemNavigator.pop();
   }
 
   void _select(int index) {
@@ -59,9 +92,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     final mode = ref.watch(inputModeProvider);
     ref.listen(updateCheckProvider, (_, next) => _announceUpdate(next.value));
 
-    if (mode.isTv) {
-      FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
-    }
+    FocusManager.instance.highlightStrategy = mode.isTv
+        ? FocusHighlightStrategy.alwaysTraditional
+        : FocusHighlightStrategy.automatic;
 
     final body = widget.navigationShell;
 
@@ -73,39 +106,59 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: InputModeScope(
         mode: mode,
         child: PopScope(
-          canPop: widget.navigationShell.currentIndex == 0,
+          canPop: !mode.isTv && widget.navigationShell.currentIndex == 0,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && widget.navigationShell.currentIndex != 0) {
-              _select(0);
-            }
+            if (!didPop) _back(mode);
           },
           child: Scaffold(
             backgroundColor: VesperColors.canvas,
-            body: mode.usesRail
-                ? Row(
-                    children: [
-                      SideRail(
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: mode.usesRail ? SideRail.collapsedWidthFor(mode) : 0,
+                    ),
+                    child: FocusScope(
+                      node: _bodyScope,
+                      child: Focus(
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        onKeyEvent: mode.usesRail ? _bodyKey : null,
+                        child: body,
+                      ),
+                    ),
+                  ),
+                ),
+                if (mode.usesRail)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: _railKey,
+                      child: SideRail(
                         currentIndex: widget.navigationShell.currentIndex,
                         onSelect: _select,
                         mode: mode,
+                        scope: _railScope,
                       ),
-                      Expanded(child: body),
-                    ],
+                    ),
                   )
-                : Stack(
-                    children: [
-                      Positioned.fill(child: body),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: BottomDock(
-                          currentIndex: widget.navigationShell.currentIndex,
-                          onSelect: _select,
-                        ),
-                      ),
-                    ],
+                else
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: BottomDock(
+                      currentIndex: widget.navigationShell.currentIndex,
+                      onSelect: _select,
+                    ),
                   ),
+              ],
+            ),
           ),
         ),
       ),
