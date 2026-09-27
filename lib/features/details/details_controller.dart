@@ -99,10 +99,10 @@ Future<CatalogItem> _canonical(Ref ref, CatalogItem item, CancelToken cancel) as
   return item.copyWith(id: MediaId(ProviderKind.addons, imdb));
 }
 
-final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, CatalogItem>((
+final titleDetailsProvider = StreamProvider.autoDispose.family<TitleDetails, CatalogItem>((
   ref,
   original,
-) async {
+) async* {
   final addonCount = ref.read(enabledAddonsProvider).length;
   final cancel = CancelToken();
   ref.onDispose(cancel.cancel);
@@ -112,7 +112,8 @@ final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, Cat
 
   final cached = _detailsCache.peek(key);
   if (cached != null) {
-    return TitleDetails(item: item, details: cached, addonCount: addonCount);
+    yield TitleDetails(item: item, details: cached, addonCount: addonCount);
+    return;
   }
 
   final meta = await ref
@@ -120,16 +121,21 @@ final titleDetailsProvider = FutureProvider.autoDispose.family<TitleDetails, Cat
       .fullDetails(item, cancel: cancel)
       .timeout(const Duration(seconds: 15), onTimeout: () => null);
 
-  var details = meta ?? MediaDetails.of(item);
-  if (details.isSeries) {
-    details = await ref
-        .read(metadataServiceProvider)
-        .withCompleteSeasons(details, cancel: cancel)
-        .timeout(const Duration(seconds: 12), onTimeout: () => details);
+  final details = meta ?? MediaDetails.of(item);
+  yield TitleDetails(item: item, details: details, addonCount: addonCount);
+  if (!details.isSeries) {
+    if (meta != null) _detailsCache.put(key, details);
+    return;
   }
-  if (meta != null) _detailsCache.put(key, details);
 
-  return TitleDetails(item: item, details: details, addonCount: addonCount);
+  final completed = await ref
+      .read(metadataServiceProvider)
+      .withCompleteSeasons(details, cancel: cancel)
+      .timeout(const Duration(seconds: 25), onTimeout: () => details);
+  if (cancel.isCancelled) return;
+
+  if (meta != null) _detailsCache.put(key, completed);
+  yield TitleDetails(item: item, details: completed, addonCount: addonCount);
 });
 
 final sourceMatchesProvider = FutureProvider.autoDispose.family<List<SourceMatch>, CatalogItem>((
