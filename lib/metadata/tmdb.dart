@@ -130,7 +130,6 @@ class TmdbSource implements MetadataSource {
     ];
     if (numbers.isEmpty) return null;
 
-    final now = DateTime.now();
     final fetched = <int, List<Episode>>{};
     for (var i = 0; i < numbers.length; i += 15) {
       final chunk = numbers.skip(i).take(15).toList();
@@ -150,8 +149,6 @@ class TmdbSource implements MetadataSource {
           if (entry is! Map) continue;
           final episode = readInt(entry, const ['episode_number']);
           if (episode == null || episode <= 0) continue;
-          final aired = DateTime.tryParse(readString(entry, const ['air_date']) ?? '');
-          if (aired != null && aired.isAfter(now)) continue;
           episodes.add(
             Episode(
               season: number,

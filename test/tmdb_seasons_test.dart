@@ -61,7 +61,7 @@ class _Fake implements HttpClientAdapter {
 }
 
 void main() {
-  test('tmdb fills in the episodes a catalogue is missing and hides unaired ones', () async {
+  test('tmdb fills in the episodes a catalogue is missing, including unaired ones', () async {
     final dio = Dio()..httpClientAdapter = _Fake();
     final tmdb = TmdbSource(dio: dio, apiKey: 'key');
     const known = MediaDetails(
@@ -77,7 +77,8 @@ void main() {
     final result = await tmdb.describe(known);
 
     expect(result?.seasons, hasLength(1));
-    expect(result!.seasons.first.episodes, hasLength(8));
+    expect(result!.seasons.first.episodes, hasLength(9));
     expect(result.seasons.first.episodes.first.title, 'Ep 1');
+    expect(result.seasons.first.episodes.last.title, 'Future');
   });
 }
