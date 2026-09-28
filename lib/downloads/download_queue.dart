@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../core/log.dart';
+import '../core/safety.dart';
 import '../models/media.dart';
 import '../models/release.dart';
 import 'download_engine.dart';
@@ -218,6 +219,9 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
   }) async {
     if (url.contains('.mpd') || url.contains('.m3u8') || url.startsWith('data:')) {
       return 'That one is a streaming playlist and cannot be saved. Pick a file download instead.';
+    }
+    if (isDangerousUrl(url)) {
+      return 'That link does not point to a safe media file.';
     }
 
     final suffix = season > 0 ? ' S${season}E$episode' : '';

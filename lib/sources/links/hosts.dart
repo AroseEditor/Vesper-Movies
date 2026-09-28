@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:html/dom.dart';
 
+import '../../core/safety.dart';
 import 'site_domains.dart';
 import 'web.dart';
 
@@ -105,7 +106,7 @@ class HostResolver {
     final seen = <String>{};
     final unique = [
       for (final file in files)
-        if (seen.add(file.url)) file,
+        if (!isDangerousUrl(file.url) && seen.add(file.url)) file,
     ]..sort((a, b) => _rankOf(a).compareTo(_rankOf(b)));
     return unique;
   }

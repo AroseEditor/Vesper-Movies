@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
+import '../../core/safety.dart';
 import '../../models/media.dart';
 import '../../models/provider_kind.dart';
 import '../../models/release.dart';
@@ -430,7 +431,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       url: source.url,
       headers: source.headers,
       subtitle: source.subtitle,
-      subtitles: [...source.subtitles, ...extra],
+      subtitles: safeSubtitles([...source.subtitles, ...extra]),
       sourceLabel: source.sourceLabel,
     );
   }

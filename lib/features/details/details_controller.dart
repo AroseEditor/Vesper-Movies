@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
 import '../../core/memo_cache.dart';
+import '../../core/safety.dart';
 import '../../metadata/cinemeta.dart';
 import '../../models/media.dart';
 import '../../models/provider_kind.dart';
@@ -361,8 +362,16 @@ Future<PlaybackTarget> resolvePlayback(
   final link = links[request.release.kind];
   if (link != null) {
     final playback = await link.resolve(request.release, cancel: cancel);
+    if (isDangerousUrl(playback.url)) throw const Unavailable();
     return PlaybackTarget(
-      source: playback,
+      source: PlaybackSource(
+        kind: playback.kind,
+        url: playback.url,
+        headers: playback.headers,
+        subtitle: playback.subtitle,
+        subtitles: safeSubtitles(playback.subtitles),
+        sourceLabel: playback.sourceLabel,
+      ),
       title: request.title,
       subtitle: request.subtitle,
       season: request.season == 0 ? null : request.season,
@@ -381,6 +390,7 @@ Future<PlaybackTarget> resolvePlayback(
           sourceLabel: request.release.sourceLabel,
         )
       : await source.resolve(request.release, cancel: cancel);
+  if (isDangerousUrl(playback.url)) throw const Unavailable();
 
   final match = request.match;
   final subtitles = source == null || match == null
@@ -399,7 +409,7 @@ Future<PlaybackTarget> resolvePlayback(
       url: playback.url,
       headers: playback.headers,
       subtitle: playback.subtitle,
-      subtitles: subtitles,
+      subtitles: safeSubtitles(subtitles),
       sourceLabel: playback.sourceLabel,
     ),
     title: request.title,
