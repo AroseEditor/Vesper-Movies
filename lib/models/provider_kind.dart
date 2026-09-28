@@ -17,6 +17,7 @@ enum ProviderKind {
   moviesmod('moviesmod', 'MoviesMod'),
   downloadhub('downloadhub', 'DownloadHub'),
   archive('archive', 'Internet Archive'),
+  anizone('anizone', 'AniZone'),
   nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),
   m3u('m3u', 'Live TV');
