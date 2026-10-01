@@ -23,6 +23,9 @@ is no account, no sign in, no server and no tracking. Your history and lists sta
 
 Vesper hosts no media. Read the [disclaimer](DISCLAIMER.md) before use.
 
+## Special thanks to:
+**Vn-Vean(PurpleSirp)**,**Zoro**,**Prime**,**Kys0**
+
 ## Contents
 
 - [Platforms](#platforms)
