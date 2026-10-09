@@ -144,7 +144,7 @@ class VesperExoPlayer(
         .setTrackSelector(trackSelector)
         .setLoadControl(
             DefaultLoadControl.Builder()
-                .setBufferDurationsMs(60_000, 600_000, 3_000, 10_000)
+                .setBufferDurationsMs(60_000, 600_000, 3_000, 500)
                 .setTargetBufferBytes(160 * 1024 * 1024)
                 .setPrioritizeTimeOverSizeThresholds(false)
                 .setBackBuffer(30_000, true)
