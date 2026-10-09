@@ -285,7 +285,7 @@ Future<List<Release>> _safeLinkReleases(
   try {
     return await source
         .find(query, cancel: cancel)
-        .timeout(const Duration(seconds: 25), onTimeout: () => const <Release>[]);
+        .timeout(const Duration(seconds: 12), onTimeout: () => const <Release>[]);
   } on Cancelled {
     rethrow;
   } on Object catch (_) {
