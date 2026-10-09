@@ -79,24 +79,28 @@ class TrackPanel extends ConsumerWidget {
           maxWidth: sheetWidth,
           maxHeight: MediaQuery.sizeOf(context).height * (mode.isTouch ? 0.72 : 1.0),
         ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: VesperColors.canvasDeep.withValues(alpha: 0.97),
-            borderRadius: mode.isTouch
-                ? const BorderRadius.vertical(top: Radius.circular(18))
-                : null,
-            border: const Border(left: BorderSide(color: VesperColors.divider)),
-          ),
-          child: SafeArea(
-            child: FocusTraversalGroup(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PanelHeader(onClose: onClose),
-                  _PanelTabs(active: panel, onChanged: onPanelChanged),
-                  Flexible(child: _PanelBody(panel: panel)),
-                ],
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {},
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: VesperColors.canvasDeep.withValues(alpha: 0.97),
+              borderRadius: mode.isTouch
+                  ? const BorderRadius.vertical(top: Radius.circular(18))
+                  : null,
+              border: const Border(left: BorderSide(color: VesperColors.divider)),
+            ),
+            child: SafeArea(
+              child: FocusTraversalGroup(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _PanelHeader(onClose: onClose),
+                    _PanelTabs(active: panel, onChanged: onPanelChanged),
+                    Flexible(child: _PanelBody(panel: panel)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -360,10 +364,9 @@ class _SubtitleSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(playerControllerProvider.notifier);
-    final playerState = ref.watch(playerControllerProvider);
-    final style = playerState.subtitleStyle;
-    final external = playerState.externalSubtitles;
-    final activeExternal = playerState.activeExternal;
+    final style = ref.watch(playerControllerProvider.select((s) => s.subtitleStyle));
+    final external = ref.watch(playerControllerProvider.select((s) => s.externalSubtitles));
+    final activeExternal = ref.watch(playerControllerProvider.select((s) => s.activeExternal));
     final selected =
         (ref.watch(playerTrackProvider).value ?? controller.engine.state.track).subtitle;
 

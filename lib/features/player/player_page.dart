@@ -12,7 +12,6 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
-import '../../design/widgets/shimmer.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
 import '../../player/subtitle_style.dart';
@@ -325,9 +324,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       duration: VesperMotion.normal,
                       curve: VesperMotion.enter,
                       child: IgnorePointer(
-                        ignoring: !_controlsVisible,
+                        ignoring: !_controlsVisible || _panel != PlayerPanel.none,
                         child: ExcludeFocus(
-                          excluding: !_controlsVisible || state.error != null,
+                          excluding:
+                              !_controlsVisible ||
+                              _panel != PlayerPanel.none ||
+                              state.error != null,
                           child: FocusScope(
                             node: _controlsScope,
                             child: _Controls(
@@ -352,11 +354,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           onClose: _closePanel,
                           onPanelChanged: (panel) => setState(() => _panel = panel),
                         ),
-                      ),
-                    if (!state.isReady && state.error == null)
-                      const ColoredBox(
-                        color: VesperColors.player,
-                        child: Center(child: LoadingNote(label: 'Opening your stream')),
                       ),
                     if (state.notice != null && state.error == null) _Notice(text: state.notice!),
                     if (state.error != null)
@@ -617,7 +614,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(mode.isTouch ? 8 : 26, 0, mode.isTouch ? 8 : 26, 14),
+      padding: EdgeInsets.fromLTRB(mode.isTouch ? 18 : 26, 0, mode.isTouch ? 18 : 26, 18),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -628,31 +625,39 @@ class _BottomBar extends StatelessWidget {
             compact: mode.isTouch,
             focusable: !mode.isTv,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _LabelledButton(
                 icon: VesperIcons.subtitles,
                 label: 'Subtitles',
+                compact: mode.isTouch,
                 onTap: () => onOpenPanel(PlayerPanel.subtitles),
               ),
               _LabelledButton(
                 icon: VesperIcons.audioTrack,
                 label: 'Audio',
+                compact: mode.isTouch,
                 onTap: () => onOpenPanel(PlayerPanel.audio),
               ),
               _LabelledButton(
                 icon: VesperIcons.quality,
                 label: 'Quality',
+                compact: mode.isTouch,
                 onTap: () => onOpenPanel(PlayerPanel.quality),
               ),
               _LabelledButton(
                 icon: VesperIcons.speed,
                 label: 'Speed',
+                compact: mode.isTouch,
                 onTap: () => onOpenPanel(PlayerPanel.speed),
               ),
-              const Spacer(),
-              _FullscreenButton(fullscreen: fullscreen, onTap: onToggleFullscreen),
+              _FullscreenButton(
+                fullscreen: fullscreen,
+                onTap: onToggleFullscreen,
+                compact: mode.isTouch,
+              ),
             ],
           ),
         ],
@@ -706,14 +711,35 @@ class _RoundButton extends StatelessWidget {
 }
 
 class _LabelledButton extends StatelessWidget {
-  const _LabelledButton({required this.icon, required this.label, required this.onTap});
+  const _LabelledButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.compact = false,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return FocusableItem(
+        onActivate: onTap,
+        borderRadius: 24,
+        scaleOnFocus: false,
+        semanticLabel: label,
+        child: Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          child: Icon(icon, size: 24, color: VesperColors.textHover),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: FocusableItem(
@@ -805,27 +831,29 @@ class _PlayerError extends StatelessWidget {
 }
 
 class _FullscreenButton extends StatelessWidget {
-  const _FullscreenButton({required this.fullscreen, required this.onTap});
+  const _FullscreenButton({required this.fullscreen, required this.onTap, this.compact = false});
 
   final bool fullscreen;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final size = compact ? 48.0 : 42.0;
     return FocusableItem(
       onActivate: onTap,
-      borderRadius: 8,
+      borderRadius: compact ? size / 2 : 8,
       scaleOnFocus: false,
       semanticLabel: fullscreen ? 'Leave full screen' : 'Full screen',
       child: Tooltip(
         message: fullscreen ? 'Leave full screen  F' : 'Full screen  F',
         child: Container(
-          width: 42,
-          height: 42,
+          width: size,
+          height: size,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(8),
+            color: compact ? Colors.transparent : Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(compact ? size / 2 : 8),
           ),
           child: Icon(
             fullscreen ? VesperIcons.fullscreenExit : VesperIcons.fullscreen,
