@@ -12,6 +12,8 @@ import '../../storage/library_controller.dart';
 import '../player/player_page.dart';
 import 'playback_session.dart';
 
+Future<void>? _teardown;
+
 Future<void> launchPlayback(
   BuildContext context, {
   required CatalogItem item,
@@ -25,9 +27,12 @@ Future<void> launchPlayback(
   final container = ProviderScope.containerOf(context, listen: false);
   final root = Navigator.of(context, rootNavigator: true);
   final session = container.read(playbackSessionProvider.notifier);
+  final messenger = ScaffoldMessenger.of(context);
+
+  final previousTeardown = _teardown;
+  if (previousTeardown != null) await previousTeardown;
 
   if (container.read(playerChoiceProvider) == PlayerChoice.vlc) {
-    final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       const SnackBar(content: Text('Finding a stream for VLC'), duration: Duration(seconds: 3)),
     );
@@ -85,6 +90,13 @@ Future<void> launchPlayback(
   );
 
   session.end();
-  await container.read(playerControllerProvider.notifier).stop();
-  await opening.catchError((Object _) {});
+  final completer = Completer<void>();
+  _teardown = completer.future;
+  try {
+    await container.read(playerControllerProvider.notifier).stop();
+    await opening.catchError((Object _) {});
+  } finally {
+    completer.complete();
+    if (identical(_teardown, completer.future)) _teardown = null;
+  }
 }

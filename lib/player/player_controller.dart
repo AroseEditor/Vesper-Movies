@@ -12,7 +12,7 @@ import 'quality_cap.dart';
 import 'subtitle_style.dart';
 
 const Duration preloadWindow = Duration(seconds: 60);
-const Duration preloadDeadline = Duration(seconds: 30);
+const Duration preloadDeadline = Duration(seconds: 15);
 
 const _fatalMarkers = [
   'failed to open',
@@ -168,6 +168,9 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Future<void> load(PlaybackTarget target) async {
     final session = ++_session;
     _stopPreloadTimers();
+    await engine.stop();
+    if (session != _session) return;
+
     final subtitles = _subtitlesFor(target);
     state = state.copyWith(
       target: target,
@@ -192,6 +195,10 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       subtitles: subtitles,
       maxHeight: ref.read(qualityCapProvider).maxHeight,
     );
+    if (session != _session) {
+      unawaited(engine.stop());
+      return;
+    }
 
     await applySubtitleStyle(state.subtitleStyle);
 
