@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -12,6 +13,32 @@ import '../core/safety.dart';
 import '../models/media.dart';
 import '../models/release.dart';
 import 'download_engine.dart';
+
+const _galleryChannel = MethodChannel('vesper/downloads');
+
+const _videoMimeTypes = {
+  'mp4': 'video/mp4',
+  'mkv': 'video/x-matroska',
+  'webm': 'video/webm',
+  'avi': 'video/x-msvideo',
+  'mov': 'video/quicktime',
+  'm4v': 'video/x-m4v',
+  'ts': 'video/mp2t',
+};
+
+Future<void> _publishToGallery(String filePath) async {
+  if (!Platform.isAndroid) return;
+  final extension = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+  try {
+    await _galleryChannel.invokeMethod<bool>('publish', {
+      'path': filePath,
+      'displayName': p.basename(filePath),
+      'mimeType': _videoMimeTypes[extension] ?? 'video/mp4',
+    });
+  } on Object {
+    return;
+  }
+}
 
 enum DownloadStatus { queued, running, paused, completed, failed }
 
@@ -286,6 +313,7 @@ class DownloadQueueNotifier extends AsyncNotifier<List<DownloadTask>> {
 
       final latest = _current.where((e) => e.id == id).firstOrNull ?? task;
       _update(latest.copyWith(status: DownloadStatus.completed, speed: 0));
+      unawaited(_publishToGallery(latest.filePath));
     } on Object catch (error) {
       final latest = _current.where((e) => e.id == id).firstOrNull ?? task;
       final cancelled = error is DioException && CancelToken.isCancel(error);

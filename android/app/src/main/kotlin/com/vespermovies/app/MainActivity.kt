@@ -2,11 +2,13 @@ package com.vespermovies.app
 
 import android.app.UiModeManager
 import android.content.ActivityNotFoundException
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import java.io.File
@@ -18,6 +20,35 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var exo: VesperExoPlugin? = null
     private var external: MethodChannel? = null
+
+    private fun publishToGallery(path: String, displayName: String, mimeType: String): Boolean {
+        val source = File(path)
+        if (!source.exists()) return false
+        return try {
+            val resolver = contentResolver
+            val collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            val values = ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
+                put(MediaStore.Video.Media.MIME_TYPE, mimeType)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Vesper Movies")
+                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                }
+            }
+            val uri = resolver.insert(collection, values) ?: return false
+            resolver.openOutputStream(uri)?.use { out ->
+                source.inputStream().use { input -> input.copyTo(out) }
+            } ?: return false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val done = ContentValues()
+                done.put(MediaStore.Video.Media.IS_PENDING, 0)
+                resolver.update(uri, done, null, null)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     private fun isTelevision(): Boolean {
         val features = packageManager
@@ -64,6 +95,20 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/downloads").setMethodCallHandler { call, result ->
+            if (call.method != "publish") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            val path = call.argument<String>("path")
+            val displayName = call.argument<String>("displayName")
+            val mimeType = call.argument<String>("mimeType") ?: "video/mp4"
+            if (path == null || displayName == null) {
+                result.success(false)
+                return@setMethodCallHandler
+            }
+            result.success(publishToGallery(path, displayName, mimeType))
         }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/device").setMethodCallHandler { call, result ->
             if (call.method == "isTelevision") result.success(isTelevision()) else result.notImplemented()

@@ -124,12 +124,46 @@ class ReleaseSheet extends ConsumerWidget {
       error = 'That stream could not be prepared for download. Try another one.';
     }
 
+    if (error != null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: VesperColors.surfaceRaised),
+      );
+      return;
+    }
+
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(error ?? 'Downloading to your Vesper Movies folder.'),
+      const SnackBar(
+        content: Text('Downloading to your Vesper Movies folder.'),
         backgroundColor: VesperColors.surfaceRaised,
       ),
     );
+
+    final taskId = '${item.id.value}:$season:$episode';
+    late final ProviderSubscription<AsyncValue<List<DownloadTask>>> subscription;
+    subscription = container.listen(downloadQueueProvider, (previous, next) {
+      DownloadTask? task;
+      for (final candidate in next.value ?? const <DownloadTask>[]) {
+        if (candidate.id == taskId) task = candidate;
+      }
+      if (task == null) return;
+      if (task.status == DownloadStatus.completed) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Download finished and saved to Vesper Movies.'),
+            backgroundColor: VesperColors.surfaceRaised,
+          ),
+        );
+        subscription.close();
+      } else if (task.status == DownloadStatus.failed) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(task.error ?? 'The download failed.'),
+            backgroundColor: VesperColors.surfaceRaised,
+          ),
+        );
+        subscription.close();
+      }
+    });
   }
 
   @override
