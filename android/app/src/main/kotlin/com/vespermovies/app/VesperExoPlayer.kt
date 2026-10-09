@@ -343,12 +343,12 @@ class VesperExoPlayer(
             "no" -> builder.setTrackTypeDisabled(trackType, true)
             "auto" -> builder.clearOverridesOfType(trackType).setTrackTypeDisabled(trackType, false)
             else -> {
+                builder.clearOverridesOfType(trackType).setTrackTypeDisabled(trackType, false)
                 val groups = player.currentTracks.groups
                 for ((groupIndex, group) in groups.withIndex()) {
                     if (group.type != trackType) continue
                     for (trackIndex in 0 until group.length) {
                         if (trackId(groupIndex, trackIndex, group.getTrackFormat(trackIndex)) == id) {
-                            builder.setTrackTypeDisabled(trackType, false)
                             builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
                         }
                     }
