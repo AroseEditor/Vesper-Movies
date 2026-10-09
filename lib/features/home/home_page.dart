@@ -13,6 +13,7 @@ import '../../shell/input_mode.dart';
 import '../../storage/library_controller.dart';
 import '../../storage/library_store.dart';
 import '../categories/categories_page.dart';
+import '../details/details_controller.dart';
 import '../details/details_page.dart';
 import 'home_controller.dart';
 
@@ -99,6 +100,16 @@ class _HomeContent extends ConsumerWidget {
                         ),
                       ],
                   ],
+                ),
+              if (resume.isNotEmpty || favourites.isNotEmpty)
+                _SuggestedRow(
+                  seed: resume.isNotEmpty ? resume.first.toCatalogItem() : favourites.first,
+                  mode: mode,
+                  onSelect: (item) => _open(context, item),
+                  exclude: {
+                    for (final entry in resume) entry.id,
+                    for (final item in favourites) item.id.value,
+                  },
                 ),
               if (favourites.isNotEmpty)
                 MediaRow(
@@ -216,6 +227,73 @@ const homeGenreRows = <(String, String, String)>[
   ('Animation', 'movie', 'Animation'),
   ('Documentaries', 'movie', 'Documentary'),
 ];
+
+class _SuggestedRow extends ConsumerWidget {
+  const _SuggestedRow({
+    required this.seed,
+    required this.mode,
+    required this.onSelect,
+    required this.exclude,
+  });
+
+  final CatalogItem seed;
+  final InputMode mode;
+  final void Function(CatalogItem item) onSelect;
+  final Set<String> exclude;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final details = ref.watch(titleDetailsProvider(seed));
+    return details.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (data) {
+        final info = data.details;
+        final type = info.isSeries ? 'series' : 'movie';
+        final genres = [
+          for (final genre in info.genres)
+            if (browseGenres.contains(genre)) genre,
+        ].take(2).toList();
+        if (genres.isEmpty) return const SizedBox.shrink();
+
+        final lists = [
+          for (final genre in genres)
+            ref.watch(browseProvider(BrowseQuery(type: type, genre: genre))),
+        ];
+        if (lists.every((list) => list.isLoading)) {
+          return MediaRow(title: 'Suggested for you', items: const [], mode: mode, loading: true);
+        }
+
+        final counts = <String, int>{};
+        final byId = <String, CatalogItem>{};
+        final order = <String>[];
+        for (final list in lists) {
+          for (final candidate in list.value ?? const <CatalogItem>[]) {
+            final id = candidate.id.value;
+            if (id == seed.id.value || exclude.contains(id)) continue;
+            if (!byId.containsKey(id)) order.add(id);
+            byId[id] = candidate;
+            counts[id] = (counts[id] ?? 0) + 1;
+          }
+        }
+        if (order.isEmpty) return const SizedBox.shrink();
+
+        final ranked = [...order]
+          ..sort((a, b) {
+            final byOverlap = counts[b]!.compareTo(counts[a]!);
+            return byOverlap != 0 ? byOverlap : order.indexOf(a).compareTo(order.indexOf(b));
+          });
+
+        return MediaRow(
+          title: 'Suggested for you',
+          items: [for (final id in ranked.take(24)) byId[id]!],
+          mode: mode,
+          onSelect: onSelect,
+        );
+      },
+    );
+  }
+}
 
 class _GenreRow extends ConsumerWidget {
   const _GenreRow({
