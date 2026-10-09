@@ -182,7 +182,13 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
 
     _errorSubscription ??= engine.errorStream.listen((message) {
       debugPrint('playback error: ${redactLog(message)}');
-      if (holdErrors || !isFatalPlaybackError(message)) return;
+      if (holdErrors) return;
+      if (!isFatalPlaybackError(message)) {
+        if (message.startsWith('Could not switch track:')) {
+          notify('Could not switch that track. Try again.');
+        }
+        return;
+      }
       if (!engine.errorsAreTerminal && engine.state.duration > Duration.zero) return;
       state = state.copyWith(error: message, isReady: false);
     });

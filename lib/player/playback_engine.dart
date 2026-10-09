@@ -378,6 +378,7 @@ class ExoEngine implements PlaybackEngine {
     } on PlatformException catch (error) {
       debugPrint('exo $method failed: ${redactLog(error.message ?? error.code)}');
       if (method == 'open') _errors.add('Failed to open: ${error.message ?? error.code}');
+      if (method == 'select') _errors.add('Could not switch track: ${error.message ?? error.code}');
     }
   }
 
