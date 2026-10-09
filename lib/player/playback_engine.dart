@@ -38,6 +38,7 @@ abstract class PlaybackEngine {
   Stream<bool> get bufferingStream;
   Stream<mk.Tracks> get tracksStream;
   Stream<mk.Track> get trackStream;
+  Stream<double> get rateStream;
   Stream<String> get errorStream;
 
   bool get rendersSubtitles;
@@ -130,6 +131,9 @@ class MpvEngine implements PlaybackEngine {
 
   @override
   Stream<mk.Track> get trackStream => _player.stream.track;
+
+  @override
+  Stream<double> get rateStream => _player.stream.rate;
 
   @override
   Stream<String> get errorStream => _player.stream.error;
@@ -346,6 +350,7 @@ class ExoEngine implements PlaybackEngine {
   final _buffering = StreamController<bool>.broadcast();
   final _tracks = StreamController<mk.Tracks>.broadcast();
   final _track = StreamController<mk.Track>.broadcast();
+  final _rate = StreamController<double>.broadcast();
   final _errors = StreamController<String>.broadcast();
   final _cues = StreamController<String>.broadcast();
 
@@ -386,6 +391,7 @@ class ExoEngine implements PlaybackEngine {
         final duration = _ms(raw['duration']);
         final playing = raw['playing'] == true;
         final buffering = raw['buffering'] == true;
+        final rate = (raw['rate'] as num?)?.toDouble() ?? _state.rate;
         final previous = _state;
         _state = _state.copyWith(
           position: position,
@@ -394,13 +400,14 @@ class ExoEngine implements PlaybackEngine {
           playing: playing,
           buffering: buffering,
           completed: raw['completed'] == true,
-          rate: (raw['rate'] as num?)?.toDouble() ?? _state.rate,
+          rate: rate,
           volume: ((raw['volume'] as num?)?.toDouble() ?? 1) * 100,
         );
         _position.add(position);
         if (previous.duration != duration) _duration.add(duration);
         if (previous.playing != playing) _playing.add(playing);
         if (previous.buffering != buffering) _buffering.add(buffering);
+        if (previous.rate != rate) _rate.add(rate);
       case 'tracks':
         _applyTracks(raw);
       case 'cues':
@@ -518,6 +525,9 @@ class ExoEngine implements PlaybackEngine {
 
   @override
   Stream<mk.Track> get trackStream => _track.stream;
+
+  @override
+  Stream<double> get rateStream => _rate.stream;
 
   @override
   Stream<String> get errorStream => _errors.stream;
@@ -651,6 +661,7 @@ class ExoEngine implements PlaybackEngine {
       _buffering,
       _tracks,
       _track,
+      _rate,
       _errors,
       _cues,
     ]) {

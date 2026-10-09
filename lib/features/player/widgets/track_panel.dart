@@ -232,7 +232,10 @@ class _PanelBody extends ConsumerWidget {
         ],
         emptyMessage: 'Only one quality was found for this title.',
       ),
-      PlayerPanel.speed => _SpeedList(controller: controller, current: player.state.rate),
+      PlayerPanel.speed => _SpeedList(
+        controller: controller,
+        current: ref.watch(playerRateProvider).value ?? player.state.rate,
+      ),
       PlayerPanel.none => const SizedBox.shrink(),
     };
   }

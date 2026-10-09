@@ -12,7 +12,7 @@ import 'quality_cap.dart';
 import 'subtitle_style.dart';
 
 const Duration preloadWindow = Duration(seconds: 60);
-const Duration preloadDeadline = Duration(seconds: 15);
+const Duration preloadDeadline = Duration(seconds: 30);
 
 const _fatalMarkers = [
   'failed to open',
@@ -523,6 +523,11 @@ final playerTrackProvider = StreamProvider.autoDispose<Track>((ref) {
 
 final playerCuesProvider = StreamProvider.autoDispose<String>((ref) {
   return ref.watch(playerControllerProvider.notifier).engine.cueStream;
+});
+
+final playerRateProvider = StreamProvider.autoDispose<double>((ref) {
+  final notifier = ref.watch(playerControllerProvider.notifier);
+  return notifier.engine.rateStream.startWith(notifier.engine.state.rate);
 });
 
 extension _SeedStream<T> on Stream<T> {
