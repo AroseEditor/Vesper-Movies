@@ -80,6 +80,13 @@ void main() {
     expect(ranked.map((r) => r.filename), ['mod', 'hub']);
   });
 
+  test('internet archive is tried after every other source', () {
+    const archive = Release(kind: ProviderKind.archive, filename: 'archive', quality: '1080p');
+    const mod = Release(kind: ProviderKind.moviesmod, filename: 'mod', quality: '480p');
+    final ranked = rankForDevice([archive, mod], cap: 0, phone: false);
+    expect(ranked.map((r) => r.filename), ['mod', 'archive']);
+  });
+
   test('sources that keep failing are tried after sources that work', () {
     const flaky = Release(kind: ProviderKind.hdhub4u, filename: 'flaky', quality: '1080p');
     const steady = Release(kind: ProviderKind.moviesmod, filename: 'steady', quality: '480p');

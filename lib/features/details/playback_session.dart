@@ -124,7 +124,11 @@ int _heavyRank(Release release) {
 }
 
 int _sourceRank(Release release) =>
-    release.kind == ProviderKind.downloadhub || release.kind == ProviderKind.nfmirror ? 1 : 0;
+    release.kind == ProviderKind.downloadhub ||
+        release.kind == ProviderKind.nfmirror ||
+        release.kind == ProviderKind.archive
+    ? 1
+    : 0;
 
 int _hardwareRank(Release release) {
   final codec = (release.codec ?? '').toLowerCase();
