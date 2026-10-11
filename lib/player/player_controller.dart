@@ -121,6 +121,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Timer? _noticeTimer;
   int _session = 0;
   bool holdErrors = false;
+  bool _manualAudioPick = false;
+  bool _manualSubtitlePick = false;
 
   PlaybackEngine get engine => _engine ??= PlaybackEngine.create();
 
@@ -141,6 +143,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   void beginOpening() {
     _session++;
     _stopPreloadTimers();
+    _manualAudioPick = false;
+    _manualSubtitlePick = false;
     state = PlayerState(subtitleStyle: state.subtitleStyle);
   }
 
@@ -186,6 +190,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       if (!isFatalPlaybackError(message)) {
         if (message.startsWith('Could not switch track:')) {
           notify('Could not switch that track. Try again.');
+        } else if (message.contains('load that subtitle')) {
+          notify(message);
         }
         return;
       }
@@ -298,6 +304,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Future<void> skipPreload() => _releasePreload();
 
   Future<void> selectExternalSubtitle(SubtitleOption option, {bool remember = false}) async {
+    _manualSubtitlePick = true;
     await engine.setSubtitleTrack(SubtitleTrack.uri(option.url, title: option.name));
     state = state.copyWith(activeExternal: option.url);
     if (remember) {
@@ -306,6 +313,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> clearSubtitles() async {
+    _manualSubtitlePick = true;
     await engine.setSubtitleTrack(SubtitleTrack.no());
     state = state.copyWith(clearActiveExternal: true);
     await ref.read(languagePrefsProvider.notifier).rememberSubtitle(null);
@@ -366,7 +374,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     ];
     String? audioKey;
     final audioPref = prefs.audio;
-    if (audioPref != null) {
+    if (audioPref != null && !_manualAudioPick) {
       for (final track in realAudio) {
         if (languageKey(track.language, track.title) == audioPref) {
           await engine.setAudioTrack(track);
@@ -380,6 +388,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       final active = _isReal(selected.id) ? selected : realAudio.firstOrNull;
       if (active != null) audioKey = languageKey(active.language, active.title);
     }
+
+    if (_manualSubtitlePick) return;
 
     if (prefs.subtitlesOff) {
       await engine.setSubtitleTrack(SubtitleTrack.no());
@@ -410,7 +420,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       }
     }
 
-    if (_isReal(engine.state.track.subtitle.id) || audioKey == 'en') return;
+    if (_manualSubtitlePick || _isReal(engine.state.track.subtitle.id) || audioKey == 'en') return;
 
     final embeddedEnglish = embedded.where((t) => languageKey(t.language, t.title) == 'en');
     final track = embeddedEnglish.firstOrNull ?? embedded.firstOrNull;
@@ -464,6 +474,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Future<void> nudgeSpeed(double delta) => setSpeed(engine.state.rate + delta);
 
   Future<void> selectAudio(AudioTrack track) async {
+    _manualAudioPick = true;
     await engine.setAudioTrack(track);
     await ref
         .read(languagePrefsProvider.notifier)
@@ -471,6 +482,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   }
 
   Future<void> selectSubtitle(SubtitleTrack track) async {
+    _manualSubtitlePick = true;
     await engine.setSubtitleTrack(track);
     state = state.copyWith(clearActiveExternal: true);
     final prefs = ref.read(languagePrefsProvider.notifier);
@@ -529,6 +541,10 @@ final playerTrackProvider = StreamProvider.autoDispose<Track>((ref) {
 
 final playerCuesProvider = StreamProvider.autoDispose<String>((ref) {
   return ref.watch(playerControllerProvider.notifier).engine.cueStream;
+});
+
+final playerCueBitmapsProvider = StreamProvider.autoDispose<List<CueBitmap>>((ref) {
+  return ref.watch(playerControllerProvider.notifier).engine.cueBitmapStream;
 });
 
 final playerRateProvider = StreamProvider.autoDispose<double>((ref) {

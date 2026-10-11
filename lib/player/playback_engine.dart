@@ -25,6 +25,22 @@ class EngineChapter {
   final Duration start;
 }
 
+class CueBitmap {
+  const CueBitmap({
+    required this.bytes,
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+
+  final Uint8List bytes;
+  final double left;
+  final double top;
+  final double width;
+  final double height;
+}
+
 abstract class PlaybackEngine {
   static PlaybackEngine create() => Platform.isAndroid ? ExoEngine() : MpvEngine();
 
@@ -43,6 +59,7 @@ abstract class PlaybackEngine {
 
   bool get rendersSubtitles;
   Stream<String> get cueStream;
+  Stream<List<CueBitmap>> get cueBitmapStream;
 
   bool get needsStartBuffer;
 
@@ -144,6 +161,9 @@ class MpvEngine implements PlaybackEngine {
   @override
   Stream<String> get cueStream =>
       _player.stream.subtitle.map((lines) => lines.isEmpty ? '' : lines.first);
+
+  @override
+  Stream<List<CueBitmap>> get cueBitmapStream => const Stream.empty();
 
   @override
   bool get needsStartBuffer => true;
@@ -353,6 +373,7 @@ class ExoEngine implements PlaybackEngine {
   final _rate = StreamController<double>.broadcast();
   final _errors = StreamController<String>.broadcast();
   final _cues = StreamController<String>.broadcast();
+  final _cueBitmaps = StreamController<List<CueBitmap>>.broadcast();
 
   Future<int?> _create() async {
     try {
@@ -413,6 +434,22 @@ class ExoEngine implements PlaybackEngine {
         _applyTracks(raw);
       case 'cues':
         _cues.add('${raw['text'] ?? ''}');
+        final rawBitmaps = raw['bitmaps'];
+        if (rawBitmaps is List) {
+          _cueBitmaps.add([
+            for (final entry in rawBitmaps)
+              if (entry is Map && entry['bytes'] is Uint8List)
+                CueBitmap(
+                  bytes: entry['bytes'] as Uint8List,
+                  left: (entry['left'] as num?)?.toDouble() ?? 0.5,
+                  top: (entry['top'] as num?)?.toDouble() ?? 0.8,
+                  width: (entry['width'] as num?)?.toDouble() ?? 0.3,
+                  height: (entry['height'] as num?)?.toDouble() ?? 0.15,
+                ),
+          ]);
+        } else {
+          _cueBitmaps.add(const []);
+        }
       case 'video':
         final width = (raw['width'] as num?)?.toDouble() ?? 0;
         final height = (raw['height'] as num?)?.toDouble() ?? 0;
@@ -420,8 +457,9 @@ class ExoEngine implements PlaybackEngine {
         if (width > 0 && height > 0) _videoSize.value = Size(width * ratio, height);
       case 'error':
         final message = '${raw['message'] ?? 'playback error'}';
+        final fatal = raw['fatal'] != false;
         debugPrint('exo error: $message');
-        _errors.add('Failed to open: $message');
+        _errors.add(fatal ? 'Failed to open: $message' : message);
     }
   }
 
@@ -538,6 +576,9 @@ class ExoEngine implements PlaybackEngine {
 
   @override
   Stream<String> get cueStream => _cues.stream;
+
+  @override
+  Stream<List<CueBitmap>> get cueBitmapStream => _cueBitmaps.stream;
 
   @override
   bool get needsStartBuffer => false;
@@ -665,6 +706,7 @@ class ExoEngine implements PlaybackEngine {
       _rate,
       _errors,
       _cues,
+      _cueBitmaps,
     ]) {
       await controller.close();
     }

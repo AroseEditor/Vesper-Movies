@@ -1,6 +1,7 @@
 package com.vespermovies.app
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -15,6 +16,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DefaultDataSource
@@ -25,7 +27,10 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.util.EventLogger
 import io.flutter.plugin.common.BinaryMessenger
@@ -33,7 +38,9 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.concurrent.Callable
@@ -127,7 +134,7 @@ class VesperExoPlayer(
     private val context: Context,
     messenger: BinaryMessenger,
     textures: TextureRegistry,
-) : Player.Listener, TextureRegistry.SurfaceProducer.Callback {
+) : Player.Listener, AnalyticsListener, TextureRegistry.SurfaceProducer.Callback {
 
     private val producer: TextureRegistry.SurfaceProducer = textures.createSurfaceProducer()
     val id: Long = producer.id()
@@ -182,6 +189,7 @@ class VesperExoPlayer(
         producer.setCallback(this)
         player.addListener(this)
         player.addAnalyticsListener(EventLogger())
+        player.addAnalyticsListener(this)
         player.setVideoSurface(producer.surface)
         handler.post(ticker)
     }
@@ -345,14 +353,17 @@ class VesperExoPlayer(
             else -> {
                 builder.clearOverridesOfType(trackType).setTrackTypeDisabled(trackType, false)
                 val groups = player.currentTracks.groups
+                var found = false
                 for ((groupIndex, group) in groups.withIndex()) {
                     if (group.type != trackType) continue
                     for (trackIndex in 0 until group.length) {
                         if (trackId(groupIndex, trackIndex, group.getTrackFormat(trackIndex)) == id) {
                             builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
+                            found = true
                         }
                     }
                 }
+                if (!found) throw IllegalStateException("track $id not found")
             }
         }
         player.trackSelectionParameters = builder.build()
@@ -438,8 +449,49 @@ class VesperExoPlayer(
     }
 
     override fun onCues(cueGroup: CueGroup) {
-        val text = cueGroup.cues.mapNotNull { it.text?.toString() }.joinToString("\n")
-        sink?.success(mapOf("type" to "cues", "text" to text))
+        val textParts = mutableListOf<String>()
+        val bitmaps = mutableListOf<Map<String, Any?>>()
+        for (cue in cueGroup.cues) {
+            val text = cue.text?.toString()
+            if (text != null) {
+                textParts.add(text)
+                continue
+            }
+            val bitmap = cue.bitmap ?: continue
+            val encoded = encodeCueBitmap(cue, bitmap) ?: continue
+            bitmaps.add(encoded)
+        }
+        sink?.success(
+            mapOf(
+                "type" to "cues",
+                "text" to textParts.joinToString("\n"),
+                "bitmaps" to bitmaps,
+            ),
+        )
+    }
+
+    private fun encodeCueBitmap(cue: Cue, bitmap: Bitmap): Map<String, Any?>? {
+        return try {
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            val left = if (cue.position != Cue.DIMEN_UNSET) cue.position.toDouble() else 0.5
+            val top = if (cue.line != Cue.DIMEN_UNSET && cue.lineType == Cue.LINE_TYPE_FRACTION) {
+                cue.line.toDouble()
+            } else {
+                0.8
+            }
+            val width = if (cue.size != Cue.DIMEN_UNSET) cue.size.toDouble() else 0.3
+            val height = if (cue.bitmapHeight != Cue.DIMEN_UNSET) cue.bitmapHeight.toDouble() else width / 2
+            mapOf(
+                "bytes" to stream.toByteArray(),
+                "left" to left,
+                "top" to top,
+                "width" to width,
+                "height" to height,
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -475,6 +527,24 @@ class VesperExoPlayer(
                 "code" to error.errorCodeName,
                 "message" to "${error.errorCodeName} $cause".trim(),
                 "fatal" to true,
+            ),
+        )
+    }
+
+    override fun onLoadError(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData,
+        error: IOException,
+        wasCanceled: Boolean,
+    ) {
+        if (wasCanceled || mediaLoadData.trackType != C.TRACK_TYPE_TEXT) return
+        sink?.success(
+            mapOf(
+                "type" to "error",
+                "code" to "subtitle_load_failed",
+                "message" to "Could not load that subtitle.",
+                "fatal" to false,
             ),
         )
     }

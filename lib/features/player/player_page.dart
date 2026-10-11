@@ -12,6 +12,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../player/playback_engine.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
 import '../../player/subtitle_style.dart';
@@ -822,6 +823,31 @@ class _PlayerError extends StatelessWidget {
                   child: const Text('Go back', style: VesperType.button),
                 ),
               ),
+              const SizedBox(height: 12),
+              FocusableItem(
+                onActivate: () {
+                  Clipboard.setData(ClipboardData(text: message));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Error copied to clipboard'),
+                      backgroundColor: VesperColors.surfaceRaised,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: 6,
+                scaleOnFocus: false,
+                semanticLabel: 'Copy error to clipboard',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border.all(color: VesperColors.divider),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Text('Copy error', style: VesperType.label),
+                ),
+              ),
             ],
           ),
         ),
@@ -929,8 +955,38 @@ class _CueOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = ref.watch(playerCuesProvider).value ?? '';
-    if (text.trim().isEmpty) return const SizedBox.shrink();
+    final bitmaps = ref.watch(playerCueBitmapsProvider).value ?? const <CueBitmap>[];
+    if (text.trim().isEmpty && bitmaps.isEmpty) return const SizedBox.shrink();
 
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            children: [
+              if (text.trim().isNotEmpty) _TextCue(text: text),
+              for (final bitmap in bitmaps)
+                Positioned(
+                  left: bitmap.left * constraints.maxWidth,
+                  top: bitmap.top * constraints.maxHeight,
+                  width: bitmap.width * constraints.maxWidth,
+                  height: bitmap.height * constraints.maxHeight,
+                  child: Image.memory(bitmap.bytes, fit: BoxFit.contain),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TextCue extends ConsumerWidget {
+  const _TextCue({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final style = ref.watch(playerControllerProvider.select((s) => s.subtitleStyle));
     final height = MediaQuery.sizeOf(context).height;
     final fontSize = style.size.fontSize * height / 720;
@@ -938,35 +994,33 @@ class _CueOverlay extends ConsumerWidget {
     final background = style.background;
     final y = (style.position.clamp(50, 100) / 100) * 2 - 1;
 
-    return IgnorePointer(
-      child: Align(
-        alignment: Alignment(0, y),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, height * 0.04),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: background == SubtitleBackground.box || background == SubtitleBackground.solid
-                  ? _argb(background.argb)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: Text(
-                text,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colour,
-                  fontSize: fontSize,
-                  height: 1.25,
-                  fontWeight: FontWeight.w600,
-                  shadows: background == SubtitleBackground.shadow
-                      ? const [
-                          Shadow(color: Colors.black, blurRadius: 3, offset: Offset(1.5, 1.5)),
-                          Shadow(color: Colors.black, blurRadius: 3, offset: Offset(-1.5, -1.5)),
-                        ]
-                      : null,
-                ),
+    return Align(
+      alignment: Alignment(0, y),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(24, 0, 24, height * 0.04),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: background == SubtitleBackground.box || background == SubtitleBackground.solid
+                ? _argb(background.argb)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colour,
+                fontSize: fontSize,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+                shadows: background == SubtitleBackground.shadow
+                    ? const [
+                        Shadow(color: Colors.black, blurRadius: 3, offset: Offset(1.5, 1.5)),
+                        Shadow(color: Colors.black, blurRadius: 3, offset: Offset(-1.5, -1.5)),
+                      ]
+                    : null,
               ),
             ),
           ),
