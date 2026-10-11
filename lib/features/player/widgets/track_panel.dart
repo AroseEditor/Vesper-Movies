@@ -369,7 +369,6 @@ class _SubtitleSection extends ConsumerWidget {
     final controller = ref.read(playerControllerProvider.notifier);
     final style = ref.watch(playerControllerProvider.select((s) => s.subtitleStyle));
     final external = ref.watch(playerControllerProvider.select((s) => s.externalSubtitles));
-    final activeExternal = ref.watch(playerControllerProvider.select((s) => s.activeExternal));
     final selected =
         (ref.watch(playerTrackProvider).value ?? controller.engine.state.track).subtitle;
 
@@ -385,12 +384,12 @@ class _SubtitleSection extends ConsumerWidget {
           for (final option in external)
             _SubtitleRow(
               label: option.name,
-              selected: activeExternal == option.url,
+              selected: selected.uri && selected.id == option.url,
               onSelect: () => controller.selectExternalSubtitle(option, remember: true),
             ),
           _SubtitleRow(
             label: 'Off',
-            selected: activeExternal == null && selected.id == 'no',
+            selected: selected.id == 'no',
             onSelect: controller.clearSubtitles,
           ),
           const SizedBox(height: 10),
