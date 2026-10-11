@@ -16,7 +16,6 @@ enum ProviderKind {
   topmovies('topmovies', 'TopMovies'),
   moviesmod('moviesmod', 'MoviesMod'),
   downloadhub('downloadhub', 'DownloadHub'),
-  archive('archive', 'Internet Archive'),
   anizone('anizone', 'AniZone'),
   nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),

@@ -124,11 +124,7 @@ int _heavyRank(Release release) {
 }
 
 int _sourceRank(Release release) =>
-    release.kind == ProviderKind.downloadhub ||
-        release.kind == ProviderKind.nfmirror ||
-        release.kind == ProviderKind.archive
-    ? 1
-    : 0;
+    release.kind == ProviderKind.downloadhub || release.kind == ProviderKind.nfmirror ? 1 : 0;
 
 int _hardwareRank(Release release) {
   final codec = (release.codec ?? '').toLowerCase();
@@ -176,6 +172,7 @@ List<Release> rankForPhone(List<Release> releases) => rankForDevice(releases, ca
 
 class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
   int _generation = 0;
+  String? _lastFailureReason;
 
   @override
   PlaybackSession? build() => null;
@@ -264,7 +261,12 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     } else {
       state = state?.copyWith(switching: false);
     }
-    _player.fail('That stream would not start. Pick another one from the cloud menu.');
+    final reason = _lastFailureReason;
+    _player.fail(
+      reason == null
+          ? 'That stream would not start. Pick another one from the cloud menu.'
+          : 'That stream would not start. Pick another one from the cloud menu.\n\n$reason',
+    );
   }
 
   void recordProgress(Duration position, Duration duration, bool completed) {
@@ -515,29 +517,37 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       if (!playable && generation == _generation) {
         ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
       }
-      if (!playable || generation != _generation) return false;
+      if (!playable || generation != _generation) {
+        _lastFailureReason = '${release.kind.label}: did not start playing in time';
+        return false;
+      }
       if (!await _player.survivesStart(const Duration(seconds: 3))) {
         debugPrint('stream attempt ${release.kind.id} failed right after starting');
         ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+        _lastFailureReason = '${release.kind.label}: stopped right after starting';
         return false;
       }
       if (generation != _generation) return false;
       if (_isPlaceholder(release)) {
         debugPrint('stream attempt ${release.kind.id} was a placeholder clip');
         ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+        _lastFailureReason = '${release.kind.label}: only a placeholder clip was found';
         return false;
       }
 
       state = state?.copyWith(current: release);
       ref.read(sourceHealthProvider.notifier).record(release.kind, ok: true);
+      _lastFailureReason = null;
       return true;
     } on SourceError catch (error) {
       debugPrint('stream attempt ${release.kind.id} source error: $error');
       ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+      _lastFailureReason = '${release.kind.label}: ${error.runtimeType} ${error.toString()}';
       return false;
     } on Object catch (error) {
       debugPrint('stream attempt ${release.kind.id} failed: ${error.runtimeType}');
       ref.read(sourceHealthProvider.notifier).record(release.kind, ok: false);
+      _lastFailureReason = '${release.kind.label}: ${error.runtimeType}';
       return false;
     }
   }

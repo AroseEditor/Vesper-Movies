@@ -2,7 +2,6 @@ import '../../../models/provider_kind.dart';
 import '../link_source.dart';
 import '../web.dart';
 import 'anizone_source.dart';
-import 'archive_source.dart';
 import 'bollyflix_source.dart';
 import 'downloadhub_source.dart';
 import 'filmycab_source.dart';
@@ -31,7 +30,6 @@ Map<ProviderKind, LinkSource> buildLinkSources(Web web) {
     TopMoviesSource(web),
     MoviesModSource(web),
     DownloadHubSource(web),
-    ArchiveSource(web),
     AniZoneSource(web),
     NfMirrorSource(web),
   ];

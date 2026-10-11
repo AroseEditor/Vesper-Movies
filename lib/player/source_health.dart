@@ -13,7 +13,7 @@ class SourceHealthNotifier extends Notifier<Map<String, int>> {
   @override
   Map<String, int> build() {
     unawaited(_load());
-    return const {'moviesmod': 2, 'archive': 1};
+    return const {'moviesmod': 2};
   }
 
   Future<void> _load() async {
