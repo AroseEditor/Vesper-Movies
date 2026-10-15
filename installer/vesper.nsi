@@ -49,6 +49,12 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "..\build\windows\x64\runner\Release\*.*"
 
+  SetOutPath "$TEMP"
+  File "MicrosoftEdgeWebView2Setup.exe"
+  ExecWait '"$TEMP\MicrosoftEdgeWebView2Setup.exe" /silent /install'
+  Delete "$TEMP\MicrosoftEdgeWebView2Setup.exe"
+  SetOutPath "$INSTDIR"
+
   WriteRegStr HKLM "Software\${APP_KEY}" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "Software\${APP_KEY}" "Version" "${APP_VERSION}"
 
