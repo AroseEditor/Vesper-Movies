@@ -66,9 +66,7 @@ Future<String?> _downloadAndDecompress(Dio dio, String gzUrl, CancelToken? cance
 
     final decoded = gzip.decode(bytes);
     final dir = await getTemporaryDirectory();
-    final file = File(
-      p.join(dir.path, 'vesper_sub_${DateTime.now().microsecondsSinceEpoch}.srt'),
-    );
+    final file = File(p.join(dir.path, 'vesper_sub_${DateTime.now().microsecondsSinceEpoch}.srt'));
     await file.writeAsBytes(decoded, flush: true);
     return file.path;
   } on Object {

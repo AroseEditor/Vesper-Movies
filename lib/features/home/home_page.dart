@@ -53,10 +53,11 @@ class _HomeContent extends ConsumerWidget {
 
     final resume = ref.watch(continueWatchingProvider);
     final favourites = ref.watch(favouritesProvider);
-    final topTen = (feed.shelves.where((s) => s.title == 'Trending Now').firstOrNull?.items ??
-            const <CatalogItem>[])
-        .take(10)
-        .toList();
+    final topTen =
+        (feed.shelves.where((s) => s.title == 'Trending Now').firstOrNull?.items ??
+                const <CatalogItem>[])
+            .take(10)
+            .toList();
 
     return CustomScrollView(
       slivers: [

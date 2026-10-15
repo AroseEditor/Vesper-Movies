@@ -100,12 +100,7 @@ class _StatCard extends StatelessWidget {
           Text(label, style: VesperType.body),
           if (detail != null) ...[
             const SizedBox(height: 4),
-            Text(
-              detail!,
-              style: VesperType.meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(detail!, style: VesperType.meta, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ],
       ),

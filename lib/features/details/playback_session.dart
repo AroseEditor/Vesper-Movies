@@ -477,12 +477,12 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     if (!id.startsWith('tt')) return addonSubs;
 
     return fetchOpenSubtitles(
-      id,
-      season: session.isEpisode ? session.season : null,
-      episode: session.isEpisode ? session.episode : null,
-    ).timeout(const Duration(seconds: 6), onTimeout: () => const <SubtitleOption>[]).catchError(
-      (Object _) => const <SubtitleOption>[],
-    );
+          id,
+          season: session.isEpisode ? session.season : null,
+          episode: session.isEpisode ? session.episode : null,
+        )
+        .timeout(const Duration(seconds: 6), onTimeout: () => const <SubtitleOption>[])
+        .catchError((Object _) => const <SubtitleOption>[]);
   }
 
   bool _isPlaceholder(Release release) {
