@@ -9,6 +9,7 @@ import '../../core/safety.dart';
 import '../../models/media.dart';
 import '../../models/provider_kind.dart';
 import '../../models/release.dart';
+import '../../player/opensubtitles.dart';
 import '../../player/player_controller.dart';
 import '../../player/quality_cap.dart';
 import '../../player/source_health.dart';
@@ -465,6 +466,25 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
     return [for (final group in groups) ...group.take(12)];
   }
 
+  Future<List<SubtitleOption>> _extraSubtitles(
+    PlaybackSession session,
+    PlaybackSource source,
+  ) async {
+    final addonSubs = await _addonSubtitles(session);
+    if (addonSubs.isNotEmpty || source.subtitles.isNotEmpty) return addonSubs;
+
+    final id = session.item.id.value;
+    if (!id.startsWith('tt')) return addonSubs;
+
+    return fetchOpenSubtitles(
+      id,
+      season: session.isEpisode ? session.season : null,
+      episode: session.isEpisode ? session.episode : null,
+    ).timeout(const Duration(seconds: 6), onTimeout: () => const <SubtitleOption>[]).catchError(
+      (Object _) => const <SubtitleOption>[],
+    );
+  }
+
   bool _isPlaceholder(Release release) {
     if (release.kind != ProviderKind.nfmirror) return false;
     final duration = _player.engine.state.duration;
@@ -495,7 +515,7 @@ class PlaybackSessionNotifier extends Notifier<PlaybackSession?> {
       );
       if (generation != _generation) return false;
 
-      final extra = await _addonSubtitles(session);
+      final extra = await _extraSubtitles(session, target.source);
       await _player.load(
         PlaybackTarget(
           source: extra.isEmpty ? target.source : _withSubtitles(target.source, extra),
