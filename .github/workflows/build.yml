@@ -108,13 +108,14 @@ jobs:
         shell: pwsh
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
         run: |
           if (-not $env:TMDB_API_KEY) {
             Write-Host "::error::TMDB_API_KEY is empty. Add it as a secret in the main environment."
             exit 1
           }
           flutter pub get
-          flutter build windows --release --dart-define=TMDB_API_KEY="$env:TMDB_API_KEY"
+          flutter build windows --release --dart-define=TMDB_API_KEY="$env:TMDB_API_KEY" --dart-define=DISCORD_CLIENT_ID="$env:DISCORD_CLIENT_ID"
 
       - name: Build installer
         shell: pwsh
@@ -161,13 +162,14 @@ jobs:
       - name: Build
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
         run: |
           if [ -z "$TMDB_API_KEY" ]; then
             echo "::error::TMDB_API_KEY is empty. Add it as a secret in the main environment."
             exit 1
           fi
           flutter pub get
-          flutter build linux --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
+          flutter build linux --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY" --dart-define=DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
 
       - name: Package
         run: |

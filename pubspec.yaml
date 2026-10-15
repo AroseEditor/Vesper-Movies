@@ -40,6 +40,8 @@ dependencies:
   file_picker: ^13.1.0
   url_launcher: ^6.3.2
   wakelock_plus: ^1.2.8
+  win32: ^6.0.1
+  ffi: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -9,6 +9,7 @@ import '../../design/colors.dart';
 import '../../design/icons.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../player/discord_presence.dart';
 import '../../player/external_player.dart';
 import '../../player/quality_cap.dart';
 import '../../player/subtitle_style.dart';
@@ -223,9 +224,9 @@ class SettingsPage extends ConsumerWidget {
                 _ActionButton(
                   icon: VesperIcons.stats,
                   label: 'View your watch stats',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (context) => const StatsPage()),
-                  ),
+                  onTap: () =>
+                      Navigator.of(context)
+                          .push(MaterialPageRoute<void>(builder: (context) => const StatsPage())),
                 ),
                 _ActionButton(
                   icon: VesperIcons.deleteItem,
@@ -263,6 +264,20 @@ class SettingsPage extends ConsumerWidget {
                   },
                 ),
               ],
+            ),
+            const SizedBox(height: 32),
+            const _SectionHeader(
+              title: 'Discord',
+              subtitle:
+                  'Shows what you are watching as your Discord activity. Only works on '
+                  'Windows/Linux with the Discord desktop app open.',
+            ),
+            const SizedBox(height: 10),
+            _SettingRow(
+              label: 'Show activity',
+              value: ref.watch(discordPresenceEnabledProvider) ? 'On' : 'Off',
+              onPrevious: () => ref.read(discordPresenceEnabledProvider.notifier).toggle(),
+              onNext: () => ref.read(discordPresenceEnabledProvider.notifier).toggle(),
             ),
             const SizedBox(height: 32),
             const _SectionHeader(
