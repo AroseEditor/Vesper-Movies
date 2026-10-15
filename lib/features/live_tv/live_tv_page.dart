@@ -22,6 +22,8 @@ import '../../shell/input_mode.dart';
 import '../../sources/m3u/m3u_parser.dart';
 import '../player/player_page.dart';
 
+const defaultPlaylistSource = 'https://iptv-org.github.io/iptv/categories/sports.m3u';
+
 class PlaylistStore {
   const PlaylistStore();
 
@@ -31,10 +33,10 @@ class PlaylistStore {
     return File(p.join(dir.path, 'playlists.json'));
   }
 
-  Future<List<String>> load() async {
+  Future<List<String>?> load() async {
     try {
       final file = await _file();
-      if (!file.existsSync()) return const [];
+      if (!file.existsSync()) return null;
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! List) return const [];
       return decoded.whereType<String>().where((e) => e.trim().isNotEmpty).toList();
@@ -55,7 +57,14 @@ class PlaylistStore {
 
 class PlaylistsNotifier extends AsyncNotifier<List<String>> {
   @override
-  Future<List<String>> build() => const PlaylistStore().load();
+  Future<List<String>> build() async {
+    final loaded = await const PlaylistStore().load();
+    if (loaded != null) return loaded;
+
+    const seeded = [defaultPlaylistSource];
+    await const PlaylistStore().save(seeded);
+    return seeded;
+  }
 
   Future<void> add(String source) async {
     final trimmed = source.trim();
