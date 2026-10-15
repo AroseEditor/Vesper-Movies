@@ -20,7 +20,8 @@ enum ProviderKind {
   nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),
   m3u('m3u', 'Live TV'),
-  youtube('youtube', 'YouTube');
+  youtube('youtube', 'YouTube'),
+  masterchef('masterchef', 'MasterChef Mirror');
 
   const ProviderKind(this.id, this.label);
 

@@ -7,6 +7,7 @@ import 'downloadhub_source.dart';
 import 'filmycab_source.dart';
 import 'hdhub4u_source.dart';
 import 'hdmovie2_source.dart';
+import 'masterchef_source.dart';
 import 'movies4u_source.dart';
 import 'moviesdrive_source.dart';
 import 'moviesmod_source.dart';
@@ -32,6 +33,7 @@ Map<ProviderKind, LinkSource> buildLinkSources(Web web) {
     DownloadHubSource(web),
     AniZoneSource(web),
     NfMirrorSource(web),
+    MasterChefSource(web),
   ];
   return {for (final source in sources) source.kind: source};
 }

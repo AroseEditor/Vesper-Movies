@@ -43,6 +43,7 @@ dependencies:
   win32: ^6.0.1
   ffi: ^2.1.0
   youtube_explode_dart: ^3.1.0
+  flutter_inappwebview: ^6.1.5
 
 dev_dependencies:
   flutter_test:
