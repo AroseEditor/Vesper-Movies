@@ -83,5 +83,17 @@ void main() {
       final channels = parseM3u(_playlist);
       expect(filterChannels(channels), hasLength(3));
     });
+
+    test('splits a semicolon joined group-title into separate groups', () {
+      const playlist = '''
+#EXTM3U
+#EXTINF:-1 group-title="Culture;Entertainment;Sports",Mixed Channel
+https://stream.example/mixed.m3u8
+''';
+      final channels = parseM3u(playlist);
+      expect(groupsOf(channels), ['Culture', 'Entertainment', 'Sports']);
+      expect(filterChannels(channels, group: 'Sports'), hasLength(1));
+      expect(filterChannels(channels, group: 'Culture'), hasLength(1));
+    });
   });
 }

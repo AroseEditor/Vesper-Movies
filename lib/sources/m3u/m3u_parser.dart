@@ -110,11 +110,15 @@ int _titleSeparatorIndex(String line) {
   return -1;
 }
 
+List<String> splitGroups(String? raw) {
+  if (raw == null) return const [];
+  return raw.split(';').map((g) => g.trim()).where((g) => g.isNotEmpty).toList();
+}
+
 List<String> groupsOf(List<Channel> channels) {
   final groups = <String>{};
   for (final channel in channels) {
-    final group = channel.group?.trim();
-    if (group != null && group.isNotEmpty) groups.add(group);
+    groups.addAll(splitGroups(channel.group));
   }
   final sorted = groups.toList()..sort();
   return sorted;
@@ -124,7 +128,7 @@ List<Channel> filterChannels(List<Channel> channels, {String? group, String quer
   final needle = query.trim().toLowerCase();
 
   return channels.where((channel) {
-    if (group != null && group.isNotEmpty && channel.group != group) {
+    if (group != null && group.isNotEmpty && !splitGroups(channel.group).contains(group)) {
       return false;
     }
     if (needle.isEmpty) return true;

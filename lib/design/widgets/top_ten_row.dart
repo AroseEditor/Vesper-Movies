@@ -61,7 +61,6 @@ class TopTenRow extends StatelessWidget {
                               fontSize: posterWidth * 1.05,
                               fontWeight: FontWeight.w900,
                               height: 0.78,
-                              color: VesperColors.canvas,
                               foreground: Paint()
                                 ..style = PaintingStyle.stroke
                                 ..strokeWidth = 3
