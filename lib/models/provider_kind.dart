@@ -19,7 +19,8 @@ enum ProviderKind {
   anizone('anizone', 'AniZone'),
   nfmirror('nfmirror', 'NF Mirror'),
   addons('addons', 'Addons'),
-  m3u('m3u', 'Live TV');
+  m3u('m3u', 'Live TV'),
+  youtube('youtube', 'YouTube');
 
   const ProviderKind(this.id, this.label);
 

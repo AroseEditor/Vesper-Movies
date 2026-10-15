@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,7 @@ import '../../models/release.dart';
 import '../../player/player_controller.dart';
 import '../../shell/input_mode.dart';
 import '../../sources/m3u/m3u_parser.dart';
+import '../../sources/youtube/youtube_highlights.dart';
 import '../player/player_page.dart';
 
 const defaultPlaylistSource = 'https://iptv-org.github.io/iptv/categories/sports.m3u';
@@ -137,6 +139,15 @@ final channelsProvider = FutureProvider.autoDispose<List<Channel>>((ref) async {
   return all;
 });
 
+final highlightSearchProvider = FutureProvider.autoDispose.family<List<HighlightResult>, String>((
+  ref,
+  query,
+) {
+  return searchHighlights(query).timeout(const Duration(seconds: 20), onTimeout: () => const []);
+});
+
+enum LiveTvTab { channels, highlights }
+
 class LiveTvPage extends ConsumerStatefulWidget {
   const LiveTvPage({super.key});
 
@@ -147,6 +158,65 @@ class LiveTvPage extends ConsumerStatefulWidget {
 class _LiveTvPageState extends ConsumerState<LiveTvPage> {
   String? _group;
   String _query = '';
+  LiveTvTab _tab = LiveTvTab.channels;
+  String _highlightQuery = '';
+  Timer? _highlightDebounce;
+  bool _resolvingHighlight = false;
+
+  @override
+  void dispose() {
+    _highlightDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onHighlightQueryChanged(String value) {
+    _highlightDebounce?.cancel();
+    _highlightDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _highlightQuery = value);
+    });
+  }
+
+  Future<void> _playHighlight(HighlightResult result) async {
+    if (_resolvingHighlight) return;
+    setState(() => _resolvingHighlight = true);
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final controller = ref.read(playerControllerProvider.notifier);
+
+    try {
+      final url = await resolveHighlightStream(result.videoId);
+      if (!mounted) return;
+      if (url == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('That video would not play.'),
+            backgroundColor: VesperColors.surfaceRaised,
+          ),
+        );
+        return;
+      }
+
+      await controller.load(
+        PlaybackTarget(
+          source: PlaybackSource(kind: ProviderKind.youtube, url: url, sourceLabel: 'YouTube'),
+          title: result.title,
+          subtitle: result.channel,
+        ),
+      );
+      await navigator.push(MaterialPageRoute<void>(builder: (context) => const PlayerPage()));
+      await controller.stop();
+    } on Object catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('That video would not play.'),
+          backgroundColor: VesperColors.surfaceRaised,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _resolvingHighlight = false);
+    }
+  }
 
   Future<void> _play(Channel channel) async {
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -262,107 +332,319 @@ class _LiveTvPageState extends ConsumerState<LiveTvPage> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: mode.gutter),
-            child: TextField(
-              onChanged: (value) => setState(() => _query = value),
-              style: VesperType.body.copyWith(color: VesperColors.textPrimary),
-              cursorColor: VesperColors.accent,
-              decoration: InputDecoration(
-                isDense: true,
-                filled: true,
-                fillColor: VesperColors.surface,
-                prefixIcon: const Icon(VesperIcons.search, size: 19),
-                hintText: 'Filter channels',
-                hintStyle: VesperType.meta,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+            padding: EdgeInsets.fromLTRB(mode.gutter, 0, mode.gutter, 10),
+            child: Row(
+              children: [
+                _TabChip(
+                  label: 'Channels',
+                  selected: _tab == LiveTvTab.channels,
+                  onTap: () => setState(() => _tab = LiveTvTab.channels),
+                ),
+                const SizedBox(width: 8),
+                _TabChip(
+                  label: 'Match highlights',
+                  selected: _tab == LiveTvTab.highlights,
+                  onTap: () => setState(() => _tab = LiveTvTab.highlights),
+                ),
+              ],
+            ),
+          ),
+          if (_tab == LiveTvTab.highlights) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: mode.gutter),
+              child: TextField(
+                onChanged: _onHighlightQueryChanged,
+                style: VesperType.body.copyWith(color: VesperColors.textPrimary),
+                cursorColor: VesperColors.accent,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: VesperColors.surface,
+                  prefixIcon: const Icon(VesperIcons.search, size: 19),
+                  hintText: 'e.g. Barcelona vs Real Madrid 2025',
+                  hintStyle: VesperType.meta,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: channels.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _highlightQuery.trim().isEmpty
+                  ? const _TvMessage(message: 'Search for a match to find highlights on YouTube.')
+                  : _HighlightsBody(
+                      query: _highlightQuery,
+                      mode: mode,
+                      resolving: _resolvingHighlight,
+                      onPlay: _playHighlight,
+                    ),
+            ),
+          ] else ...[
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: mode.gutter),
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                style: VesperType.body.copyWith(color: VesperColors.textPrimary),
+                cursorColor: VesperColors.accent,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: VesperColors.surface,
+                  prefixIcon: const Icon(VesperIcons.search, size: 19),
+                  hintText: 'Filter channels',
+                  hintStyle: VesperType.meta,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
               ),
-              error: (error, stack) => const _TvMessage(message: 'That playlist would not load.'),
-              data: (items) {
-                if (items.isEmpty) {
-                  return const _TvMessage(message: 'No channels found in that playlist.');
-                }
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: channels.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
+                ),
+                error: (error, stack) => const _TvMessage(message: 'That playlist would not load.'),
+                data: (items) {
+                  if (items.isEmpty) {
+                    return const _TvMessage(message: 'No channels found in that playlist.');
+                  }
 
-                final groups = groupsOf(items);
-                final visible = filterChannels(items, group: _group, query: _query);
+                  final groups = groupsOf(items);
+                  final visible = filterChannels(items, group: _group, query: _query);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (groups.isNotEmpty)
-                      SizedBox(
-                        height: 40,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.symmetric(horizontal: mode.gutter),
-                          itemCount: groups.length + 1,
-                          separatorBuilder: (context, index) => const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final label = index == 0 ? 'All' : groups[index - 1];
-                            final value = index == 0 ? null : groups[index - 1];
-                            final selected = _group == value;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (groups.isNotEmpty)
+                        SizedBox(
+                          height: 40,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.symmetric(horizontal: mode.gutter),
+                            itemCount: groups.length + 1,
+                            separatorBuilder: (context, index) => const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final label = index == 0 ? 'All' : groups[index - 1];
+                              final value = index == 0 ? null : groups[index - 1];
+                              final selected = _group == value;
 
-                            return FocusableItem(
-                              onActivate: () => setState(() => _group = value),
-                              borderRadius: 17,
-                              scaleOnFocus: false,
-                              semanticLabel: label,
-                              child: AnimatedContainer(
-                                duration: VesperMotion.fast,
-                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-                                decoration: BoxDecoration(
-                                  color: selected ? VesperColors.accent : VesperColors.surface,
-                                  borderRadius: BorderRadius.circular(17),
-                                ),
-                                child: Text(
-                                  label,
-                                  style: VesperType.label.copyWith(
-                                    color: selected
-                                        ? VesperColors.canvas
-                                        : VesperColors.textSecondary,
+                              return FocusableItem(
+                                onActivate: () => setState(() => _group = value),
+                                borderRadius: 17,
+                                scaleOnFocus: false,
+                                semanticLabel: label,
+                                child: AnimatedContainer(
+                                  duration: VesperMotion.fast,
+                                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+                                  decoration: BoxDecoration(
+                                    color: selected ? VesperColors.accent : VesperColors.surface,
+                                    borderRadius: BorderRadius.circular(17),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: VesperType.label.copyWith(
+                                      color: selected
+                                          ? VesperColors.canvas
+                                          : VesperColors.textSecondary,
+                                    ),
                                   ),
                                 ),
-                              ),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            mode.gutter,
+                            0,
+                            mode.gutter,
+                            mode.isTouch ? 110 : 30,
+                          ),
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) {
+                            final channel = visible[index];
+                            return _ChannelTile(
+                              channel: channel,
+                              autofocus: mode.isTv && index == 0,
+                              onPlay: () => _play(channel),
                             );
                           },
                         ),
                       ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: EdgeInsets.fromLTRB(
-                          mode.gutter,
-                          0,
-                          mode.gutter,
-                          mode.isTouch ? 110 : 30,
-                        ),
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) {
-                          final channel = visible[index];
-                          return _ChannelTile(
-                            channel: channel,
-                            autofocus: mode.isTv && index == 0,
-                            onPlay: () => _play(channel),
-                          );
-                        },
-                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TabChip extends StatelessWidget {
+  const _TabChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableItem(
+      onActivate: onTap,
+      borderRadius: 17,
+      scaleOnFocus: false,
+      semanticLabel: label,
+      child: AnimatedContainer(
+        duration: VesperMotion.fast,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? VesperColors.accent : VesperColors.surface,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Text(
+          label,
+          style: VesperType.label.copyWith(
+            color: selected ? VesperColors.canvas : VesperColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HighlightsBody extends ConsumerWidget {
+  const _HighlightsBody({
+    required this.query,
+    required this.mode,
+    required this.resolving,
+    required this.onPlay,
+  });
+
+  final String query;
+  final InputMode mode;
+  final bool resolving;
+  final void Function(HighlightResult result) onPlay;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final results = ref.watch(highlightSearchProvider(query.trim()));
+
+    return results.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: VesperColors.accent, strokeWidth: 3),
+      ),
+      error: (error, stack) =>
+          const _TvMessage(message: 'That search did not work. Check your connection.'),
+      data: (items) {
+        if (items.isEmpty) {
+          return const _TvMessage(message: 'No highlights found for that search.');
+        }
+        return ListView.builder(
+          padding: EdgeInsets.fromLTRB(mode.gutter, 0, mode.gutter, mode.isTouch ? 110 : 30),
+          itemCount: items.length,
+          itemBuilder: (context, index) => _HighlightTile(
+            result: items[index],
+            autofocus: mode.isTv && index == 0,
+            disabled: resolving,
+            onPlay: () => onPlay(items[index]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HighlightTile extends StatelessWidget {
+  const _HighlightTile({
+    required this.result,
+    required this.onPlay,
+    this.autofocus = false,
+    this.disabled = false,
+  });
+
+  final HighlightResult result;
+  final VoidCallback onPlay;
+  final bool autofocus;
+  final bool disabled;
+
+  String _duration(Duration? value) {
+    if (value == null) return '';
+    final minutes = value.inMinutes;
+    final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: FocusableItem(
+        onActivate: disabled ? null : onPlay,
+        autofocus: autofocus,
+        borderRadius: 8,
+        scaleOnFocus: false,
+        semanticLabel: result.title,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: result.thumbnailUrl,
+                  width: 96,
+                  height: 54,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) =>
+                      Container(width: 96, height: 54, color: VesperColors.surface),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      result.title,
+                      style: VesperType.bodyStrong,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        result.channel,
+                        _duration(result.duration),
+                      ].where((e) => e.isNotEmpty).join('  ·  '),
+                      style: VesperType.meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+              if (disabled)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VesperColors.accent),
+                )
+              else
+                const Icon(VesperIcons.play, size: 22, color: VesperColors.textTertiary),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
