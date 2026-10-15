@@ -25,7 +25,6 @@ android/app/release/
 
 windows/flutter/ephemeral/
 linux/flutter/ephemeral/
-installer/MicrosoftEdgeWebView2Setup.exe
 
 .idea/
 .vscode/

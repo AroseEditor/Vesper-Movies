@@ -117,12 +117,6 @@ jobs:
           flutter pub get
           flutter build windows --release --dart-define=TMDB_API_KEY="$env:TMDB_API_KEY" --dart-define=DISCORD_CLIENT_ID="$env:DISCORD_CLIENT_ID"
 
-      - name: Fetch WebView2 bootstrapper
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" `
-            -OutFile "installer/MicrosoftEdgeWebView2Setup.exe"
-
       - name: Build installer
         shell: pwsh
         env:
