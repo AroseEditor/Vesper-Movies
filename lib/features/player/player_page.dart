@@ -12,6 +12,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../player/pip.dart';
 import '../../player/playback_engine.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_intents.dart';
@@ -94,6 +95,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _tv = ref.read(inputModeProvider).isTv;
     _restartHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    unawaited(setPipEnabled(true));
 
     if (widget.onProgress != null) {
       _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) => _reportProgress());
@@ -116,6 +118,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void dispose() {
     _progressTimer?.cancel();
     unawaited(WakelockPlus.disable());
+    unawaited(setPipEnabled(false));
     _hideTimer?.cancel();
     _reportProgress();
     _rootFocus.dispose();

@@ -1,5 +1,6 @@
 package com.vespermovies.app
 
+import android.app.PictureInPictureParams
 import android.app.UiModeManager
 import android.content.ActivityNotFoundException
 import android.content.ContentValues
@@ -20,6 +21,8 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var exo: VesperExoPlugin? = null
     private var external: MethodChannel? = null
+    private var pip: MethodChannel? = null
+    private var pipEnabled = false
 
     private fun publishToGallery(path: String, displayName: String, mimeType: String): Boolean {
         val source = File(path)
@@ -113,6 +116,15 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/device").setMethodCallHandler { call, result ->
             if (call.method == "isTelevision") result.success(isTelevision()) else result.notImplemented()
         }
+        pip = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vesper/pip")
+        pip?.setMethodCallHandler { call, result ->
+            if (call.method != "setEnabled") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            pipEnabled = call.arguments as? Boolean ?: false
+            result.success(null)
+        }
         exo = VesperExoPlugin(
             applicationContext,
             flutterEngine.dartExecutor.binaryMessenger,
@@ -159,6 +171,16 @@ class MainActivity : FlutterActivity() {
         val duration = data.getLongExtra("extra_duration", -1L)
         if (position < 0 || duration <= 0) return
         external?.invokeMethod("vlcResult", mapOf("position" to position, "duration" to duration))
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isTelevision()) {
+            try {
+                enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+            } catch (_: Exception) {
+            }
+        }
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
