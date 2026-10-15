@@ -19,6 +19,7 @@ class MasterChefSource extends LinkSource {
 
   @override
   Future<List<Release>> find(LinkQuery query, {CancelToken? cancel}) async {
+    if (!cloudflareGateAvailable) return const [];
     if (!query.title.toLowerCase().contains('masterchef')) return const [];
     if (!query.isEpisode) return const [];
 

@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../design/colors.dart';
 import '../../design/typography.dart';
 import '../../shell/router.dart';
 
 const _prefsKeyPrefix = 'pref.cf_clearance.';
+const _androidCookieTtl = Duration(minutes: 25);
+
+bool get cloudflareGateAvailable => Platform.isAndroid;
 
 Future<String?> cachedClearanceCookie(String domain) async {
   try {
@@ -44,6 +48,8 @@ Future<String?> solveCloudflareChallenge({
   required String url,
   required List<String> cookieDomains,
 }) async {
+  if (!cloudflareGateAvailable) return null;
+
   final context = rootNavigatorKey.currentContext;
   if (context == null) return null;
 
@@ -65,8 +71,18 @@ class _CloudflareSolveDialog extends StatefulWidget {
 }
 
 class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
+  late final WebViewController _controller;
   Timer? _poll;
   bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _startPolling()))
+      ..loadRequest(Uri.parse(widget.url));
+  }
 
   @override
   void dispose() {
@@ -75,36 +91,28 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
   }
 
   void _startPolling() {
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_check()));
+    _poll ??= Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_check()));
   }
 
   Future<void> _check() async {
     if (_done || !mounted) return;
 
-    final manager = CookieManager.instance();
-    String? best;
-    int? bestExpiry;
-    String? bestDomain;
-
+    final manager = WebViewCookieManager();
     for (final domain in widget.cookieDomains) {
-      final cookies = await manager.getCookies(url: WebUri('https://$domain'));
+      final cookies = await manager.getCookies(domain: Uri.parse('https://$domain'));
       if (cookies.isEmpty) continue;
       if (!cookies.any((c) => c.name == 'cf_clearance')) continue;
 
       final header = cookies.map((c) => '${c.name}=${c.value}').join('; ');
-      final clearance = cookies.firstWhere((c) => c.name == 'cf_clearance');
-      best = header;
-      bestExpiry = clearance.expiresDate;
-      bestDomain = domain;
-      break;
+      if (!mounted) return;
+
+      _done = true;
+      _poll?.cancel();
+      final expiresAt = DateTime.now().add(_androidCookieTtl).millisecondsSinceEpoch;
+      await _storeClearanceCookie(domain, header, expiresAt);
+      if (mounted) Navigator.of(context).pop(header);
+      return;
     }
-
-    if (best == null || bestDomain == null || !mounted) return;
-
-    _done = true;
-    _poll?.cancel();
-    await _storeClearanceCookie(bestDomain, best, bestExpiry);
-    if (mounted) Navigator.of(context).pop(best);
   }
 
   @override
@@ -140,11 +148,7 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-                  onLoadStop: (controller, url) => unawaited(_check()),
-                  onLoadStart: (controller, url) => _startPolling(),
-                ),
+                child: WebViewWidget(controller: _controller),
               ),
             ),
           ],
