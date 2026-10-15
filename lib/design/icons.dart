@@ -51,4 +51,5 @@ abstract final class VesperIcons {
   static const backup = Icons.save_alt_rounded;
   static const restore = Icons.restore_rounded;
   static const update = Icons.system_update_alt_rounded;
+  static const stats = Icons.bar_chart_rounded;
 }

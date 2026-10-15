@@ -158,6 +158,58 @@ class LibraryData {
   }
 }
 
+class LibraryStats {
+  const LibraryStats({
+    this.watchTime = Duration.zero,
+    this.moviesCompleted = 0,
+    this.episodesCompleted = 0,
+    this.titlesWatched = 0,
+    this.longestSession = Duration.zero,
+    this.longestTitle = '',
+  });
+
+  final Duration watchTime;
+  final int moviesCompleted;
+  final int episodesCompleted;
+  final int titlesWatched;
+  final Duration longestSession;
+  final String longestTitle;
+}
+
+LibraryStats computeLibraryStats(LibraryData data) {
+  var watchedMs = 0;
+  var movies = 0;
+  var episodes = 0;
+  var longestMs = 0;
+  var longestTitle = '';
+  final titles = <String>{};
+
+  for (final entry in data.history) {
+    watchedMs += entry.positionMs;
+    titles.add(entry.id);
+    if (entry.completed) {
+      if (entry.season > 0) {
+        episodes++;
+      } else {
+        movies++;
+      }
+    }
+    if (entry.positionMs > longestMs) {
+      longestMs = entry.positionMs;
+      longestTitle = entry.title;
+    }
+  }
+
+  return LibraryStats(
+    watchTime: Duration(milliseconds: watchedMs),
+    moviesCompleted: movies,
+    episodesCompleted: episodes,
+    titlesWatched: titles.length,
+    longestSession: Duration(milliseconds: longestMs),
+    longestTitle: longestTitle,
+  );
+}
+
 class LibraryStore {
   LibraryStore({this.directory});
 

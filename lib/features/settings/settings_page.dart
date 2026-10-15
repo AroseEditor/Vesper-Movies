@@ -18,6 +18,7 @@ import '../../sources/addons/addons_store.dart';
 import '../../sources/addons/suggested_addons.dart';
 import '../../storage/backup.dart';
 import '../../storage/library_controller.dart';
+import 'stats_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -215,10 +216,23 @@ class SettingsPage extends ConsumerWidget {
             const SizedBox(height: 10),
             Text('${history.length} titles remembered', style: VesperType.body),
             const SizedBox(height: 12),
-            _ActionButton(
-              icon: VesperIcons.deleteItem,
-              label: 'Clear history',
-              onTap: () => ref.read(libraryProvider.notifier).clearHistory(),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                _ActionButton(
+                  icon: VesperIcons.stats,
+                  label: 'View your watch stats',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (context) => const StatsPage()),
+                  ),
+                ),
+                _ActionButton(
+                  icon: VesperIcons.deleteItem,
+                  label: 'Clear history',
+                  onTap: () => ref.read(libraryProvider.notifier).clearHistory(),
+                ),
+              ],
             ),
             const SizedBox(height: 32),
             const _SectionHeader(
