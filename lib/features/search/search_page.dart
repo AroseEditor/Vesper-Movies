@@ -25,6 +25,59 @@ class SearchTextNotifier extends Notifier<String> {
 
 final searchTextProvider = NotifierProvider<SearchTextNotifier, String>(SearchTextNotifier.new);
 
+enum YearFilter {
+  any('Any year', null),
+  from2020('2020s', 2020),
+  from2010('2010s', 2010),
+  from2000('2000s', 2000),
+  older('Before 2000', null);
+
+  const YearFilter(this.label, this.from);
+
+  final String label;
+  final int? from;
+
+  bool matches(String? year) {
+    final value = int.tryParse(year ?? '');
+    if (value == null) return this == YearFilter.any;
+    switch (this) {
+      case YearFilter.any:
+        return true;
+      case YearFilter.from2020:
+        return value >= 2020;
+      case YearFilter.from2010:
+        return value >= 2010 && value < 2020;
+      case YearFilter.from2000:
+        return value >= 2000 && value < 2010;
+      case YearFilter.older:
+        return value < 2000;
+    }
+  }
+}
+
+enum RatingFilter {
+  any('Any rating', 0),
+  seven('7+', 7),
+  eight('8+', 8),
+  nine('9+', 9);
+
+  const RatingFilter(this.label, this.min);
+
+  final String label;
+  final int min;
+
+  bool matches(double? rating) => min == 0 || (rating ?? 0) >= min;
+}
+
+List<CatalogItem> applySearchFilters(
+  List<CatalogItem> items,
+  YearFilter year,
+  RatingFilter rating,
+) {
+  if (year == YearFilter.any && rating == RatingFilter.any) return items;
+  return items.where((item) => year.matches(item.year) && rating.matches(item.rating)).toList();
+}
+
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
 
@@ -35,6 +88,8 @@ class SearchPage extends ConsumerStatefulWidget {
 class _SearchPageState extends ConsumerState<SearchPage> {
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
+  YearFilter _year = YearFilter.any;
+  RatingFilter _rating = RatingFilter.any;
 
   @override
   void dispose() {
@@ -73,10 +128,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               tv: mode.isTv,
             ),
           ),
+          if (query.trim().isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(mode.gutter, 0, mode.gutter, 12),
+              child: _FilterBar(
+                year: _year,
+                rating: _rating,
+                onYearChanged: (value) => setState(() => _year = value),
+                onRatingChanged: (value) => setState(() => _rating = value),
+              ),
+            ),
           Expanded(
             child: query.trim().isEmpty
                 ? const _SearchIdle()
-                : _SearchResults(query: query, mode: mode),
+                : _SearchResults(query: query, mode: mode, year: _year, rating: _rating),
           ),
         ],
       ),
@@ -146,6 +211,78 @@ class _SearchField extends StatelessWidget {
   }
 }
 
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.year,
+    required this.rating,
+    required this.onYearChanged,
+    required this.onRatingChanged,
+  });
+
+  final YearFilter year;
+  final RatingFilter rating;
+  final ValueChanged<YearFilter> onYearChanged;
+  final ValueChanged<RatingFilter> onRatingChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final option in YearFilter.values)
+            _FilterChip(
+              label: option.label,
+              selected: option == year,
+              onTap: () => onYearChanged(option),
+            ),
+          const SizedBox(width: 12),
+          Container(width: 1, height: 20, color: VesperColors.divider),
+          const SizedBox(width: 12),
+          for (final option in RatingFilter.values)
+            _FilterChip(
+              label: option.label,
+              selected: option == rating,
+              onTap: () => onRatingChanged(option),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? VesperColors.accent : VesperColors.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            style: VesperType.label.copyWith(
+              color: selected ? VesperColors.canvas : VesperColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SearchIdle extends StatelessWidget {
   const _SearchIdle();
 
@@ -179,10 +316,17 @@ final titleSearchProvider = FutureProvider.autoDispose.family<List<CatalogItem>,
 });
 
 class _SearchResults extends ConsumerWidget {
-  const _SearchResults({required this.query, required this.mode});
+  const _SearchResults({
+    required this.query,
+    required this.mode,
+    required this.year,
+    required this.rating,
+  });
 
   final String query;
   final InputMode mode;
+  final YearFilter year;
+  final RatingFilter rating;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,9 +338,15 @@ class _SearchResults extends ConsumerWidget {
         title: 'Search failed',
         message: 'The catalogue did not answer. Check your connection.',
       ),
-      data: (items) {
+      data: (fetched) {
+        final items = applySearchFilters(fetched, year, rating);
         if (items.isEmpty) {
-          return const _ResultsEmpty(title: 'Nothing found', message: 'No match for that title.');
+          return _ResultsEmpty(
+            title: 'Nothing found',
+            message: fetched.isEmpty
+                ? 'No match for that title.'
+                : 'No match for that title with these filters.',
+          );
         }
 
         return CustomScrollView(
