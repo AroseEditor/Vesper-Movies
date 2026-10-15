@@ -198,3 +198,23 @@ final indianRowProvider = FutureProvider.family<List<CatalogItem>, int>((ref, in
   final row = rows[index];
   return ref.read(metadataServiceProvider).discover(row.type, row.params);
 });
+
+final recentlyAddedProvider = FutureProvider.autoDispose<List<CatalogItem>>((ref) async {
+  final metadata = ref.read(metadataServiceProvider);
+  if (!metadata.hasTmdb) return const [];
+
+  final today = _today();
+  final results = await Future.wait([
+    metadata.discover('movie', {
+      'sort_by': 'primary_release_date.desc',
+      'primary_release_date.lte': today,
+      'vote_count.gte': '10',
+    }),
+    metadata.discover('tv', {
+      'sort_by': 'first_air_date.desc',
+      'first_air_date.lte': today,
+      'vote_count.gte': '5',
+    }),
+  ]);
+  return [for (final list in results) ...list.take(15)];
+});

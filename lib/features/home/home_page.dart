@@ -8,6 +8,7 @@ import '../../design/widgets/action_menu.dart';
 import '../../design/widgets/hero_billboard.dart';
 import '../../design/widgets/media_row.dart';
 import '../../design/widgets/shimmer.dart';
+import '../../design/widgets/top_ten_row.dart';
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
 import '../../storage/library_controller.dart';
@@ -52,6 +53,10 @@ class _HomeContent extends ConsumerWidget {
 
     final resume = ref.watch(continueWatchingProvider);
     final favourites = ref.watch(favouritesProvider);
+    final topTen = (feed.shelves.where((s) => s.title == 'Trending Now').firstOrNull?.items ??
+            const <CatalogItem>[])
+        .take(10)
+        .toList();
 
     return CustomScrollView(
       slivers: [
@@ -118,6 +123,14 @@ class _HomeContent extends ConsumerWidget {
                   mode: mode,
                   onSelect: (item) => _open(context, item),
                 ),
+              TopTenRow(
+                title: 'Top 10 Today',
+                items: topTen,
+                mode: mode,
+                onSelect: (item) => _open(context, item),
+              ),
+              if (ref.read(metadataServiceProvider).hasTmdb)
+                _RecentlyAdded(mode: mode, onSelect: (item) => _open(context, item)),
               if (ref.read(metadataServiceProvider).hasTmdb)
                 for (var i = 0; i < indianRows().length; i++)
                   _IndianRow(index: i, mode: mode, onSelect: (item) => _open(context, item)),
@@ -291,6 +304,25 @@ class _SuggestedRow extends ConsumerWidget {
           onSelect: onSelect,
         );
       },
+    );
+  }
+}
+
+class _RecentlyAdded extends ConsumerWidget {
+  const _RecentlyAdded({required this.mode, required this.onSelect});
+
+  final InputMode mode;
+  final void Function(CatalogItem item) onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(recentlyAddedProvider);
+    return items.when(
+      loading: () => MediaRow(title: 'Recently Added', items: const [], mode: mode, loading: true),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (list) => list.isEmpty
+          ? const SizedBox.shrink()
+          : MediaRow(title: 'Recently Added', items: list, mode: mode, onSelect: onSelect),
     );
   }
 }
