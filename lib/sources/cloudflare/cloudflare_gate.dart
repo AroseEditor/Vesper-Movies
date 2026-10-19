@@ -2,13 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../design/colors.dart';
 import '../../design/typography.dart';
 import '../../shell/router.dart';
+
+const _cursorStep = 22.0;
+int _syntheticPointer = 90000;
 
 const _prefsKeyPrefix = 'pref.cf_clearance.';
 const _androidCookieTtl = Duration(minutes: 25);
@@ -72,8 +77,11 @@ class _CloudflareSolveDialog extends StatefulWidget {
 
 class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
   late final WebViewController _controller;
+  final GlobalKey _webviewKey = GlobalKey();
+  final FocusNode _cursorFocus = FocusNode(debugLabel: 'cf-cursor');
   Timer? _poll;
   bool _done = false;
+  Offset? _cursor;
 
   @override
   void initState() {
@@ -87,7 +95,62 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
   @override
   void dispose() {
     _poll?.cancel();
+    _cursorFocus.dispose();
     super.dispose();
+  }
+
+  Size? get _webviewSize => (_webviewKey.currentContext?.findRenderObject() as RenderBox?)?.size;
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final size = _webviewSize;
+    if (size == null) return KeyEventResult.ignored;
+
+    final current = _cursor ?? Offset(size.width / 2, size.height / 2);
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowUp:
+        setState(
+          () => _cursor = Offset(current.dx, (current.dy - _cursorStep).clamp(0, size.height)),
+        );
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowDown:
+        setState(
+          () => _cursor = Offset(current.dx, (current.dy + _cursorStep).clamp(0, size.height)),
+        );
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowLeft:
+        setState(
+          () => _cursor = Offset((current.dx - _cursorStep).clamp(0, size.width), current.dy),
+        );
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowRight:
+        setState(
+          () => _cursor = Offset((current.dx + _cursorStep).clamp(0, size.width), current.dy),
+        );
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.select:
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.gameButtonA:
+        setState(() => _cursor = current);
+        _tapAt(current);
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+  }
+
+  void _tapAt(Offset local) {
+    final box = _webviewKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final global = box.localToGlobal(local);
+    final pointer = _syntheticPointer++;
+
+    GestureBinding.instance.handlePointerEvent(
+      PointerDownEvent(pointer: pointer, position: global, kind: PointerDeviceKind.touch),
+    );
+    GestureBinding.instance.handlePointerEvent(
+      PointerUpEvent(pointer: pointer, position: global, kind: PointerDeviceKind.touch),
+    );
   }
 
   void _startPolling() {
@@ -117,6 +180,8 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = MediaQuery.navigationModeOf(context) == NavigationMode.directional;
+
     return Dialog(
       backgroundColor: VesperColors.canvas,
       insetPadding: const EdgeInsets.all(16),
@@ -137,10 +202,13 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'This source needs a quick human check. Complete it below.',
+                tv
+                    ? 'This source needs a quick human check. Use the arrow keys to move the '
+                          'dot onto the checkbox, then press select.'
+                    : 'This source needs a quick human check. Complete it below.',
                 style: VesperType.meta,
               ),
             ),
@@ -148,7 +216,37 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                child: WebViewWidget(controller: _controller),
+                child: Stack(
+                  key: _webviewKey,
+                  children: [
+                    Positioned.fill(child: WebViewWidget(controller: _controller)),
+                    if (tv)
+                      Positioned.fill(
+                        child: Focus(
+                          focusNode: _cursorFocus,
+                          autofocus: true,
+                          onKeyEvent: _handleKey,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                    if (tv && _cursor != null)
+                      Positioned(
+                        left: _cursor!.dx - 10,
+                        top: _cursor!.dy - 10,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: VesperColors.accent.withValues(alpha: 0.85),
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
