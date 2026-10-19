@@ -88,8 +88,8 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _startPolling()))
-      ..loadRequest(Uri.parse(widget.url));
+      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _startPolling()));
+    unawaited(_load());
   }
 
   @override
@@ -97,6 +97,30 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
     _poll?.cancel();
     _cursorFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      await WebViewCookieManager().clearCookies();
+    } on Object {
+      return;
+    }
+    if (!mounted) return;
+    await _controller.loadRequest(Uri.parse(widget.url));
+  }
+
+  Future<bool> _challengePageShowing() async {
+    try {
+      final raw = await _controller.runJavaScriptReturningResult('document.title');
+      final title = raw.toString().replaceAll('"', '').trim().toLowerCase();
+      if (title.isEmpty) return true;
+      return title.contains('just a moment') ||
+          title.contains('attention required') ||
+          title.contains('checking your browser') ||
+          title.contains('verify you are human');
+    } on Object {
+      return true;
+    }
   }
 
   Size? get _webviewSize => (_webviewKey.currentContext?.findRenderObject() as RenderBox?)?.size;
@@ -158,6 +182,8 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
   }
 
   Future<void> _check() async {
+    if (_done || !mounted) return;
+    if (await _challengePageShowing()) return;
     if (_done || !mounted) return;
 
     final manager = WebViewCookieManager();
@@ -239,7 +265,7 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
                             height: 20,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: VesperColors.accent.withValues(alpha: 0.85),
+                              color: VesperColors.danger.withValues(alpha: 0.9),
                               border: Border.all(color: Colors.white, width: 2),
                             ),
                           ),
