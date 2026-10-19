@@ -90,6 +90,17 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _startPolling()));
     unawaited(_load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+  }
+
+  void _claimFocus() {
+    if (!mounted) return;
+    final size = _webviewSize;
+    if (size != null) {
+      _cursor ??= Offset(size.width / 2, size.height / 2);
+    }
+    _cursorFocus.requestFocus();
+    setState(() {});
   }
 
   @override
@@ -221,9 +232,12 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
               child: Row(
                 children: [
                   const Expanded(child: Text('Verify to continue', style: VesperType.sectionTitle)),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: VesperColors.textSecondary),
-                    onPressed: () => Navigator.of(context).pop(null),
+                  ExcludeFocus(
+                    excluding: tv,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: VesperColors.textSecondary),
+                      onPressed: () => Navigator.of(context).pop(null),
+                    ),
                   ),
                 ],
               ),
