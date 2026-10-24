@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../design/colors.dart';
 import '../../design/typography.dart';
@@ -89,8 +90,30 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _startPolling()));
-    unawaited(_load());
+    unawaited(_configureAndLoad());
     WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+  }
+
+  Future<void> _configureAndLoad() async {
+    try {
+      await WebViewCookieManager().clearCookies();
+    } on Object {
+      return;
+    }
+
+    final android = _controller.platform;
+    if (android is AndroidWebViewController) {
+      await android.setUseWideViewPort(true);
+      await android.setAllowFileAccess(true);
+      await android.setAllowContentAccess(true);
+      final cookieManager = WebViewCookieManager().platform;
+      if (cookieManager is AndroidWebViewCookieManager) {
+        await cookieManager.setAcceptThirdPartyCookies(android, true);
+      }
+    }
+
+    if (!mounted) return;
+    await _controller.loadRequest(Uri.parse(widget.url));
   }
 
   void _claimFocus() {
@@ -108,16 +131,6 @@ class _CloudflareSolveDialogState extends State<_CloudflareSolveDialog> {
     _poll?.cancel();
     _cursorFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      await WebViewCookieManager().clearCookies();
-    } on Object {
-      return;
-    }
-    if (!mounted) return;
-    await _controller.loadRequest(Uri.parse(widget.url));
   }
 
   Future<bool> _challengePageShowing() async {
