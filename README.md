@@ -26,6 +26,9 @@ Vesper hosts no media. Read the [disclaimer](DISCLAIMER.md) before use.
 ## Special thanks to:
 **Vn-Vean(PurpleSirp)**,**Zoro**,**Prime**,**Kys0**
 
+## Developed By:
+**Ayush.ue5**
+
 ## Contents
 
 - [Platforms](#platforms)
