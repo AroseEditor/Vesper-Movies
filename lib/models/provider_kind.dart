@@ -18,6 +18,7 @@ enum ProviderKind {
   downloadhub('downloadhub', 'DownloadHub'),
   anizone('anizone', 'AniZone'),
   nfmirror('nfmirror', 'NF Mirror'),
+  streamingcommunity('streamingcommunity', 'StreamingCommunity'),
   addons('addons', 'Addons'),
   m3u('m3u', 'Live TV'),
   youtube('youtube', 'YouTube'),

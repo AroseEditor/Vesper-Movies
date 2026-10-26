@@ -25,6 +25,7 @@ const Map<String, String> _defaults = {
   'moviesmod': 'https://moviesmod.ai.in',
   'downloadhub': 'https://d11.downloadhub.food',
   'anizone': 'https://anizone.to',
+  'streamingcommunity': 'https://streamingcommunityz.build',
   '4khdhub': 'https://4khdhub.one',
   'hubcloud': 'https://hubcloud.ist',
   'vcloud': 'https://vcloud.fit',

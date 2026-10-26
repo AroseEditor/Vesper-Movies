@@ -13,6 +13,7 @@ import 'moviesdrive_source.dart';
 import 'moviesmod_source.dart';
 import 'nfmirror_source.dart';
 import 'skymovies_source.dart';
+import 'streamingcommunity_source.dart';
 import 'topmovies_source.dart';
 import 'uhdmovies_source.dart';
 import 'vegamovies_source.dart';
@@ -34,6 +35,7 @@ Map<ProviderKind, LinkSource> buildLinkSources(Web web) {
     AniZoneSource(web),
     NfMirrorSource(web),
     MasterChefSource(web),
+    StreamingCommunitySource(web),
   ];
   return {for (final source in sources) source.kind: source};
 }
