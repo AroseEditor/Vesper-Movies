@@ -19,9 +19,8 @@ class HdHub4uSource extends LinkSource {
 
   @override
   Future<List<Release>> find(LinkQuery query, {CancelToken? cancel}) async {
-    final term = query.imdbId ?? query.title;
     final api = Uri.https('search.pingora.fyi', '/collections/post/documents/search', {
-      'q': term,
+      'q': query.title,
       'query_by': 'post_title,category,stars,director,imdb_id',
       'query_by_weights': '4,2,2,2,4',
       'sort_by': 'sort_by_date:desc',
@@ -44,9 +43,9 @@ class HdHub4uSource extends LinkSource {
       final imdb = '${document['imdb_id'] ?? ''}';
       if (permalink.isEmpty) continue;
 
-      final matches = query.imdbId != null
-          ? imdb == query.imdbId
-          : sameTitle(query.title, title, year: query.year, series: query.isEpisode);
+      final matches =
+          (query.imdbId != null && imdb == query.imdbId) ||
+          sameTitle(query.title, title, year: query.year, series: query.isEpisode);
       if (!matches) continue;
       if (query.isEpisode && !_hasSeason(title, query.season)) continue;
 
