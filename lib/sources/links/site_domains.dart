@@ -12,7 +12,7 @@ const _lists = [
 const _prefsKey = 'sources.domains';
 
 const Map<String, String> _defaults = {
-  'hdhub4u': 'https://new6.hdhub4u.cl',
+  'hdhub4u': 'https://new10.hdhub4u.cl',
   'vegamovies': 'https://vegamovies.gallery',
   'moviesdrive': 'https://new4.moviesdrive.christmas',
   'bollyflix': 'https://bollyflix.af',

@@ -302,7 +302,9 @@ Future<List<Release>> _safeReleases(
 }) async {
   if (source == null) return const [];
   try {
-    return await source.releases(id, season: season, episode: episode, cancel: cancel);
+    return await source
+        .releases(id, season: season, episode: episode, cancel: cancel)
+        .timeout(const Duration(seconds: 12), onTimeout: () => const <Release>[]);
   } on Cancelled {
     rethrow;
   } on Object catch (_) {
@@ -320,14 +322,16 @@ Future<List<Release>> _safeAddonStreams(
   CancelToken? cancel,
 }) async {
   try {
-    return await client.streams(
-      addon,
-      imdbId,
-      isSeries: isSeries,
-      season: season,
-      episode: episode,
-      cancel: cancel,
-    );
+    return await client
+        .streams(
+          addon,
+          imdbId,
+          isSeries: isSeries,
+          season: season,
+          episode: episode,
+          cancel: cancel,
+        )
+        .timeout(const Duration(seconds: 12), onTimeout: () => const <Release>[]);
   } on Cancelled {
     rethrow;
   } on Object catch (_) {
