@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../../../design/colors.dart';
@@ -7,6 +8,7 @@ import '../../../design/icons.dart';
 import '../../../design/motion.dart';
 import '../../../design/typography.dart';
 import '../../../design/widgets/focusable_item.dart';
+import '../../../design/widgets/glass_surface.dart';
 import '../../../models/release.dart';
 import '../../../player/player_controller.dart';
 import '../../../player/player_intents.dart';
@@ -82,13 +84,12 @@ class TrackPanel extends ConsumerWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {},
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: VesperColors.canvasDeep.withValues(alpha: 0.97),
-              borderRadius: mode.isTouch
-                  ? const BorderRadius.vertical(top: Radius.circular(18))
-                  : null,
-              border: const Border(left: BorderSide(color: VesperColors.divider)),
+          child: GlassSurface(
+            overVideo: true,
+            settings: VesperGlass.panel,
+            shape: LiquidVerticalRoundedRectangle(
+              topRadius: mode.isTouch ? 18 : 0,
+              bottomRadius: 0,
             ),
             child: SafeArea(
               child: FocusTraversalGroup(

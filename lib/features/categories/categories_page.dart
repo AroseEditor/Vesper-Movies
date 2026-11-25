@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../core/memo_cache.dart';
 import '../../design/colors.dart';
@@ -8,6 +9,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../design/widgets/glass_surface.dart';
 import '../../design/widgets/poster_card.dart';
 import '../../design/widgets/shimmer.dart';
 import '../../metadata/cinemeta.dart';
@@ -247,25 +249,28 @@ class _Toggle extends StatelessWidget {
               borderRadius: 16,
               scaleOnFocus: false,
               semanticLabel: option.$2,
-              child: AnimatedContainer(
-                duration: VesperMotion.fast,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: value == option.$1 ? VesperColors.surfaceRaised : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: value == option.$1 ? VesperColors.accent : VesperColors.divider,
-                  ),
-                ),
-                child: Text(
-                  option.$2,
-                  style: VesperType.label.copyWith(
-                    color: value == option.$1
-                        ? VesperColors.textPrimary
-                        : VesperColors.textTertiary,
-                  ),
-                ),
-              ),
+              child: value == option.$1
+                  ? GlassSurface(
+                      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Text(
+                          option.$2,
+                          style: VesperType.label.copyWith(color: VesperColors.textPrimary),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: VesperColors.divider),
+                      ),
+                      child: Text(
+                        option.$2,
+                        style: VesperType.label.copyWith(color: VesperColors.textTertiary),
+                      ),
+                    ),
             ),
           ),
       ],

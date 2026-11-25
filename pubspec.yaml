@@ -1,7 +1,7 @@
 name: vesper_movies
 description: Find, stream and download movies, series and live TV on desktop, phone and TV.
 publish_to: 'none'
-version: 0.6.42+37
+version: 0.7.0+38
 
 authors:
   - ayush.ue5
@@ -45,6 +45,7 @@ dependencies:
   youtube_explode_dart: ^3.1.0
   webview_flutter: ^4.14.1
   webview_flutter_android: ^4.14.1
+  liquid_glass_widgets: ^1.11.0
 
 dev_dependencies:
   flutter_test:

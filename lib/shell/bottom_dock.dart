@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/colors.dart';
 import '../design/motion.dart';
 import '../design/typography.dart';
+import '../design/widgets/glass_surface.dart';
 import 'destinations.dart';
 
 class BottomDock extends StatelessWidget {
@@ -11,35 +13,60 @@ class BottomDock extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelect;
 
+  static const double _dockHeight = 64;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final itemCount = AppDestination.values.length;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, 10 + bottomInset * 0.4),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: VesperColors.surface.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: VesperColors.divider),
-          boxShadow: const [
-            BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8)),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (var i = 0; i < AppDestination.values.length; i++)
-                Expanded(
-                  child: _DockItem(
-                    destination: AppDestination.values[i],
-                    selected: i == currentIndex,
-                    onTap: () => onSelect(i),
-                  ),
-                ),
-            ],
+      child: GlassSurface(
+        raised: true,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 22),
+        child: SizedBox(
+          height: _dockHeight,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = constraints.maxWidth / itemCount;
+                return Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 500),
+                      curve: VesperMotion.overshoot,
+                      left: currentIndex * itemWidth + 4,
+                      top: 6,
+                      width: itemWidth - 8,
+                      height: constraints.maxHeight - 12,
+                      child: GlassSurface(
+                        settings: VesperGlass.pill,
+                        shape: LiquidRoundedSuperellipse(
+                          borderRadius: (constraints.maxHeight - 12) / 2,
+                        ),
+                        showRim: false,
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (var i = 0; i < itemCount; i++)
+                          Expanded(
+                            child: _DockItem(
+                              destination: AppDestination.values[i],
+                              selected: i == currentIndex,
+                              onTap: () => onSelect(i),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -56,7 +83,7 @@ class _DockItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? VesperColors.accent : VesperColors.textTertiary;
+    final color = selected ? VesperColors.textPrimary : VesperColors.textTertiary;
 
     return Semantics(
       label: destination.label,
@@ -66,19 +93,9 @@ class _DockItem extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: VesperMotion.fast,
-              curve: VesperMotion.enter,
-              height: 3,
-              width: selected ? 22 : 0,
-              decoration: BoxDecoration(
-                color: VesperColors.accent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 7),
             AnimatedScale(
               scale: selected ? 1.08 : 1.0,
               duration: VesperMotion.fast,
@@ -86,10 +103,10 @@ class _DockItem extends StatelessWidget {
               child: Icon(
                 selected ? destination.activeIcon : destination.icon,
                 color: color,
-                size: 23,
+                size: 22,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             AnimatedDefaultTextStyle(
               duration: VesperMotion.fast,
               style: VesperType.label.copyWith(

@@ -75,6 +75,7 @@ class PlayerState {
     this.error,
     this.notice,
     this.preload = Preload.idle,
+    this.playingOverride,
   });
 
   final PlaybackTarget? target;
@@ -85,6 +86,7 @@ class PlayerState {
   final String? error;
   final String? notice;
   final Preload preload;
+  final bool? playingOverride;
 
   PlayerState copyWith({
     PlaybackTarget? target,
@@ -98,6 +100,8 @@ class PlayerState {
     String? notice,
     bool clearNotice = false,
     Preload? preload,
+    bool? playingOverride,
+    bool clearPlayingOverride = false,
   }) {
     return PlayerState(
       target: target ?? this.target,
@@ -108,6 +112,7 @@ class PlayerState {
       error: clearError ? null : (error ?? this.error),
       notice: clearNotice ? null : (notice ?? this.notice),
       preload: preload ?? this.preload,
+      playingOverride: clearPlayingOverride ? null : (playingOverride ?? this.playingOverride),
     );
   }
 }
@@ -123,6 +128,8 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   bool holdErrors = false;
   bool _manualAudioPick = false;
   bool _manualSubtitlePick = false;
+  Duration? _pendingSeek;
+  StreamSubscription<bool>? _playingSubscription;
 
   PlaybackEngine get engine => _engine ??= PlaybackEngine.create();
 
@@ -134,6 +141,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       _noticeTimer?.cancel();
       unawaited(_errorSubscription?.cancel());
       unawaited(_startSubscription?.cancel());
+      unawaited(_playingSubscription?.cancel());
       unawaited(_engine?.dispose());
       _engine = null;
     });
@@ -145,6 +153,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
     _stopPreloadTimers();
     _manualAudioPick = false;
     _manualSubtitlePick = false;
+    _pendingSeek = null;
     state = PlayerState(subtitleStyle: state.subtitleStyle);
   }
 
@@ -449,19 +458,32 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
       await _releasePreload();
       return;
     }
-    await engine.playOrPause();
+    _playingSubscription ??= engine.playingStream.listen((value) {
+      if (state.playingOverride == value) state = state.copyWith(clearPlayingOverride: true);
+    });
+    final playing = state.playingOverride ?? engine.state.playing;
+    final next = !playing;
+    state = state.copyWith(playingOverride: next);
+    if (next) {
+      await engine.play();
+    } else {
+      await engine.pause();
+    }
   }
 
-  Future<void> seekBy(Duration delta) async {
-    final position = engine.state.position + delta;
+  Future<void> seekBy(Duration delta) => _seekTo((_pendingSeek ?? engine.state.position) + delta);
+
+  Future<void> seekTo(Duration position) => _seekTo(position);
+
+  Future<void> _seekTo(Duration position) async {
     final duration = engine.state.duration;
     final clamped = position < Duration.zero
         ? Duration.zero
         : (duration > Duration.zero && position > duration ? duration : position);
+    _pendingSeek = clamped;
     await engine.seek(clamped);
+    if (_pendingSeek == clamped) _pendingSeek = null;
   }
-
-  Future<void> seekTo(Duration position) => engine.seek(position);
 
   Future<void> setVolume(double volume) => engine.setVolume(volume.clamp(0, 100));
 
@@ -502,6 +524,7 @@ class PlayerControllerNotifier extends Notifier<PlayerState> {
   Future<void> stop() async {
     _session++;
     _stopPreloadTimers();
+    _pendingSeek = null;
     await engine.stop();
     state = const PlayerState();
   }

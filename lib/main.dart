@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -44,6 +45,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = SecureDnsHttpOverrides();
   MediaKit.ensureInitialized();
+  await LiquidGlassWidgets.initialize();
 
   startupInputMode = await detectInputMode();
   await MemoCache.openDisk();
@@ -73,5 +75,11 @@ Future<void> main() async {
 
   AppLifecycleListener(onInactive: MemoCache.flushAll, onPause: MemoCache.flushAll);
 
-  runApp(const ProviderScope(child: VesperApp()));
+  runApp(
+    LiquidGlassWidgets.wrap(
+      adaptiveQuality: true,
+      brightnessResolver: (_) => Brightness.dark,
+      child: const ProviderScope(child: VesperApp()),
+    ),
+  );
 }

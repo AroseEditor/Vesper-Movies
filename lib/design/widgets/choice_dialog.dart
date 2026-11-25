@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../colors.dart';
 import '../icons.dart';
 import '../typography.dart';
+import 'glass_surface.dart';
 
 class ChoiceOption<T> {
   const ChoiceOption({
@@ -33,10 +35,13 @@ Future<T?> showChoiceDialog<T>(
       var focusIndex = options.indexWhere((option) => option.selected);
       if (focusIndex < 0) focusIndex = 0;
       return Dialog(
-        backgroundColor: VesperColors.surfaceRaised,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: ConstrainedBox(
+        child: GlassSurface(
+          raised: true,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+          child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440, maxHeight: 560),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -83,6 +88,7 @@ Future<T?> showChoiceDialog<T>(
               ),
             ],
           ),
+        ),
         ),
       );
     },

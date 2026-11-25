@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -12,6 +13,7 @@ import '../../design/icons.dart';
 import '../../design/motion.dart';
 import '../../design/typography.dart';
 import '../../design/widgets/focusable_item.dart';
+import '../../design/widgets/glass_surface.dart';
 import '../../player/pip.dart';
 import '../../player/playback_engine.dart';
 import '../../player/player_controller.dart';
@@ -42,6 +44,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   Timer? _hideTimer;
   bool _controlsVisible = true;
+  bool _controlsPainted = true;
   bool _fullscreen = false;
   PlayerPanel _panel = PlayerPanel.none;
 
@@ -156,7 +159,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   void _showControls() {
     final wasHidden = !_controlsVisible;
-    if (wasHidden) setState(() => _controlsVisible = true);
+    if (wasHidden) setState(() => _controlsVisible = _controlsPainted = true);
     _restartHideTimer();
     if (wasHidden && _tv) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusControls());
@@ -164,8 +167,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   void _toggleControls() {
-    setState(() => _controlsVisible = !_controlsVisible);
+    setState(() {
+      _controlsVisible = !_controlsVisible;
+      if (_controlsVisible) _controlsPainted = true;
+    });
     _restartHideTimer();
+  }
+
+  void _controlsFadeEnded() {
+    if (!mounted || _controlsVisible) return;
+    setState(() => _controlsPainted = false);
   }
 
   void _openPanel(PlayerPanel panel) {
@@ -323,32 +334,34 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       },
                     ),
                     const _StreamStatus(),
-                    AnimatedOpacity(
-                      opacity: _controlsVisible ? 1 : 0,
-                      duration: VesperMotion.normal,
-                      curve: VesperMotion.enter,
-                      child: IgnorePointer(
-                        ignoring: !_controlsVisible || _panel != PlayerPanel.none,
-                        child: ExcludeFocus(
-                          excluding:
-                              !_controlsVisible ||
-                              _panel != PlayerPanel.none ||
-                              state.error != null,
-                          child: FocusScope(
-                            node: _controlsScope,
-                            child: _Controls(
-                              mode: mode,
-                              fullscreen: _fullscreen,
-                              playFocus: _playFocus,
-                              onExit: _exit,
-                              onOpenPanel: _openPanel,
-                              onInteract: _showControls,
-                              onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+                    if (_controlsPainted)
+                      AnimatedOpacity(
+                        opacity: _controlsVisible ? 1 : 0,
+                        duration: VesperMotion.normal,
+                        curve: VesperMotion.enter,
+                        onEnd: _controlsFadeEnded,
+                        child: IgnorePointer(
+                          ignoring: !_controlsVisible || _panel != PlayerPanel.none,
+                          child: ExcludeFocus(
+                            excluding:
+                                !_controlsVisible ||
+                                _panel != PlayerPanel.none ||
+                                state.error != null,
+                            child: FocusScope(
+                              node: _controlsScope,
+                              child: _Controls(
+                                mode: mode,
+                                fullscreen: _fullscreen,
+                                playFocus: _playFocus,
+                                onExit: _exit,
+                                onOpenPanel: _openPanel,
+                                onInteract: _showControls,
+                                onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                     PlaybackOverlays(onInteract: _showControls),
                     if (_panel != PlayerPanel.none)
                       FocusScope(
@@ -436,10 +449,11 @@ class _Controls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(playerControllerProvider.notifier);
-    final target = ref.watch(playerControllerProvider).target;
+    final playerState = ref.watch(playerControllerProvider);
+    final target = playerState.target;
     final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-    final playing = ref.watch(playerPlayingProvider).value ?? false;
+    final playing = playerState.playingOverride ?? (ref.watch(playerPlayingProvider).value ?? false);
     final preload = ref.watch(playerControllerProvider.select((s) => s.preload));
 
     return DecoratedBox(
@@ -630,39 +644,46 @@ class _BottomBar extends StatelessWidget {
             focusable: !mode.isTv,
           ),
           const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _LabelledButton(
-                icon: VesperIcons.subtitles,
-                label: 'Subtitles',
-                compact: mode.isTouch,
-                onTap: () => onOpenPanel(PlayerPanel.subtitles),
+          GlassSurface(
+            overVideo: true,
+            shape: const LiquidRoundedSuperellipse(borderRadius: 22),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _LabelledButton(
+                    icon: VesperIcons.subtitles,
+                    label: 'Subtitles',
+                    compact: mode.isTouch,
+                    onTap: () => onOpenPanel(PlayerPanel.subtitles),
+                  ),
+                  _LabelledButton(
+                    icon: VesperIcons.audioTrack,
+                    label: 'Audio',
+                    compact: mode.isTouch,
+                    onTap: () => onOpenPanel(PlayerPanel.audio),
+                  ),
+                  _LabelledButton(
+                    icon: VesperIcons.quality,
+                    label: 'Quality',
+                    compact: mode.isTouch,
+                    onTap: () => onOpenPanel(PlayerPanel.quality),
+                  ),
+                  _LabelledButton(
+                    icon: VesperIcons.speed,
+                    label: 'Speed',
+                    compact: mode.isTouch,
+                    onTap: () => onOpenPanel(PlayerPanel.speed),
+                  ),
+                  _FullscreenButton(
+                    fullscreen: fullscreen,
+                    onTap: onToggleFullscreen,
+                    compact: mode.isTouch,
+                  ),
+                ],
               ),
-              _LabelledButton(
-                icon: VesperIcons.audioTrack,
-                label: 'Audio',
-                compact: mode.isTouch,
-                onTap: () => onOpenPanel(PlayerPanel.audio),
-              ),
-              _LabelledButton(
-                icon: VesperIcons.quality,
-                label: 'Quality',
-                compact: mode.isTouch,
-                onTap: () => onOpenPanel(PlayerPanel.quality),
-              ),
-              _LabelledButton(
-                icon: VesperIcons.speed,
-                label: 'Speed',
-                compact: mode.isTouch,
-                onTap: () => onOpenPanel(PlayerPanel.speed),
-              ),
-              _FullscreenButton(
-                fullscreen: fullscreen,
-                onTap: onToggleFullscreen,
-                compact: mode.isTouch,
-              ),
-            ],
+            ),
           ),
         ],
       ),

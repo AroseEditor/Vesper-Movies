@@ -52,10 +52,25 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
-
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+# flutter_secure_storage_windows includes atlstr.h without declaring ATL
+# usage, so the toolset's atlmfc include dir is never added for it. Find
+# the installed toolset's atlmfc include dir and add it directly to that
+# target.
+if(TARGET flutter_secure_storage_windows_plugin)
+  file(GLOB _vesper_atlmfc_include
+    "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/atlmfc/include"
+    "$ENV{ProgramFiles}/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/atlmfc/include")
+  list(LENGTH _vesper_atlmfc_include _vesper_atlmfc_count)
+  if(_vesper_atlmfc_count GREATER 0)
+    list(GET _vesper_atlmfc_include 0 _vesper_atlmfc_dir)
+    target_include_directories(flutter_secure_storage_windows_plugin PRIVATE "${_vesper_atlmfc_dir}")
+    target_link_directories(flutter_secure_storage_windows_plugin PRIVATE "${_vesper_atlmfc_dir}/../lib/x64")
+  endif()
+endif()
 
 
 # === Installation ===

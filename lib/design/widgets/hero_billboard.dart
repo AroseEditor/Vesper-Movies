@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../models/media.dart';
 import '../../shell/input_mode.dart';
@@ -8,6 +9,7 @@ import '../icons.dart';
 import '../motion.dart';
 import '../typography.dart';
 import 'focusable_item.dart';
+import 'glass_surface.dart';
 import 'poster_card.dart';
 
 class HeroBillboard extends StatelessWidget {
@@ -263,33 +265,43 @@ class HeroButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 22, color: filled ? VesperColors.canvas : VesperColors.textPrimary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: VesperType.button.copyWith(
+            color: filled ? VesperColors.canvas : VesperColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+
     return FocusableItem(
       onActivate: onTap,
       autofocus: autofocus,
       borderRadius: 6,
       scaleOnFocus: false,
       semanticLabel: label,
-      child: AnimatedContainer(
-        duration: VesperMotion.fast,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-        decoration: BoxDecoration(
-          color: filled ? VesperColors.accent : VesperColors.surfaceRaised.withValues(alpha: 0.82),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: filled ? VesperColors.canvas : VesperColors.textPrimary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: VesperType.button.copyWith(
-                color: filled ? VesperColors.canvas : VesperColors.textPrimary,
+      child: filled
+          ? AnimatedContainer(
+              duration: VesperMotion.fast,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+              decoration: const BoxDecoration(
+                color: VesperColors.accent,
+                borderRadius: BorderRadius.all(Radius.circular(5)),
+              ),
+              child: content,
+            )
+          : GlassSurface(
+              shape: const LiquidRoundedSuperellipse(borderRadius: 5),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                child: content,
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

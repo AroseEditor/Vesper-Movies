@@ -2,7 +2,7 @@ MovieBox-Tui/
 skills/
 CLAUDE.md
 /icon.png
-
+claude/
 .dart_tool/
 .packages
 build/
