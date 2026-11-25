@@ -100,7 +100,8 @@ class GlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolved =
-        settings ?? (overVideo ? VesperGlass.overVideo : (raised ? VesperGlass.raised : VesperGlass.settings));
+        settings ??
+        (overVideo ? VesperGlass.overVideo : (raised ? VesperGlass.raised : VesperGlass.settings));
     final radius = borderRadius ?? 18;
     // A surface sampling a live video backdrop pays for a fresh BackdropFilter
     // + shader pass every decoded frame. Keep real glass everywhere else;

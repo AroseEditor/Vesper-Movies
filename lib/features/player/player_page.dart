@@ -453,7 +453,8 @@ class _Controls extends ConsumerWidget {
     final target = playerState.target;
     final position = ref.watch(playerPositionProvider).value ?? Duration.zero;
     final duration = ref.watch(playerDurationProvider).value ?? Duration.zero;
-    final playing = playerState.playingOverride ?? (ref.watch(playerPlayingProvider).value ?? false);
+    final playing =
+        playerState.playingOverride ?? (ref.watch(playerPlayingProvider).value ?? false);
     final preload = ref.watch(playerControllerProvider.select((s) => s.preload));
 
     return DecoratedBox(

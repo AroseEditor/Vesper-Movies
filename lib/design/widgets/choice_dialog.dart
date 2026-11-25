@@ -42,53 +42,61 @@ Future<T?> showChoiceDialog<T>(
           raised: true,
           shape: const LiquidRoundedSuperellipse(borderRadius: 20),
           child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440, maxHeight: 560),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-                child: Text(title, style: VesperType.sectionTitle),
-              ),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.only(bottom: 12),
-                  children: [
-                    for (var i = 0; i < options.length; i++)
-                      ListTile(
-                        autofocus: i == focusIndex,
-                        focusColor: VesperColors.surfaceHover,
-                        hoverColor: VesperColors.surfaceHover,
-                        onTap: () => Navigator.of(dialogContext).pop(options[i].value),
-                        leading: SizedBox(
-                          width: 24,
-                          child: options[i].selected
-                              ? const Icon(VesperIcons.check, size: 20, color: VesperColors.accent)
-                              : options[i].icon == null
-                              ? null
-                              : Icon(options[i].icon, size: 20, color: VesperColors.textSecondary),
-                        ),
-                        title: Text(
-                          options[i].label,
-                          style: VesperType.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: options[i].subtitle == null || options[i].subtitle!.isEmpty
-                            ? null
-                            : Text(options[i].subtitle!, style: VesperType.meta),
-                        trailing: options[i].trailing == null
-                            ? null
-                            : Text(options[i].trailing!, style: VesperType.meta),
-                      ),
-                  ],
+            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 560),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                  child: Text(title, style: VesperType.sectionTitle),
                 ),
-              ),
-            ],
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    children: [
+                      for (var i = 0; i < options.length; i++)
+                        ListTile(
+                          autofocus: i == focusIndex,
+                          focusColor: VesperColors.surfaceHover,
+                          hoverColor: VesperColors.surfaceHover,
+                          onTap: () => Navigator.of(dialogContext).pop(options[i].value),
+                          leading: SizedBox(
+                            width: 24,
+                            child: options[i].selected
+                                ? const Icon(
+                                    VesperIcons.check,
+                                    size: 20,
+                                    color: VesperColors.accent,
+                                  )
+                                : options[i].icon == null
+                                ? null
+                                : Icon(
+                                    options[i].icon,
+                                    size: 20,
+                                    color: VesperColors.textSecondary,
+                                  ),
+                          ),
+                          title: Text(
+                            options[i].label,
+                            style: VesperType.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: options[i].subtitle == null || options[i].subtitle!.isEmpty
+                              ? null
+                              : Text(options[i].subtitle!, style: VesperType.meta),
+                          trailing: options[i].trailing == null
+                              ? null
+                              : Text(options[i].trailing!, style: VesperType.meta),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
         ),
       );
     },
