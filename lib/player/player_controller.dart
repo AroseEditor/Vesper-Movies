@@ -12,7 +12,7 @@ import 'quality_cap.dart';
 import 'subtitle_style.dart';
 
 const Duration preloadWindow = Duration(seconds: 60);
-const Duration preloadDeadline = Duration(seconds: 30);
+const Duration preloadDeadline = Duration(seconds: 15);
 
 const _fatalMarkers = [
   'failed to open',
